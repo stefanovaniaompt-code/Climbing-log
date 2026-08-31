@@ -1,7 +1,8 @@
 {
-  "name": "Climbing Log — Stefano",
-  "short_name": "Climbing Log",
+  "name": "Climbing Coach — Monica Erbesato",
+  "short_name": "Climbing Coach",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#f7f5f8",
   "theme_color": "#5B2C83",

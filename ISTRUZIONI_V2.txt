@@ -1,0 +1,30 @@
+CLIMBING COACH — MONICA ERBESATO — VERSIONE 2
+
+Hai già configurato correttamente Site URL e Redirect URL su Supabase:
+https://stefanovaniaompt-code.github.io/Climbing-log/
+
+Sostituisci nel repository GitHub questi 3 file:
+- index.html
+- manifest.webmanifest
+- sw.js
+
+Le icone esistenti possono restare.
+
+Novità:
+- brand Monica Erbesato
+- login e registrazione Supabase
+- profilo utente automatico
+- distinzione atleta / coach
+- logout
+- dati locali separati per account
+- import dei dati della vecchia PWA
+- cache PWA aggiornata
+
+IMPORTANTE:
+La sincronizzazione cloud di allenamenti e retest NON è ancora attiva in questa V2.
+Il login è già cloud. Il collegamento dei log al database è il passaggio successivo.
+
+Per il profilo di Monica:
+1. Monica crea un account normalmente dalla schermata dell'app.
+2. Comunica l'email usata.
+3. Il profilo verrà promosso in modo protetto da atleta a coach nel database.

@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#5B2C83">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
-  <title>Climbing Log — Stefano</title>
+  <title>Climbing Coach — Monica Erbesato</title>
   <link rel="manifest" href="manifest.webmanifest">
   <style>
     :root{
@@ -58,12 +58,77 @@
     .route{border-top:1px solid #eee;padding-top:10px;margin-top:10px}
     .notice{border-left:4px solid var(--warn);padding:10px;background:#fff7e9;border-radius:8px;font-size:13px}
     footer{font-size:11px;color:var(--muted);padding-top:18px;text-align:center}
+
+    .auth-wrap{max-width:460px;margin:0 auto;padding:32px 16px 48px}
+    .auth-brand{text-align:center;margin:10px 0 22px}
+    .auth-brand h1{font-size:30px;color:var(--purple);margin:0 0 6px}
+    .auth-brand p{color:var(--muted);margin:0}
+    .auth-card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px}
+    .auth-card h2{margin:0 0 6px;color:var(--purple)}
+    .auth-card input[type="email"],.auth-card input[type="password"],.auth-card input[type="text"]{
+      width:100%;border:1px solid var(--line);border-radius:10px;padding:11px;background:white;min-height:46px;font-size:16px
+    }
+    .auth-actions{display:grid;gap:9px;margin-top:16px}
+    .auth-message{min-height:22px;margin-top:12px;font-size:13px}
+    .auth-message.error{color:#8c2b2b}
+    .auth-message.ok{color:var(--ok)}
+    .userbar{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-top:12px;flex-wrap:wrap}
+    .userbar .identity{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .userbar button{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.4);padding:8px 11px;min-height:38px}
+    .role-pill{display:inline-block;border-radius:999px;padding:4px 8px;background:rgba(255,255,255,.16);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+    .sync-pill{display:inline-block;border-radius:999px;padding:4px 8px;background:#fff0da;color:#7a4800;font-size:11px}
+    .coach-shell main{max-width:900px;margin:auto;padding:18px 12px 42px}
+    .coach-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+    @media(max-width:620px){.coach-grid{grid-template-columns:1fr}}
+    .auth-loader{text-align:center;color:var(--muted);padding:16px}
+    .brandline{font-size:12px;opacity:.9;margin-top:2px}
+
   </style>
 </head>
 <body>
+<section id="authGate" class="auth-wrap">
+  <div class="auth-brand">
+    <h1>Climbing Coach</h1>
+    <p>Monica Erbesato · Climbing Performance Coaching</p>
+  </div>
+  <div class="auth-card">
+    <div id="authLoading" class="auth-loader">Controllo accesso…</div>
+    <div id="authContent" class="hidden">
+      <h2 id="authTitle">Accedi</h2>
+      <p class="small" id="authSubtitle">Accedi alla tua programmazione o al pannello coach.</p>
+      <form id="authForm">
+        <div id="nameField" class="hidden">
+          <label>Nome e cognome</label>
+          <input id="authName" type="text" autocomplete="name" placeholder="Nome Cognome">
+        </div>
+        <label>Email</label>
+        <input id="authEmail" type="email" autocomplete="email" required placeholder="nome@email.it">
+        <label>Password</label>
+        <input id="authPassword" type="password" autocomplete="current-password" required minlength="6" placeholder="Almeno 6 caratteri">
+        <div class="auth-actions">
+          <button id="authSubmit" type="submit">Accedi</button>
+          <button id="toggleAuthMode" type="button" class="secondary">Crea account atleta</button>
+        </div>
+      </form>
+      <div id="authMessage" class="auth-message" aria-live="polite"></div>
+      <p class="small">Gli account creati da questa schermata nascono come profilo atleta. Il ruolo coach viene assegnato in modo protetto.</p>
+    </div>
+  </div>
+</section>
+
+<div id="appShell" class="hidden">
 <header>
-  <h1>Climbing Log</h1>
-  <p>Blocco 1 · Fase carico · scheda coach</p>
+  <h1>Climbing Coach</h1>
+  <p>La mia programmazione</p>
+  <div class="brandline">Monica Erbesato · Fisioterapista MSc OMPT · Performance Coach</div>
+  <div class="userbar">
+    <div class="identity">
+      <strong id="userDisplay">Atleta</strong>
+      <span class="role-pill">atleta</span>
+      <span class="sync-pill">login cloud · log locale</span>
+    </div>
+    <button id="logoutBtn" type="button">Esci</button>
+  </div>
 </header>
 <main id="app">
   <div class="weekbar">
@@ -229,7 +294,11 @@
   <section id="backup" class="tabpage hidden">
     <div class="panel">
       <h2>Backup dati</h2>
-      <p class="small">I dati restano salvati localmente sul dispositivo/browser. Esporta periodicamente un backup JSON.</p>
+      <p class="small">In questa versione il login è cloud, mentre i log di allenamento restano ancora sul dispositivo. La sincronizzazione completa con la coach verrà attivata nel passaggio successivo.</p>
+      <div id="legacyImportBox" class="notice hidden">
+        Sono stati trovati dati della versione precedente dell'app su questo dispositivo.
+        <div style="margin-top:8px"><button id="importLegacy" type="button" class="secondary">Importa i dati precedenti</button></div>
+      </div>
       <div class="toolbar">
         <button id="exportData">Esporta backup</button>
         <label class="secondary" style="display:inline-flex;align-items:center;padding:11px 13px;border:1px solid var(--line);border-radius:11px;color:var(--purple);font-weight:700;cursor:pointer">
@@ -241,12 +310,42 @@
     </div>
   </section>
 
-  <footer>Programma trascritto dalla scheda PDF della coach. Nessuna modifica autonoma alla prescrizione.</footer>
+  <footer>Climbing Coach · Monica Erbesato — Fisioterapista MSc OMPT · Performance Coach</footer>
 </main>
+</div>
+
+<section id="coachShell" class="coach-shell hidden">
+  <header>
+    <h1>Climbing Coach</h1>
+    <p>Dashboard Coach</p>
+    <div class="brandline">Monica Erbesato · Climbing Performance Coaching</div>
+    <div class="userbar">
+      <div class="identity">
+        <strong id="coachUserDisplay">Monica Erbesato</strong>
+        <span class="role-pill">coach</span>
+      </div>
+      <button id="coachLogoutBtn" type="button">Esci</button>
+    </div>
+  </header>
+  <main>
+    <div class="panel">
+      <h2>Accesso coach attivo</h2>
+      <p>Il ruolo coach è stato riconosciuto correttamente.</p>
+      <div class="coach-grid">
+        <div class="metric"><span class="small">Atleti</span><b>—</b><span class="small">Dashboard nel prossimo passaggio</span></div>
+        <div class="metric"><span class="small">Programmazioni</span><b>—</b><span class="small">Sincronizzazione nel prossimo passaggio</span></div>
+      </div>
+      <div class="notice" style="margin-top:12px">Login e permessi sono già collegati a Supabase. Il prossimo step collegherà programmi, allenamenti e retest al database cloud.</div>
+    </div>
+  </main>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 (() => {
   const PLAN_VERSION = 1;
-  const STORE_KEY = "stefano-climbing-log-v1";
+  const LEGACY_STORE_KEYS = ["stefano-climbing-log-v1", "climbing-log-v1"];
+  let STORE_KEY = null;
   const blockPct = [
     {pct:60,reps:10},{pct:65,reps:8},{pct:70,reps:6},{pct:75,reps:4},{pct:85,reps:3}
   ];
@@ -262,7 +361,131 @@
   function defaultState(){
     return {version:PLAN_VERSION, settings:{bodyWeight:"",pull1RM:"",block1RM:50.4,rounding:0.5}, currentWeek:0, weeks:[blankWeek(1)]};
   }
-  let state = load();
+  let state = defaultState();
+
+  const SUPABASE_URL = "https://xkymrvalnydxeamrajqs.supabase.co";
+  const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_YH6-gBiNDVAarLxMkLFFSw_056xeSKK";
+  const APP_URL = "https://stefanovaniaompt-code.github.io/Climbing-log/";
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+  });
+  let currentUser = null;
+  let currentProfile = null;
+  let authMode = "signin";
+
+  function profileCacheKey(uid){ return `climbing-coach-profile-${uid}`; }
+  function userStoreKey(uid){ return `climbing-coach-user-${uid}-v1`; }
+
+  function showAuthMessage(message, kind=""){
+    const el=document.getElementById("authMessage");
+    el.textContent=message||"";
+    el.className="auth-message"+(kind?` ${kind}`:"");
+  }
+
+  function setAuthMode(mode){
+    authMode=mode;
+    const signup=mode==="signup";
+    document.getElementById("nameField").classList.toggle("hidden",!signup);
+    document.getElementById("authTitle").textContent=signup?"Crea account atleta":"Accedi";
+    document.getElementById("authSubtitle").textContent=signup
+      ?"Crea il tuo accesso personale alla piattaforma di Monica Erbesato."
+      :"Accedi alla tua programmazione o al pannello coach.";
+    document.getElementById("authSubmit").textContent=signup?"Crea account":"Accedi";
+    document.getElementById("toggleAuthMode").textContent=signup?"Ho già un account":"Crea account atleta";
+    document.getElementById("authPassword").autocomplete=signup?"new-password":"current-password";
+    showAuthMessage("");
+  }
+
+  async function fetchProfile(user){
+    let profile=null;
+    try{
+      const {data,error}=await sb.from("profiles")
+        .select("id,full_name,avatar_url,role")
+        .eq("id",user.id)
+        .single();
+      if(error) throw error;
+      profile=data;
+      localStorage.setItem(profileCacheKey(user.id),JSON.stringify(profile));
+    }catch(err){
+      try{ profile=JSON.parse(localStorage.getItem(profileCacheKey(user.id))||"null"); }catch(_e){}
+      if(!profile) throw err;
+    }
+    return profile;
+  }
+
+  function showLoggedOut(){
+    currentUser=null; currentProfile=null; STORE_KEY=null;
+    document.getElementById("appShell").classList.add("hidden");
+    document.getElementById("coachShell").classList.add("hidden");
+    document.getElementById("authGate").classList.remove("hidden");
+    document.getElementById("authLoading").classList.add("hidden");
+    document.getElementById("authContent").classList.remove("hidden");
+  }
+
+  function getLegacyState(){
+    for(const key of LEGACY_STORE_KEYS){
+      const raw=localStorage.getItem(key);
+      if(raw){
+        try{ const x=JSON.parse(raw); if(x && x.weeks) return x; }catch(_e){}
+      }
+    }
+    return null;
+  }
+
+  function maybeShowLegacyImport(){
+    const box=document.getElementById("legacyImportBox");
+    if(!box || !STORE_KEY) return;
+    const hasLegacy=!!getLegacyState();
+    const hasCurrent=!!localStorage.getItem(STORE_KEY);
+    box.classList.toggle("hidden",!(hasLegacy && !hasCurrent));
+  }
+
+  async function showLoggedIn(session){
+    currentUser=session.user;
+    STORE_KEY=userStoreKey(currentUser.id);
+    try{
+      currentProfile=await fetchProfile(currentUser);
+    }catch(err){
+      showLoggedOut();
+      showAuthMessage("Accesso riuscito, ma il profilo non è disponibile. Controlla la connessione e riprova.","error");
+      return;
+    }
+    document.getElementById("authGate").classList.add("hidden");
+    if(currentProfile.role==="coach"){
+      document.getElementById("appShell").classList.add("hidden");
+      document.getElementById("coachShell").classList.remove("hidden");
+      document.getElementById("coachUserDisplay").textContent=currentProfile.full_name||currentUser.email||"Coach";
+    }else{
+      document.getElementById("coachShell").classList.add("hidden");
+      document.getElementById("appShell").classList.remove("hidden");
+      document.getElementById("userDisplay").textContent=currentProfile.full_name||currentUser.email||"Atleta";
+      state=load();
+      renderAll();
+      maybeShowLegacyImport();
+    }
+  }
+
+  async function handleSession(session){
+    if(session) await showLoggedIn(session);
+    else showLoggedOut();
+  }
+
+  async function initAuth(){
+    document.getElementById("authContent").classList.add("hidden");
+    document.getElementById("authLoading").classList.remove("hidden");
+    try{
+      const {data,error}=await sb.auth.getSession();
+      if(error) throw error;
+      await handleSession(data.session);
+    }catch(err){
+      showLoggedOut();
+      showAuthMessage("Impossibile verificare l'accesso. Controlla la connessione e riprova.","error");
+    }
+    sb.auth.onAuthStateChange((_event,session)=>{
+      setTimeout(()=>{ handleSession(session); },0);
+    });
+  }
+
   function load(){
     try{
       const x = JSON.parse(localStorage.getItem(STORE_KEY));
@@ -270,7 +493,7 @@
     }catch(e){}
     return defaultState();
   }
-  function save(){ localStorage.setItem(STORE_KEY, JSON.stringify(state)); updateSummary(); }
+  function save(){ if(STORE_KEY) localStorage.setItem(STORE_KEY, JSON.stringify(state)); updateSummary(); }
   function w(){ return state.weeks[state.currentWeek]; }
   function ex(id){
     if(!w().ex[id]) w().ex[id]={done:[],actualLoad:"",rpe:"",notes:"",setActual:[],ana:[]};
@@ -482,10 +705,77 @@
     if(confirm("Cancellare definitivamente tutti i dati salvati su questo dispositivo?")){state=defaultState();save();renderAll();}
   });
 
+  document.getElementById("toggleAuthMode").addEventListener("click",()=>{
+    setAuthMode(authMode==="signin"?"signup":"signin");
+  });
+
+  document.getElementById("authForm").addEventListener("submit",async e=>{
+    e.preventDefault();
+    const email=document.getElementById("authEmail").value.trim();
+    const password=document.getElementById("authPassword").value;
+    const fullName=document.getElementById("authName").value.trim();
+    const submit=document.getElementById("authSubmit");
+    if(!email || password.length<6){
+      showAuthMessage("Inserisci un'email valida e una password di almeno 6 caratteri.","error");
+      return;
+    }
+    if(authMode==="signup" && !fullName){
+      showAuthMessage("Inserisci nome e cognome.","error");
+      return;
+    }
+    submit.disabled=true;
+    showAuthMessage(authMode==="signup"?"Creazione account…":"Accesso…");
+    try{
+      if(authMode==="signup"){
+        const {data,error}=await sb.auth.signUp({
+          email,password,
+          options:{data:{full_name:fullName},emailRedirectTo:APP_URL}
+        });
+        if(error) throw error;
+        if(data.session){
+          showAuthMessage("Account creato e accesso effettuato.","ok");
+        }else{
+          setAuthMode("signin");
+          showAuthMessage("Account creato. Conferma l'email, poi torna qui e accedi.","ok");
+        }
+      }else{
+        const {error}=await sb.auth.signInWithPassword({email,password});
+        if(error) throw error;
+      }
+    }catch(err){
+      const msg=(err && err.message)?err.message:"Operazione non riuscita.";
+      showAuthMessage(msg,"error");
+    }finally{
+      submit.disabled=false;
+    }
+  });
+
+  async function doLogout(){
+    await sb.auth.signOut();
+    state=defaultState();
+  }
+  document.getElementById("logoutBtn").addEventListener("click",doLogout);
+  document.getElementById("coachLogoutBtn").addEventListener("click",doLogout);
+
+  document.getElementById("importLegacy").addEventListener("click",()=>{
+    try{
+      const x=getLegacyState();
+      if(!x || !x.weeks) throw new Error();
+      state=x;
+      save();
+      renderAll();
+      maybeShowLegacyImport();
+      alert("Dati precedenti importati nel profilo locale.");
+    }catch(err){
+      alert("Non è stato possibile importare i dati precedenti.");
+    }
+  });
+
   if("serviceWorker" in navigator && location.protocol.startsWith("http")){
     navigator.serviceWorker.register("./sw.js").catch(()=>{});
   }
-  renderAll();
+  setAuthMode("signin");
+  initAuth();
 })();
 </script>
 </body>
