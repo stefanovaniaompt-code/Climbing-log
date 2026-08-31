@@ -1,0 +1,1954 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#5B2C83">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Climbing Coach — Monica Erbesato</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <style>
+    :root{
+      --purple:#5B2C83; --purple2:#7E57A6; --lav:#EEE7F4;
+      --ink:#202124; --muted:#6b6870; --line:#ded9e4;
+      --ok:#19764a; --warn:#9b5a00; --bg:#f7f5f8; --card:#fff;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+    header{background:var(--purple);color:white;padding:18px 16px 14px;position:sticky;top:0;z-index:10}
+    header h1{font-size:20px;margin:0 0 4px}
+    header p{font-size:13px;opacity:.88;margin:0}
+    main{max-width:900px;margin:auto;padding:14px 12px 40px}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+    button,select,input,textarea{font:inherit}
+    button{border:0;border-radius:11px;padding:11px 13px;min-height:44px;background:var(--purple);color:white;font-weight:700}
+    button.secondary{background:white;color:var(--purple);border:1px solid var(--line)}
+    button.danger{background:#8c2b2b}
+    select,input[type="number"],input[type="text"],textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;background:white;min-height:44px}
+    textarea{min-height:72px;resize:vertical}
+    .weekbar{display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:12px}
+    .panel,.exercise{background:var(--card);border:1px solid var(--line);border-radius:14px;margin:10px 0;padding:14px}
+    .panel h2,.exercise h3{margin:0 0 8px}
+    .panel h2{font-size:18px;color:var(--purple)}
+    .exercise h3{font-size:16px}
+    .small{font-size:12px;color:var(--muted)}
+    .rx{background:var(--lav);border-radius:10px;padding:10px;margin:8px 0;font-size:14px}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    @media(max-width:620px){.grid2,.grid3{grid-template-columns:1fr}}
+    label{display:block;font-size:12px;color:var(--muted);margin:8px 0 4px}
+    .checkrow{display:grid;grid-template-columns:28px 1fr 90px;gap:8px;align-items:center;padding:7px 0;border-top:1px solid #eee}
+    .checkrow:first-child{border-top:0}
+    input[type="checkbox"]{width:22px;height:22px;accent-color:var(--purple)}
+    .metric{background:#faf9fb;border:1px solid var(--line);border-radius:10px;padding:10px}
+    .metric b{display:block;font-size:18px;color:var(--purple)}
+    .status{display:flex;gap:8px;flex-wrap:wrap}
+    .pill{display:inline-block;border-radius:999px;padding:5px 9px;background:var(--lav);font-size:12px}
+    .pill.ok{background:#e6f4ec;color:var(--ok)}
+    .pill.warn{background:#fff0da;color:var(--warn)}
+    nav{display:flex;gap:6px;overflow:auto;margin-bottom:10px}
+    nav button{white-space:nowrap;background:white;color:var(--purple);border:1px solid var(--line)}
+    nav button.active{background:var(--purple);color:white}
+    .hidden{display:none!important}
+    .setline{display:grid;grid-template-columns:32px 1fr 1fr;gap:8px;align-items:center}
+    .setline span{font-size:13px}
+    .summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    @media(max-width:520px){.summary{grid-template-columns:1fr}}
+    .route{border-top:1px solid #eee;padding-top:10px;margin-top:10px}
+    .notice{border-left:4px solid var(--warn);padding:10px;background:#fff7e9;border-radius:8px;font-size:13px}
+    footer{font-size:11px;color:var(--muted);padding-top:18px;text-align:center}
+
+    .auth-wrap{max-width:460px;margin:0 auto;padding:32px 16px 48px}
+    .auth-brand{text-align:center;margin:10px 0 22px}
+    .auth-brand h1{font-size:30px;color:var(--purple);margin:0 0 6px}
+    .auth-brand p{color:var(--muted);margin:0}
+    .auth-card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px}
+    .auth-card h2{margin:0 0 6px;color:var(--purple)}
+    .auth-card input[type="email"],.auth-card input[type="password"],.auth-card input[type="text"]{
+      width:100%;border:1px solid var(--line);border-radius:10px;padding:11px;background:white;min-height:46px;font-size:16px
+    }
+    .auth-actions{display:grid;gap:9px;margin-top:16px}
+    .auth-message{min-height:22px;margin-top:12px;font-size:13px}
+    .auth-message.error{color:#8c2b2b}
+    .auth-message.ok{color:var(--ok)}
+    .userbar{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-top:12px;flex-wrap:wrap}
+    .userbar .identity{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .userbar button{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.4);padding:8px 11px;min-height:38px}
+    .role-pill{display:inline-block;border-radius:999px;padding:4px 8px;background:rgba(255,255,255,.16);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+    .sync-pill{display:inline-block;border-radius:999px;padding:4px 8px;background:#fff0da;color:#7a4800;font-size:11px}
+    .coach-shell main{max-width:900px;margin:auto;padding:18px 12px 42px}
+    .coach-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+    @media(max-width:620px){.coach-grid{grid-template-columns:1fr}}
+    .auth-loader{text-align:center;color:var(--muted);padding:16px}
+    .brandline{font-size:12px;opacity:.9;margin-top:2px}
+
+
+    .coach-nav{display:flex;gap:6px;overflow:auto;margin:0 0 12px;padding-bottom:2px}
+    .coach-nav button{white-space:nowrap;background:white;color:var(--purple);border:1px solid var(--line)}
+    .coach-nav button.active{background:var(--purple);color:white}
+    .coach-page{display:block}
+    .coach-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0 14px}
+    @media(max-width:760px){.coach-metrics{grid-template-columns:repeat(2,1fr)}}
+    .coach-actions{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+    @media(max-width:620px){.coach-actions{grid-template-columns:1fr}}
+    .coach-card{background:white;border:1px solid var(--line);border-radius:14px;padding:14px;margin:10px 0}
+    .coach-card-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+    .coach-card h3{margin:0 0 4px;color:var(--purple);font-size:17px}
+    .coach-card p{margin:4px 0}
+    .coach-meta{display:flex;gap:6px;flex-wrap:wrap;margin:9px 0}
+    .coach-meta .pill{background:#f1edf5}
+    .coach-empty{padding:18px;text-align:center;border:1px dashed var(--line);border-radius:12px;color:var(--muted);background:#fbfafc}
+    .coach-form{background:#fbfafc;border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0}
+    .coach-form input[type="text"],.coach-form input[type="date"],.coach-form select,.coach-form textarea{
+      width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;background:white;min-height:44px
+    }
+    .coach-form .form-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+    .coach-section-title{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px}
+    .coach-section-title h2{margin:0}
+    .coach-detail-head{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
+    .coach-kicker{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:800}
+    .coach-program-row,.coach-test-row,.coach-library-row{border-top:1px solid #eee;padding:10px 0}
+    .coach-program-row:first-child,.coach-test-row:first-child,.coach-library-row:first-child{border-top:0}
+    .coach-loading{padding:22px;text-align:center;color:var(--muted)}
+    .cloud-note{border-left:4px solid var(--purple2);padding:10px;background:#f5f0f8;border-radius:8px;font-size:13px}
+    .builder-stack{display:grid;gap:12px}
+    .builder-toolbar{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+    .builder-breadcrumb{font-size:12px;color:var(--muted)}
+    .builder-item{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fff;margin:8px 0}
+    .builder-item.active{border-color:var(--purple2);box-shadow:0 0 0 2px var(--lav) inset}
+    .builder-item-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+    .builder-item h3{margin:0 0 4px;color:var(--purple);font-size:16px}
+    .builder-item-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+    .builder-item-actions button{min-height:36px;padding:7px 10px}
+    .rx-preview{background:var(--lav);border-radius:10px;padding:9px 10px;font-size:13px;margin-top:8px}
+    .load-warning{border-left:4px solid var(--purple);padding:9px 10px;background:#f6f1f9;border-radius:8px;font-size:12px;margin:8px 0}
+    .builder-form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+    @media(max-width:760px){.builder-form-grid{grid-template-columns:1fr 1fr}}
+    @media(max-width:520px){.builder-form-grid{grid-template-columns:1fr}}
+    .builder-form-grid input,.builder-form-grid select{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;background:white;min-height:44px}
+    .builder-subpanel{background:#fcfbfd;border:1px solid var(--line);border-radius:14px;padding:14px;margin:12px 0}
+    .builder-subpanel h2{margin:0 0 8px;color:var(--purple);font-size:18px}
+    .builder-subpanel h3{margin:0 0 6px;color:var(--purple);font-size:16px}
+    .builder-counts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
+    @media(max-width:620px){.builder-counts{grid-template-columns:1fr}}
+    .small-btn{min-height:36px;padding:7px 10px}
+
+    .athlete-cloud-head{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end}
+    @media(max-width:620px){.athlete-cloud-head{grid-template-columns:1fr}}
+    .athlete-cloud-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+    @media(max-width:620px){.athlete-cloud-summary{grid-template-columns:1fr}}
+    .cloud-session-card{background:white;border:1px solid var(--line);border-radius:14px;padding:13px;margin:10px 0}
+    .cloud-session-card h3{margin:0 0 4px;color:var(--purple);font-size:16px}
+    .cloud-session-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+    .cloud-session-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .cloud-rx-card{background:#fbfafc;border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0}
+    .cloud-rx-card h4{margin:0 0 6px;font-size:15px}
+    .cloud-rx-grid{display:grid;grid-template-columns:1fr 120px;gap:8px;align-items:end}
+    @media(max-width:620px){.cloud-rx-grid{grid-template-columns:1fr}}
+    .cloud-rx-check{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+    .cloud-rx-check label{margin:0;color:var(--ink);font-size:13px}
+    .cloud-session-form{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:12px}
+    .cloud-save-status{min-height:20px;font-size:12px;margin-top:8px}
+    .cloud-program-empty{padding:22px;text-align:center;background:white;border:1px dashed var(--line);border-radius:14px;color:var(--muted)}
+
+  </style>
+</head>
+<body>
+<section id="authGate" class="auth-wrap">
+  <div class="auth-brand">
+    <h1>Climbing Coach</h1>
+    <p>Monica Erbesato · Climbing Performance Coaching</p>
+  </div>
+  <div class="auth-card">
+    <div id="authLoading" class="auth-loader">Controllo accesso…</div>
+    <div id="authContent" class="hidden">
+      <h2 id="authTitle">Accedi</h2>
+      <p class="small" id="authSubtitle">Accedi alla tua programmazione o al pannello coach.</p>
+      <form id="authForm">
+        <div id="nameField" class="hidden">
+          <label>Nome e cognome</label>
+          <input id="authName" type="text" autocomplete="name" placeholder="Nome Cognome">
+        </div>
+        <label>Email</label>
+        <input id="authEmail" type="email" autocomplete="email" required placeholder="nome@email.it">
+        <label>Password</label>
+        <input id="authPassword" type="password" autocomplete="current-password" required minlength="6" placeholder="Almeno 6 caratteri">
+        <div class="auth-actions">
+          <button id="authSubmit" type="submit">Accedi</button>
+          <button id="toggleAuthMode" type="button" class="secondary">Crea account atleta</button>
+                  <button id="forgotPassword" type="button" class="secondary">Password dimenticata?</button>
+</div>
+      </form>
+      <div id="authMessage" class="auth-message" aria-live="polite"></div>
+      <p class="small">Gli account creati da questa schermata nascono come profilo atleta. Il ruolo coach viene assegnato in modo protetto.</p>
+    </div>
+
+    <div id="recoveryContent" class="hidden">
+      <h2>Imposta nuova password</h2>
+      <p class="small">Scegli una nuova password per il tuo account Climbing Coach.</p>
+      <form id="recoveryForm">
+        <label>Nuova password</label>
+        <input id="newPassword" type="password" autocomplete="new-password" required minlength="6" placeholder="Almeno 6 caratteri">
+        <label>Ripeti nuova password</label>
+        <input id="newPasswordConfirm" type="password" autocomplete="new-password" required minlength="6" placeholder="Ripeti la password">
+        <div class="auth-actions">
+          <button id="recoverySubmit" type="submit">Salva nuova password</button>
+        </div>
+      </form>
+      <div id="recoveryMessage" class="auth-message" aria-live="polite"></div>
+    </div>
+  </div>
+</section>
+
+<div id="appShell" class="hidden">
+<header>
+  <h1>Climbing Coach</h1>
+  <p>La mia programmazione</p>
+  <div class="brandline">Monica Erbesato · Fisioterapista MSc OMPT · Performance Coach</div>
+  <div class="userbar">
+    <div class="identity">
+      <strong id="userDisplay">Atleta</strong>
+      <span class="role-pill">atleta</span>
+      <span class="sync-pill">programmazione cloud · log cloud + storico locale</span>
+    </div>
+    <button id="logoutBtn" type="button">Esci</button>
+  </div>
+</header>
+<main id="app">
+  <div class="weekbar">
+    <select id="weekSelect" aria-label="Seleziona settimana"></select>
+    <button id="addWeek">+ Settimana</button>
+  </div>
+
+  <nav>
+    <button class="tab active" data-tab="cloudPlan">Programma coach</button>
+    <button class="tab" data-tab="summary">Scheda locale</button>
+    <button class="tab" data-tab="day1">Giorno 1</button>
+    <button class="tab" data-tab="day2">Giorno 2</button>
+    <button class="tab" data-tab="day3">Giorno 3</button>
+    <button class="tab" data-tab="settings">Massimali</button>
+    <button class="tab" data-tab="backup">Backup</button>
+  </nav>
+
+
+  <section id="cloudPlan" class="tabpage">
+    <div id="athleteCloudLoading" class="panel"><div class="coach-loading">Caricamento programmazione coach…</div></div>
+    <div id="athleteCloudContent" class="hidden">
+      <div class="panel">
+        <div class="athlete-cloud-head">
+          <div>
+            <div class="coach-kicker">Programmazione cloud</div>
+            <h2 id="athleteCloudProgramName" style="margin:3px 0 5px">—</h2>
+            <div id="athleteCloudProgramMeta" class="small">—</div>
+          </div>
+          <div>
+            <label>Programma</label>
+            <select id="athleteCloudProgramSelect"></select>
+          </div>
+        </div>
+        <div class="athlete-cloud-summary">
+          <div class="metric"><span class="small">Settimane</span><b id="athleteCloudWeekCount">0</b></div>
+          <div class="metric"><span class="small">Sessioni completate</span><b id="athleteCloudCompletion">0/0</b></div>
+          <div class="metric"><span class="small">Stato programma</span><b id="athleteCloudProgramStatus">—</b></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="athlete-cloud-head">
+          <div><h2 style="margin-bottom:4px">Settimana</h2><div id="athleteCloudWeekMeta" class="small">—</div></div>
+          <div><label>Seleziona settimana</label><select id="athleteCloudWeekSelect"></select></div>
+        </div>
+        <div id="athleteCloudWeekNotes" class="rx hidden"></div>
+        <div id="athleteCloudSessions"></div>
+      </div>
+
+      <div id="athleteCloudSessionDetail" class="panel hidden">
+        <div class="builder-toolbar">
+          <div><div class="coach-kicker">Sessione</div><h2 id="athleteCloudSessionTitle">—</h2><div id="athleteCloudSessionMeta" class="small">—</div></div>
+          <button id="athleteCloudCloseSession" type="button" class="secondary small-btn">Chiudi</button>
+        </div>
+        <div id="athleteCloudCoachNotes" class="rx hidden"></div>
+        <div id="athleteCloudExercises"></div>
+        <div class="cloud-session-form">
+          <div class="grid3">
+            <div><label>Durata reale (min)</label><input id="athleteCloudDuration" type="number" min="0" step="1"></div>
+            <div><label>RPE sessione</label><input id="athleteCloudSessionRpe" type="number" min="0" max="10" step="0.5"></div>
+            <div><label>Stato</label><input id="athleteCloudSessionStatus" type="text" value="da eseguire" disabled></div>
+          </div>
+          <label>Note sessione per il coach</label><textarea id="athleteCloudSessionNotes" placeholder="Sensazioni, recupero, qualità tecnica, difficoltà, eventuali modifiche..."></textarea>
+          <div class="cloud-session-actions">
+            <button id="athleteCloudSaveSession" type="button" class="secondary">Salva progressi</button>
+            <button id="athleteCloudCompleteSession" type="button">Segna sessione completata</button>
+          </div>
+          <div id="athleteCloudSaveStatus" class="cloud-save-status" aria-live="polite"></div>
+        </div>
+      </div>
+    </div>
+    <div id="athleteCloudEmpty" class="cloud-program-empty hidden">
+      Nessun programma pubblicato dalla coach. La scheda locale resta disponibile.
+      <div style="margin-top:10px"><button id="athleteOpenLocalPlan" type="button" class="secondary">Apri scheda locale</button></div>
+    </div>
+  </section>
+
+  <section id="summary" class="tabpage hidden">
+    <div class="panel">
+      <h2>Settimana</h2>
+      <div class="summary">
+        <div class="metric"><span class="small">Completamento</span><b id="completion">0%</b></div>
+        <div class="metric"><span class="small">Target trazioni 70%</span><b id="pullTarget">—</b></div>
+        <div class="metric"><span class="small">1RM Block Lift</span><b id="blockMaxLabel">50,4 kg</b></div>
+      </div>
+      <label>Note generali settimana</label>
+      <textarea data-path="weekNotes" placeholder="Sensazioni, recupero, sonno, dolore, modifiche..."></textarea>
+    </div>
+    <div class="panel">
+      <h2>Block Lifting — carichi già calcolati</h2>
+      <div id="blockTable"></div>
+      <p class="small">I carichi pratici sono arrotondati all'incremento scelto in “Massimali”. Il valore esatto resta sempre visibile.</p>
+    </div>
+  </section>
+
+  <section id="day1" class="tabpage hidden">
+    <div class="exercise" data-ex="d1_pull">
+      <h3>Trazioni · 70% 1RM</h3>
+      <div class="rx">4 × 4 · recupero 2'00" · salita ≤ 1 s</div>
+      <div class="status"><span class="pill" id="d1PullLoad">Inserisci 1RM trazioni</span></div>
+      <div class="sets" data-sets="4"></div>
+      <label>Carico realmente usato (kg zavorra / assistenza)</label><input type="number" step="0.1" data-field="actualLoad">
+      <label>RPE sessione</label><input type="number" min="1" max="10" step="0.5" data-field="rpe">
+      <label>Note</label><textarea data-field="notes"></textarea>
+    </div>
+
+    <div class="exercise" data-ex="d1_lock">
+      <h3>Bloccaggi 5" a 90° su manopole</h3>
+      <div class="rx">BW · 4 × 6 · recupero 1'00"</div>
+      <div class="sets" data-sets="4"></div>
+      <label>RPE</label><input type="number" min="1" max="10" step="0.5" data-field="rpe">
+      <label>Note</label><textarea data-field="notes"></textarea>
+    </div>
+
+    <div class="exercise" data-ex="d1_block">
+      <h3>Intentional Block Lifting</h3>
+      <div class="rx">60%×10 · 65%×8 · 70%×6 · 75%×4 · 85%×3 · recupero 2–3'</div>
+      <div class="progressiveSets"></div>
+      <label>RPE finale</label><input type="number" min="1" max="10" step="0.5" data-field="rpe">
+      <label>Note</label><textarea data-field="notes"></textarea>
+    </div>
+
+    <div class="exercise" data-ex="d1_oh">
+      <h3>Open Hand iso Grip</h3>
+      <div class="rx">31 kg · 6 × 10" · recupero 2'00" · trave dal basso, tacca 2 cm + pesi</div>
+      <div class="sets" data-sets="6"></div>
+      <label>Carico realmente usato (kg)</label><input type="number" step="0.1" data-field="actualLoad" value="">
+      <label>RPE</label><input type="number" min="1" max="10" step="0.5" data-field="rpe">
+      <label>Note</label><textarea data-field="notes"></textarea>
+    </div>
+
+    <div class="exercise" data-ex="d1_pyr">
+      <h3>Piramidale di forza</h3>
+      <div class="rx">Moonboard 25° / leggero strapiombo · 4–2–1–1–2–4 · recupero 4'</div>
+      <p class="small">4 = blocchi a vista · 2 = chiudibili a vista ma molto faticosi · 1 = blocco limite non chiuso.</p>
+      <div class="pyramidSets"></div>
+      <label>RPE</label><input type="number" min="1" max="10" step="0.5" data-field="rpe">
+      <label>Note</label><textarea data-field="notes"></textarea>
+    </div>
+  </section>
+
+  <section id="day2" class="tabpage hidden">
+    <div class="exercise" data-ex="d2_block">
+      <h3>Intentional Block Lifting</h3>
+      <div class="rx">60%×10 · 65%×8 · 70%×6 · 75%×4 · 85%×3 · recupero 2–3'</div>
+      <div class="progressiveSets"></div>
+      <label>RPE finale</label><input type="number" min="1" max="10" step="0.5" data-field="rpe">
+      <label>Note</label><textarea data-field="notes"></textarea>
+    </div>
+
+    <div class="exercise" data-ex="d2_oh">
+      <h3>Open Hand iso Grip</h3>
+      <div class="rx">31 kg · 6 × 10" · recupero 2'00" · trave dal basso, tacca 2 cm + pesi</div>
+      <div class="sets" data-sets="6"></div>
+      <label>Carico realmente usato (kg)</label><input type="number" step="0.1" data-field="actualLoad">
+      <label>RPE</label><input type="number" min="1" max="10" step="0.5" data-field="rpe">
+      <label>Note</label><textarea data-field="notes"></textarea>
+    </div>
+
+    <div class="exercise" data-ex="d2_wall">
+      <h3>Wall Crawl</h3>
+      <div class="rx">4 serie · 5–7 prese · recupero 2'00"</div>
+      <p class="small">Scala lento e controllato. Mantieni ogni presa 5–6". Verticale e traverso, non in discesa.</p>
+      <div class="sets" data-sets="4"></div>
+      <label>Prese effettive per serie / note tecniche</label><textarea data-field="notes"></textarea>
+    </div>
+
+    <div class="exercise" data-ex="d2_ana">
+      <h3>Anaerobic Capacity</h3>
+      <div class="rx">4 set fino a muscular failure · RPE 5–7/10 · registra il tempo totale a parete</div>
+      <p class="small">Riparti quando ti senti recuperato all'89–90%. Aumenta del 10% il tempo di riposo a ogni set.</p>
+      <div id="anaSets"></div>
+      <label>Note</label><textarea data-field="notes"></textarea>
+    </div>
+
+    <div class="exercise" data-ex="d2_pan">
+      <h3>Opzionale · Pan Gullich</h3>
+      <div class="rx">BW · tacca 2,5 cm · PDF: “4 rep (2 per braccio)” · recupero 1–2'</div>
+      <div class="notice">Da confermare: nella colonna “Ripetizioni” del PDF compare <b>05-Sep</b>, verosimilmente una conversione automatica di Excel. Non è stato interpretato.</div>
+      <div class="sets" data-sets="4"></div>
+      <label>Dato corretto / note</label><textarea data-field="notes" placeholder="Quando chiarito, scrivi qui il protocollo corretto."></textarea>
+    </div>
+  </section>
+
+  <section id="day3" class="tabpage hidden">
+    <div class="panel">
+      <h2>Scalata libera · palestra / outdoor</h2>
+      <div id="routes"></div>
+      <button id="addRoute" class="secondary">+ Aggiungi via</button>
+      <label>Note sessione</label><textarea data-path="day3Notes"></textarea>
+    </div>
+  </section>
+
+  <section id="settings" class="tabpage hidden">
+    <div class="panel">
+      <h2>Massimali e calcoli</h2>
+      <div class="grid2">
+        <div>
+          <label>Peso corporeo del test (kg)</label>
+          <input id="bodyWeight" type="number" step="0.1" placeholder="es. 73,0">
+        </div>
+        <div>
+          <label>1RM trazioni — zavorra aggiunta (kg)</label>
+          <input id="pull1RM" type="number" step="0.1" placeholder="da inserire dopo il test">
+        </div>
+        <div>
+          <label>1RM Intentional Block Lift (kg)</label>
+          <input id="block1RM" type="number" step="0.1" value="50.4">
+        </div>
+        <div>
+          <label>Arrotondamento carichi (kg)</label>
+          <select id="rounding"><option value="0.1">0,1</option><option value="0.5" selected>0,5</option><option value="1">1,0</option></select>
+        </div>
+      </div>
+      <div class="rx">
+        <b>Formula trazioni predefinita:</b><br>
+        target esterno = 70% × (peso corporeo + zavorra 1RM) − peso corporeo.
+        Se il risultato è negativo, l'app mostra l'assistenza necessaria.
+      </div>
+      <button id="saveSettings">Salva massimali</button>
+    </div>
+  </section>
+
+  <section id="backup" class="tabpage hidden">
+    <div class="panel">
+      <h2>Backup dati</h2>
+      <p class="small">I programmi creati dalla coach e i nuovi log delle sessioni cloud sono sincronizzati con Supabase. Questa sezione mantiene anche il backup della precedente scheda locale.</p>
+      <div id="legacyImportBox" class="notice hidden">
+        Sono stati trovati dati della versione precedente dell'app su questo dispositivo.
+        <div style="margin-top:8px"><button id="importLegacy" type="button" class="secondary">Importa i dati precedenti</button></div>
+      </div>
+      <div class="toolbar">
+        <button id="exportData">Esporta backup</button>
+        <label class="secondary" style="display:inline-flex;align-items:center;padding:11px 13px;border:1px solid var(--line);border-radius:11px;color:var(--purple);font-weight:700;cursor:pointer">
+          Importa backup
+          <input id="importData" type="file" accept=".json,application/json" style="display:none">
+        </label>
+        <button id="resetData" class="danger">Azzera dati</button>
+      </div>
+    </div>
+  </section>
+
+  <footer>Climbing Coach · Monica Erbesato — Fisioterapista MSc OMPT · Performance Coach</footer>
+</main>
+</div>
+
+<section id="coachShell" class="coach-shell hidden">
+  <header>
+    <h1>Climbing Coach</h1>
+    <p>Dashboard Coach</p>
+    <div class="brandline">Monica Erbesato · Climbing Performance Coaching</div>
+    <div class="userbar">
+      <div class="identity">
+        <strong id="coachUserDisplay">Monica Erbesato</strong>
+        <span class="role-pill">coach</span>
+      </div>
+      <button id="coachLogoutBtn" type="button">Esci</button>
+    </div>
+  </header>
+  <main>
+    <nav id="coachNav" class="coach-nav" aria-label="Area coach">
+      <button class="coach-tab active" data-coach-tab="coachDashboard">Dashboard</button>
+      <button class="coach-tab" data-coach-tab="coachAthletes">Atleti</button>
+      <button class="coach-tab" data-coach-tab="coachPrograms">Programmi</button>
+      <button class="coach-tab" data-coach-tab="coachRetests">Retest</button>
+      <button class="coach-tab" data-coach-tab="coachLibrary">Libreria</button>
+    </nav>
+
+    <div id="coachLoadError" class="notice hidden"></div>
+
+    <section id="coachDashboard" class="coach-page">
+      <div class="coach-metrics">
+        <div class="metric"><span class="small">Atleti attivi</span><b id="coachMetricAthletes">—</b></div>
+        <div class="metric"><span class="small">Programmi attivi</span><b id="coachMetricPrograms">—</b></div>
+        <div class="metric"><span class="small">Retest registrati</span><b id="coachMetricTests">—</b></div>
+        <div class="metric"><span class="small">Esercizi in libreria</span><b id="coachMetricLibrary">—</b></div>
+      </div>
+
+      <div class="panel">
+        <div class="coach-section-title"><h2>Azioni coach</h2></div>
+        <div class="coach-actions">
+          <button type="button" data-go-coach="coachAthletes">Apri atleti</button>
+          <button type="button" class="secondary" data-go-coach="coachPrograms">Crea / gestisci programma</button>
+          <button type="button" class="secondary" data-go-coach="coachRetests">Retest e andamento</button>
+          <button type="button" class="secondary" data-go-coach="coachLibrary">Libreria esercizi</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="coach-section-title"><h2>Atleti seguiti</h2><button type="button" class="secondary" data-go-coach="coachAthletes">Vedi tutti</button></div>
+        <div id="coachDashboardAthletes" class="coach-loading">Caricamento…</div>
+      </div>
+
+      <div class="cloud-note">La dashboard legge già i dati protetti da Supabase. In questa fase programmi e libreria vengono salvati nel cloud; i log della vecchia scheda atleta restano locali finché non completiamo la sincronizzazione.</div>
+    </section>
+
+    <section id="coachAthletes" class="coach-page hidden">
+      <div id="coachAthleteListView">
+        <div class="panel">
+          <div class="coach-section-title"><h2>Atleti</h2><span id="coachAthleteCount" class="pill">—</span></div>
+          <p class="small">Apri un atleta per vedere programmi cloud, retest e attività registrate.</p>
+          <div id="coachAthletesList" class="coach-loading">Caricamento…</div>
+        </div>
+      </div>
+      <div id="coachAthleteDetail" class="hidden">
+        <div class="panel">
+          <div class="coach-detail-head">
+            <button id="coachBackAthletes" type="button" class="secondary">← Atleti</button>
+            <span class="pill ok">collegamento attivo</span>
+          </div>
+          <div style="margin-top:12px">
+            <div class="coach-kicker">Atleta</div>
+            <h2 id="coachDetailName" style="margin:3px 0 8px">—</h2>
+          </div>
+          <div class="summary">
+            <div class="metric"><span class="small">Programmi attivi</span><b id="coachDetailPrograms">0</b></div>
+            <div class="metric"><span class="small">Ultimo retest</span><b id="coachDetailTest">—</b></div>
+            <div class="metric"><span class="small">Sessioni cloud completate</span><b id="coachDetailSessions">0</b></div>
+          </div>
+        </div>
+        <div class="panel">
+          <h2>Programmazione</h2>
+          <div id="coachDetailProgramList"></div>
+          <button id="coachDetailNewProgram" type="button">+ Nuovo programma</button>
+        </div>
+        <div class="panel">
+          <h2>Retest</h2>
+          <div id="coachDetailTestList"></div>
+          <button id="coachDetailNewRetest" type="button" class="secondary">+ Registra retest</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="coachPrograms" class="coach-page hidden">
+      <div id="coachProgramsListView">
+        <div class="panel">
+          <div class="coach-section-title"><h2>Programmi</h2><span class="pill">cloud</span></div>
+          <p class="small">Crea un programma e apri il builder per costruire settimane, sessioni ed esercizi.</p>
+          <form id="coachProgramForm" class="coach-form">
+            <div class="grid2">
+              <div><label>Atleta</label><select id="coachProgramAthlete" required></select></div>
+              <div><label>Stato</label><select id="coachProgramStatus"><option value="draft">Bozza</option><option value="active">Attivo</option></select></div>
+              <div><label>Nome programma</label><input id="coachProgramName" type="text" required placeholder="es. Blocco 1 · Forza dita"></div>
+              <div><label>Obiettivo</label><input id="coachProgramGoal" type="text" placeholder="es. consolidare 7b"></div>
+              <div><label>Data inizio</label><input id="coachProgramStart" type="date"></div>
+              <div><label>Data fine</label><input id="coachProgramEnd" type="date"></div>
+            </div>
+            <div class="form-actions"><button id="coachProgramSubmit" type="submit">Crea programma</button></div>
+            <div id="coachProgramMessage" class="auth-message" aria-live="polite"></div>
+          </form>
+          <div id="coachProgramsList"></div>
+        </div>
+      </div>
+
+      <div id="coachProgramBuilder" class="hidden">
+        <div class="panel">
+          <div class="builder-toolbar">
+            <button id="coachBackPrograms" type="button" class="secondary">← Programmi</button>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <span id="coachBuilderStatus" class="pill">—</span>
+              <button id="coachPublishProgram" type="button" class="small-btn">Pubblica all'atleta</button>
+            </div>
+          </div>
+          <div style="margin-top:12px">
+            <div class="coach-kicker">Programma</div>
+            <h2 id="coachBuilderProgramName" style="margin:3px 0 5px">—</h2>
+            <div id="coachBuilderProgramMeta" class="small">—</div>
+          </div>
+          <div class="builder-counts">
+            <div class="metric"><span class="small">Settimane</span><b id="coachBuilderWeekCount">0</b></div>
+            <div class="metric"><span class="small">Sessioni</span><b id="coachBuilderSessionCount">0</b></div>
+            <div class="metric"><span class="small">Esercizi prescritti</span><b id="coachBuilderExerciseCount">0</b></div>
+          </div>
+          <div class="cloud-note">Il builder salva direttamente nel cloud. La visualizzazione atleta delle prescrizioni cloud verrà collegata nel passaggio successivo.</div>
+        </div>
+
+        <div class="builder-subpanel">
+          <div class="coach-section-title"><h2>1 · Settimane</h2><span class="pill">programma</span></div>
+          <form id="coachWeekForm" class="coach-form">
+            <div class="builder-form-grid">
+              <div><label>Numero settimana</label><input id="coachWeekNumber" type="number" min="1" step="1" required></div>
+              <div><label>Blocco</label><input id="coachWeekBlock" type="text" placeholder="es. CARICO"></div>
+              <div><label>Fase</label><input id="coachWeekPhase" type="text" placeholder="es. Forza / Capacity"></div>
+              <div><label>Data inizio</label><input id="coachWeekStart" type="date"></div>
+              <div><label>Stato</label><select id="coachWeekStatus"><option value="planned">Pianificata</option><option value="current">Corrente</option><option value="completed">Completata</option><option value="skipped">Saltata</option></select></div>
+            </div>
+            <label>Note coach settimana</label><textarea id="coachWeekNotes" placeholder="Focus, gestione carico, criteri di progressione/regressione..."></textarea>
+            <div class="form-actions"><button id="coachWeekSubmit" type="submit">+ Aggiungi settimana</button></div>
+            <div id="coachWeekMessage" class="auth-message" aria-live="polite"></div>
+          </form>
+          <div id="coachWeeksList"></div>
+        </div>
+
+        <div id="coachWeekDetail" class="builder-subpanel hidden">
+          <div class="builder-toolbar">
+            <div><div class="coach-kicker">Settimana selezionata</div><h2 id="coachWeekDetailTitle">—</h2><div id="coachWeekDetailMeta" class="small">—</div></div>
+            <button id="coachCloseWeek" type="button" class="secondary small-btn">Chiudi</button>
+          </div>
+          <h3 style="margin-top:14px">2 · Sessioni</h3>
+          <form id="coachSessionForm" class="coach-form">
+            <div class="builder-form-grid">
+              <div><label>Titolo sessione</label><input id="coachSessionName" type="text" required placeholder="es. Forza dita + boulder"></div>
+              <div><label>Obiettivo fisiologico</label><input id="coachSessionObjective" type="text" placeholder="es. max strength"></div>
+              <div><label>Durata (min)</label><input id="coachSessionDuration" type="number" min="1" step="1" placeholder="90"></div>
+            </div>
+            <label>Note coach sessione</label><textarea id="coachSessionNotes" placeholder="Riscaldamento, ordine stimoli, indicazioni tecniche..."></textarea>
+            <div class="form-actions"><button id="coachSessionSubmit" type="submit">+ Aggiungi sessione</button></div>
+            <div id="coachSessionMessage" class="auth-message" aria-live="polite"></div>
+          </form>
+          <div id="coachSessionsList"></div>
+        </div>
+
+        <div id="coachSessionDetail" class="builder-subpanel hidden">
+          <div class="builder-toolbar">
+            <div><div class="coach-kicker">Sessione selezionata</div><h2 id="coachSessionDetailTitle">—</h2><div id="coachSessionDetailMeta" class="small">—</div></div>
+            <button id="coachCloseSession" type="button" class="secondary small-btn">Chiudi</button>
+          </div>
+          <h3 style="margin-top:14px">3 · Esercizi e prescrizione</h3>
+          <form id="coachSessionExerciseForm" class="coach-form">
+            <div class="grid2">
+              <div><label>Da libreria</label><select id="coachRxLibrary"><option value="">— esercizio personalizzato —</option></select></div>
+              <div><label>Nome esercizio</label><input id="coachRxName" type="text" required placeholder="es. Pull-up zavorrato"></div>
+            </div>
+            <div class="builder-form-grid">
+              <div><label>Serie</label><input id="coachRxSets" type="number" min="1" step="1" placeholder="4"></div>
+              <div><label>Ripetizioni / durata / schema</label><input id="coachRxDose" type="text" placeholder="es. 4 rep · 10 sec · 4-2-1-1-2-4"></div>
+              <div><label>Recupero (sec)</label><input id="coachRxRest" type="number" min="0" step="1" placeholder="120"></div>
+              <div><label>Tipo di carico</label><select id="coachRxLoadType">
+                <option value="not_applicable">Non applicabile / tecnica</option>
+                <option value="bodyweight">Peso corporeo (BW)</option>
+                <option value="added_load">Carico esterno aggiunto</option>
+                <option value="assistance">Assistenza / scarico</option>
+                <option value="total_load">Carico totale (BW + esterno)</option>
+                <option value="percent_total_1rm">% 1RM su carico totale</option>
+                <option value="percent_external_1rm">% 1RM su carico esterno</option>
+                <option value="percent_iso_max">% massimale isometrico</option>
+                <option value="grade">Grado / difficoltà</option>
+                <option value="custom">Altro</option>
+              </select></div>
+              <div><label>Valore carico / intensità</label><input id="coachRxLoadValue" type="text" placeholder="es. 31 · 70 · 7A"></div>
+              <div><label>Unità</label><select id="coachRxUnit"><option value="">—</option><option value="kg">kg</option><option value="%">%</option><option value="BW">BW</option><option value="sec">sec</option><option value="min">min</option><option value="grade">grado</option><option value="custom">altro</option></select></div>
+              <div><label>RPE minimo</label><input id="coachRxRpeMin" type="number" min="0" max="10" step="0.5"></div>
+              <div><label>RPE massimo</label><input id="coachRxRpeMax" type="number" min="0" max="10" step="0.5"></div>
+            </div>
+            <div class="load-warning"><b>Carico:</b> scegli sempre se il numero rappresenta BW, carico esterno aggiunto, assistenza oppure carico totale. Le percentuali del massimale vengono salvate con la loro base di calcolo per evitare ambiguità.</div>
+            <label>Indicazioni tecniche / esecuzione</label><textarea id="coachRxInstructions" placeholder="Setup, tacca, presa, velocità, criteri tecnici, stop criteria..."></textarea>
+            <div class="form-actions"><button id="coachRxSubmit" type="submit">+ Aggiungi esercizio</button></div>
+            <div id="coachRxMessage" class="auth-message" aria-live="polite"></div>
+          </form>
+          <div id="coachSessionExercisesList"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="coachRetests" class="coach-page hidden">
+      <div class="panel">
+        <div class="coach-section-title"><h2>Retest</h2><span class="pill">trend</span></div>
+        <p class="small">Qui confluiranno i test longitudinali e i grafici di miglioramento. Le sessioni test già presenti nel database vengono mostrate subito.</p>
+        <div id="coachRetestsList"></div>
+        <button id="coachNewRetest" type="button">+ Registra nuovo retest</button>
+      </div>
+      <div class="cloud-note">La struttura dati per i grafici è già pronta: data, peso corporeo, protocollo/setup, metrica, lato/grip e normalizzazione sul peso corporeo. Il form completo dei test sarà il prossimo modulo.</div>
+    </section>
+
+    <section id="coachLibrary" class="coach-page hidden">
+      <div class="panel">
+        <div class="coach-section-title"><h2>Libreria esercizi</h2><span class="pill">coach</span></div>
+        <p class="small">Crea esercizi riutilizzabili per velocizzare la costruzione delle schede.</p>
+        <form id="coachLibraryForm" class="coach-form">
+          <div class="grid2">
+            <div><label>Nome esercizio</label><input id="coachExerciseName" type="text" required placeholder="es. Max Hang 20 mm"></div>
+            <div><label>Categoria</label><input id="coachExerciseCategory" type="text" placeholder="es. Finger strength"></div>
+            <div><label>Modalità / attrezzo</label><input id="coachExerciseModality" type="text" placeholder="es. hangboard"></div>
+            <div><label>Indicazioni standard</label><input id="coachExerciseInstructions" type="text" placeholder="setup, tecnica, note"></div>
+          </div>
+          <label>Descrizione</label><textarea id="coachExerciseDescription" placeholder="Funzione, criteri tecnici, eventuali note"></textarea>
+          <div class="form-actions"><button id="coachLibrarySubmit" type="submit">Salva esercizio</button></div>
+          <div id="coachLibraryMessage" class="auth-message" aria-live="polite"></div>
+        </form>
+        <div id="coachLibraryList"></div>
+      </div>
+    </section>
+  </main>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+(() => {
+  const PLAN_VERSION = 1;
+  const LEGACY_STORE_KEYS = ["stefano-climbing-log-v1", "climbing-log-v1"];
+  let STORE_KEY = null;
+  const blockPct = [
+    {pct:60,reps:10},{pct:65,reps:8},{pct:70,reps:6},{pct:75,reps:4},{pct:85,reps:3}
+  ];
+  const pyr = [
+    {n:4,label:"a vista"},{n:2,label:"molto faticosi / possibile caduta"},
+    {n:1,label:"limite, non chiuso"},{n:1,label:"limite, non chiuso"},
+    {n:2,label:"molto faticosi / possibile caduta"},{n:4,label:"a vista"}
+  ];
+
+  function blankWeek(i){
+    return {name:`Settimana ${i}`, weekNotes:"", day3Notes:"", routes:[], ex:{}};
+  }
+  function defaultState(){
+    return {version:PLAN_VERSION, settings:{bodyWeight:"",pull1RM:"",block1RM:50.4,rounding:0.5}, currentWeek:0, weeks:[blankWeek(1)]};
+  }
+  let state = defaultState();
+
+  const SUPABASE_URL = "https://xkymrvalnydxeamrajqs.supabase.co";
+  const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_YH6-gBiNDVAarLxMkLFFSw_056xeSKK";
+  const APP_URL = "https://stefanovaniaompt-code.github.io/Climbing-log/";
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+  });
+  let currentUser = null;
+  let currentProfile = null;
+  let authMode = "signin";
+  let recoveryMode = false;
+
+  function isRecoveryUrl(){
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const query = new URLSearchParams(window.location.search);
+    return hash.get("type") === "recovery" || query.get("type") === "recovery";
+  }
+
+  function showRecoveryMessage(message, kind=""){
+    const el=document.getElementById("recoveryMessage");
+    el.textContent=message||"";
+    el.className="auth-message"+(kind?` ${kind}`:"");
+  }
+
+  function showRecoveryForm(){
+    recoveryMode=true;
+    document.getElementById("appShell").classList.add("hidden");
+    document.getElementById("coachShell").classList.add("hidden");
+    document.getElementById("authGate").classList.remove("hidden");
+    document.getElementById("authLoading").classList.add("hidden");
+    document.getElementById("authContent").classList.add("hidden");
+    document.getElementById("recoveryContent").classList.remove("hidden");
+    showRecoveryMessage("");
+  }
+
+  function showStandardAuth(){
+    recoveryMode=false;
+    document.getElementById("recoveryContent").classList.add("hidden");
+    document.getElementById("authLoading").classList.add("hidden");
+    document.getElementById("authContent").classList.remove("hidden");
+  }
+
+  function profileCacheKey(uid){ return `climbing-coach-profile-${uid}`; }
+  function userStoreKey(uid){ return `climbing-coach-user-${uid}-v1`; }
+
+  function showAuthMessage(message, kind=""){
+    const el=document.getElementById("authMessage");
+    el.textContent=message||"";
+    el.className="auth-message"+(kind?` ${kind}`:"");
+  }
+
+  function setAuthMode(mode){
+    authMode=mode;
+    const signup=mode==="signup";
+    document.getElementById("nameField").classList.toggle("hidden",!signup);
+    document.getElementById("authTitle").textContent=signup?"Crea account atleta":"Accedi";
+    document.getElementById("authSubtitle").textContent=signup
+      ?"Crea il tuo accesso personale alla piattaforma di Monica Erbesato."
+      :"Accedi alla tua programmazione o al pannello coach.";
+    document.getElementById("authSubmit").textContent=signup?"Crea account":"Accedi";
+    document.getElementById("toggleAuthMode").textContent=signup?"Ho già un account":"Crea account atleta";
+    document.getElementById("forgotPassword").classList.toggle("hidden",signup);
+    document.getElementById("authPassword").autocomplete=signup?"new-password":"current-password";
+    showAuthMessage("");
+  }
+
+  async function fetchProfile(user){
+    let profile=null;
+    try{
+      const {data,error}=await sb.from("profiles")
+        .select("id,full_name,avatar_url,role")
+        .eq("id",user.id)
+        .single();
+      if(error) throw error;
+      profile=data;
+      localStorage.setItem(profileCacheKey(user.id),JSON.stringify(profile));
+    }catch(err){
+      try{ profile=JSON.parse(localStorage.getItem(profileCacheKey(user.id))||"null"); }catch(_e){}
+      if(!profile) throw err;
+    }
+    return profile;
+  }
+
+  function showLoggedOut(){
+    currentUser=null; currentProfile=null; STORE_KEY=null;
+    document.getElementById("appShell").classList.add("hidden");
+    document.getElementById("coachShell").classList.add("hidden");
+    document.getElementById("authGate").classList.remove("hidden");
+    document.getElementById("authLoading").classList.add("hidden");
+    if(!recoveryMode){
+      document.getElementById("recoveryContent").classList.add("hidden");
+      document.getElementById("authContent").classList.remove("hidden");
+    }
+  }
+
+  function getLegacyState(){
+    for(const key of LEGACY_STORE_KEYS){
+      const raw=localStorage.getItem(key);
+      if(raw){
+        try{ const x=JSON.parse(raw); if(x && x.weeks) return x; }catch(_e){}
+      }
+    }
+    return null;
+  }
+
+  function maybeShowLegacyImport(){
+    const box=document.getElementById("legacyImportBox");
+    if(!box || !STORE_KEY) return;
+    const hasLegacy=!!getLegacyState();
+    const hasCurrent=!!localStorage.getItem(STORE_KEY);
+    box.classList.toggle("hidden",!(hasLegacy && !hasCurrent));
+  }
+
+  async function showLoggedIn(session){
+    currentUser=session.user;
+    STORE_KEY=userStoreKey(currentUser.id);
+    try{
+      currentProfile=await fetchProfile(currentUser);
+    }catch(err){
+      showLoggedOut();
+      showAuthMessage("Accesso riuscito, ma il profilo non è disponibile. Controlla la connessione e riprova.","error");
+      return;
+    }
+    document.getElementById("authGate").classList.add("hidden");
+    if(currentProfile.role==="coach"){
+      document.getElementById("appShell").classList.add("hidden");
+      document.getElementById("coachShell").classList.remove("hidden");
+      document.getElementById("coachUserDisplay").textContent=currentProfile.full_name||currentUser.email||"Coach";
+      coachGo("coachDashboard");
+      loadCoachDashboard();
+    }else{
+      document.getElementById("coachShell").classList.add("hidden");
+      document.getElementById("appShell").classList.remove("hidden");
+      document.getElementById("userDisplay").textContent=currentProfile.full_name||currentUser.email||"Atleta";
+      state=load();
+      renderAll();
+      maybeShowLegacyImport();
+      await loadAthleteCloudPlan();
+    }
+  }
+
+
+  const coachState={athletes:[],programs:[],tests:[],library:[],sessionLogs:[],selectedAthleteId:null,selectedProgramId:null,selectedWeekId:null,selectedSessionId:null,weeks:[],sessions:[],sessionExercises:[]};
+
+  function escapeHtml(value){
+    return String(value??"").replace(/[&<>'"]/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[ch]));
+  }
+  function dateIt(value){
+    if(!value) return "—";
+    const d=new Date(value);
+    if(Number.isNaN(d.getTime())) return "—";
+    return d.toLocaleDateString("it-IT",{day:"2-digit",month:"2-digit",year:"numeric"});
+  }
+  function coachStatusLabel(status){
+    return ({draft:"bozza",active:"attivo",completed:"completato",archived:"archiviato"})[status]||status||"—";
+  }
+  function setCoachMessage(id,message,kind=""){
+    const el=document.getElementById(id); if(!el)return;
+    el.textContent=message||"";
+    el.className="auth-message"+(kind?` ${kind}`:"");
+  }
+  function coachGo(tabId){
+    document.querySelectorAll(".coach-tab").forEach(b=>b.classList.toggle("active",b.dataset.coachTab===tabId));
+    document.querySelectorAll(".coach-page").forEach(p=>p.classList.toggle("hidden",p.id!==tabId));
+    if(tabId!=="coachAthletes"){
+      document.getElementById("coachAthleteListView").classList.remove("hidden");
+      document.getElementById("coachAthleteDetail").classList.add("hidden");
+    }
+    if(tabId!=="coachPrograms") closeCoachProgramBuilder(false);
+  }
+
+  async function loadCoachDashboard(){
+    if(!currentUser || currentProfile?.role!=="coach") return;
+    const errBox=document.getElementById("coachLoadError");
+    errBox.classList.add("hidden");
+    try{
+      const {data:links,error:linkErr}=await sb.from("coach_athletes")
+        .select("athlete_id,status")
+        .eq("coach_id",currentUser.id)
+        .eq("status","active");
+      if(linkErr) throw linkErr;
+      const athleteIds=(links||[]).map(x=>x.athlete_id);
+
+      let athletes=[];
+      if(athleteIds.length){
+        const {data,error}=await sb.from("profiles")
+          .select("id,full_name,avatar_url,role")
+          .in("id",athleteIds)
+          .order("full_name",{ascending:true});
+        if(error) throw error;
+        athletes=data||[];
+      }
+
+      const {data:programs,error:programErr}=await sb.from("programs")
+        .select("id,athlete_id,coach_id,name,goal,status,start_date,end_date,created_at,updated_at")
+        .eq("coach_id",currentUser.id)
+        .order("created_at",{ascending:false});
+      if(programErr) throw programErr;
+
+      const {data:tests,error:testErr}=await sb.from("test_sessions")
+        .select("id,athlete_id,coach_id,tested_at,body_weight_kg,protocol_version,notes")
+        .eq("coach_id",currentUser.id)
+        .order("tested_at",{ascending:false});
+      if(testErr) throw testErr;
+
+      const {data:library,error:libraryErr}=await sb.from("exercise_library")
+        .select("id,name,category,modality,description,default_instructions,archived,created_at,updated_at")
+        .eq("coach_id",currentUser.id)
+        .eq("archived",false)
+        .order("name",{ascending:true});
+      if(libraryErr) throw libraryErr;
+
+      let sessionLogs=[];
+      if(athleteIds.length){
+        const {data,error}=await sb.from("session_logs")
+          .select("id,athlete_id,status,completed_at,session_rpe")
+          .in("athlete_id",athleteIds);
+        if(error) throw error;
+        sessionLogs=data||[];
+      }
+
+      coachState.athletes=athletes;
+      coachState.programs=programs||[];
+      coachState.tests=tests||[];
+      coachState.library=library||[];
+      coachState.sessionLogs=sessionLogs;
+      renderCoachDashboard();
+    }catch(err){
+      errBox.textContent="Non riesco a caricare la dashboard coach: "+((err&&err.message)?err.message:"errore sconosciuto");
+      errBox.classList.remove("hidden");
+    }
+  }
+
+  function athleteStats(id){
+    const programs=coachState.programs.filter(p=>p.athlete_id===id);
+    const activePrograms=programs.filter(p=>p.status==="active");
+    const tests=coachState.tests.filter(t=>t.athlete_id===id).sort((a,b)=>new Date(b.tested_at)-new Date(a.tested_at));
+    const sessions=coachState.sessionLogs.filter(s=>s.athlete_id===id && s.status==="completed");
+    return {programs,activePrograms,tests,sessions};
+  }
+
+  function athleteCard(a,compact=false){
+    const st=athleteStats(a.id);
+    const active=st.activePrograms[0];
+    const latest=st.tests[0];
+    return `<div class="coach-card">
+      <div class="coach-card-head">
+        <div><h3>${escapeHtml(a.full_name||"Atleta")}</h3><div class="small">${active?`Programma attivo: ${escapeHtml(active.name)}`:"Nessun programma attivo"}</div></div>
+        <span class="pill ok">attivo</span>
+      </div>
+      <div class="coach-meta">
+        <span class="pill">${st.activePrograms.length} programmi attivi</span>
+        <span class="pill">${st.sessions.length} sessioni cloud</span>
+        <span class="pill">ultimo retest ${latest?dateIt(latest.tested_at):"—"}</span>
+      </div>
+      ${compact?"":`<button type="button" class="secondary open-athlete" data-athlete-id="${escapeHtml(a.id)}">Apri atleta</button>`}
+    </div>`;
+  }
+
+  function renderCoachDashboard(){
+    const activePrograms=coachState.programs.filter(p=>p.status==="active");
+    document.getElementById("coachMetricAthletes").textContent=coachState.athletes.length;
+    document.getElementById("coachMetricPrograms").textContent=activePrograms.length;
+    document.getElementById("coachMetricTests").textContent=coachState.tests.length;
+    document.getElementById("coachMetricLibrary").textContent=coachState.library.length;
+    document.getElementById("coachAthleteCount").textContent=`${coachState.athletes.length} attivi`;
+
+    const dash=document.getElementById("coachDashboardAthletes");
+    const list=document.getElementById("coachAthletesList");
+    if(!coachState.athletes.length){
+      const empty='<div class="coach-empty">Nessun atleta collegato.</div>';
+      dash.innerHTML=empty; list.innerHTML=empty;
+    }else{
+      dash.innerHTML=coachState.athletes.slice(0,3).map(a=>athleteCard(a,true)).join("");
+      list.innerHTML=coachState.athletes.map(a=>athleteCard(a,false)).join("");
+    }
+
+    const athleteSelect=document.getElementById("coachProgramAthlete");
+    athleteSelect.innerHTML=coachState.athletes.length
+      ? coachState.athletes.map(a=>`<option value="${escapeHtml(a.id)}">${escapeHtml(a.full_name||"Atleta")}</option>`).join("")
+      : '<option value="">Nessun atleta</option>';
+    athleteSelect.disabled=!coachState.athletes.length;
+    document.getElementById("coachProgramSubmit").disabled=!coachState.athletes.length;
+
+    const pbox=document.getElementById("coachProgramsList");
+    if(!coachState.programs.length) pbox.innerHTML='<div class="coach-empty">Nessun programma cloud creato.</div>';
+    else pbox.innerHTML=coachState.programs.map(p=>{
+      const a=coachState.athletes.find(x=>x.id===p.athlete_id);
+      return `<div class="coach-program-row"><div class="coach-card-head"><div><b>${escapeHtml(p.name)}</b><div class="small">${escapeHtml(a?.full_name||"Atleta")} · ${escapeHtml(p.goal||"obiettivo non indicato")}</div></div><span class="pill ${p.status==="active"?"ok":""}">${escapeHtml(coachStatusLabel(p.status))}</span></div><div class="small">${p.start_date?dateIt(p.start_date):"inizio —"} → ${p.end_date?dateIt(p.end_date):"fine —"}</div><div class="builder-item-actions"><button type="button" class="secondary open-program" data-program-id="${escapeHtml(p.id)}">Apri builder</button></div></div>`;
+    }).join("");
+
+    const tbox=document.getElementById("coachRetestsList");
+    if(!coachState.tests.length) tbox.innerHTML='<div class="coach-empty">Nessun retest cloud registrato.</div>';
+    else tbox.innerHTML=coachState.tests.map(t=>{
+      const a=coachState.athletes.find(x=>x.id===t.athlete_id);
+      return `<div class="coach-test-row"><b>${escapeHtml(a?.full_name||"Atleta")}</b><div class="small">${dateIt(t.tested_at)}${t.body_weight_kg?` · ${escapeHtml(t.body_weight_kg)} kg`:""}${t.protocol_version?` · ${escapeHtml(t.protocol_version)}`:""}</div></div>`;
+    }).join("");
+
+    const lbox=document.getElementById("coachLibraryList");
+    if(!coachState.library.length) lbox.innerHTML='<div class="coach-empty">La libreria è vuota. Aggiungi il primo esercizio.</div>';
+    else lbox.innerHTML=coachState.library.map(e=>`<div class="coach-library-row"><div class="coach-card-head"><div><b>${escapeHtml(e.name)}</b><div class="small">${escapeHtml([e.category,e.modality].filter(Boolean).join(" · ")||"nessuna categoria")}</div></div></div>${e.description?`<div class="small" style="margin-top:4px">${escapeHtml(e.description)}</div>`:""}</div>`).join("");
+
+    if(coachState.selectedAthleteId) renderCoachAthleteDetail(coachState.selectedAthleteId);
+  }
+
+  function openCoachAthlete(id){
+    coachState.selectedAthleteId=id;
+    coachGo("coachAthletes");
+    document.getElementById("coachAthleteListView").classList.add("hidden");
+    document.getElementById("coachAthleteDetail").classList.remove("hidden");
+    renderCoachAthleteDetail(id);
+  }
+  function renderCoachAthleteDetail(id){
+    const a=coachState.athletes.find(x=>x.id===id); if(!a)return;
+    const st=athleteStats(id);
+    document.getElementById("coachDetailName").textContent=a.full_name||"Atleta";
+    document.getElementById("coachDetailPrograms").textContent=st.activePrograms.length;
+    document.getElementById("coachDetailTest").textContent=st.tests[0]?dateIt(st.tests[0].tested_at):"—";
+    document.getElementById("coachDetailSessions").textContent=st.sessions.length;
+    const p=document.getElementById("coachDetailProgramList");
+    p.innerHTML=st.programs.length?st.programs.map(x=>`<div class="coach-program-row"><b>${escapeHtml(x.name)}</b> <span class="pill ${x.status==="active"?"ok":""}">${escapeHtml(coachStatusLabel(x.status))}</span><div class="small">${escapeHtml(x.goal||"Obiettivo non indicato")}</div><div class="builder-item-actions"><button type="button" class="secondary open-detail-program" data-program-id="${escapeHtml(x.id)}">Apri builder</button></div></div>`).join(""):'<div class="coach-empty">Nessun programma cloud.</div>';
+    const t=document.getElementById("coachDetailTestList");
+    t.innerHTML=st.tests.length?st.tests.map(x=>`<div class="coach-test-row"><b>${dateIt(x.tested_at)}</b><div class="small">${x.body_weight_kg?`${escapeHtml(x.body_weight_kg)} kg`:"Peso —"}${x.protocol_version?` · ${escapeHtml(x.protocol_version)}`:""}</div></div>`).join(""):'<div class="coach-empty">Nessun retest cloud.</div>';
+  }
+
+
+  function loadTypeLabel(type){
+    return ({
+      not_applicable:"non applicabile",bodyweight:"BW",added_load:"carico esterno aggiunto",assistance:"assistenza / scarico",
+      total_load:"carico totale",percent_total_1rm:"% 1RM carico totale",percent_external_1rm:"% 1RM carico esterno",
+      percent_iso_max:"% massimale isometrico",grade:"grado / difficoltà",custom:"altro"
+    })[type]||type||"—";
+  }
+  function loadBasisForType(type){
+    return ({bodyweight:"bodyweight",added_load:"external_added",assistance:"external_assistance",total_load:"total_load",
+      percent_total_1rm:"total_load",percent_external_1rm:"external_load",percent_iso_max:"isometric_force",grade:"grade",not_applicable:"not_applicable",custom:"custom"})[type]||"custom";
+  }
+  function selectedProgram(){ return coachState.programs.find(p=>p.id===coachState.selectedProgramId)||null; }
+  function selectedWeek(){ return coachState.weeks.find(w=>w.id===coachState.selectedWeekId)||null; }
+  function selectedSession(){ return coachState.sessions.find(x=>x.id===coachState.selectedSessionId)||null; }
+  function nextOrder(items, key){ return items.length?Math.max(...items.map(x=>Number(x[key])||0))+1:1; }
+
+  function closeCoachProgramBuilder(clear=true){
+    const list=document.getElementById("coachProgramsListView"), builder=document.getElementById("coachProgramBuilder");
+    if(list) list.classList.remove("hidden");
+    if(builder) builder.classList.add("hidden");
+    const wd=document.getElementById("coachWeekDetail"), sd=document.getElementById("coachSessionDetail");
+    if(wd) wd.classList.add("hidden"); if(sd) sd.classList.add("hidden");
+    if(clear){
+      coachState.selectedProgramId=null;coachState.selectedWeekId=null;coachState.selectedSessionId=null;
+      coachState.weeks=[];coachState.sessions=[];coachState.sessionExercises=[];
+    }
+  }
+
+  async function openCoachProgram(programId){
+    coachState.selectedProgramId=programId;
+    coachState.selectedWeekId=null;coachState.selectedSessionId=null;
+    coachGo("coachPrograms");
+    document.getElementById("coachProgramsListView").classList.add("hidden");
+    document.getElementById("coachProgramBuilder").classList.remove("hidden");
+    document.getElementById("coachWeeksList").innerHTML='<div class="coach-loading">Caricamento struttura…</div>';
+    document.getElementById("coachWeekDetail").classList.add("hidden");
+    document.getElementById("coachSessionDetail").classList.add("hidden");
+    await loadCoachProgramStructure();
+  }
+
+  async function loadCoachProgramStructure(){
+    const p=selectedProgram(); if(!p)return;
+    try{
+      const {data:weeks,error:werr}=await sb.from("training_weeks")
+        .select("id,program_id,week_number,block_name,phase,start_date,status,notes,created_at,updated_at")
+        .eq("program_id",p.id).order("week_number",{ascending:true});
+      if(werr) throw werr;
+      const weekIds=(weeks||[]).map(x=>x.id);
+      let sessions=[];
+      if(weekIds.length){
+        const {data,error}=await sb.from("sessions")
+          .select("id,training_week_id,session_order,title,objective,duration_minutes,coach_notes,created_at,updated_at")
+          .in("training_week_id",weekIds).order("session_order",{ascending:true});
+        if(error) throw error; sessions=data||[];
+      }
+      const sessionIds=sessions.map(x=>x.id);
+      let exercises=[];
+      if(sessionIds.length){
+        const {data,error}=await sb.from("session_exercises")
+          .select("id,session_id,exercise_id,exercise_order,exercise_name,prescription,calculation_context,target_rpe_min,target_rpe_max,rest_seconds,instructions,created_at,updated_at")
+          .in("session_id",sessionIds).order("exercise_order",{ascending:true});
+        if(error) throw error; exercises=data||[];
+      }
+      coachState.weeks=weeks||[];coachState.sessions=sessions;coachState.sessionExercises=exercises;
+      if(coachState.selectedWeekId && !coachState.weeks.some(x=>x.id===coachState.selectedWeekId)) coachState.selectedWeekId=null;
+      if(coachState.selectedSessionId && !coachState.sessions.some(x=>x.id===coachState.selectedSessionId)) coachState.selectedSessionId=null;
+      renderCoachProgramBuilder();
+    }catch(err){
+      document.getElementById("coachWeeksList").innerHTML=`<div class="notice">Errore caricamento builder: ${escapeHtml(err?.message||"errore")}</div>`;
+    }
+  }
+
+  function renderCoachProgramBuilder(){
+    const p=selectedProgram(); if(!p)return;
+    const a=coachState.athletes.find(x=>x.id===p.athlete_id);
+    document.getElementById("coachBuilderProgramName").textContent=p.name;
+    document.getElementById("coachBuilderProgramMeta").textContent=`${a?.full_name||"Atleta"} · ${p.goal||"obiettivo non indicato"} · ${p.start_date?dateIt(p.start_date):"inizio —"} → ${p.end_date?dateIt(p.end_date):"fine —"}`;
+    const status=document.getElementById("coachBuilderStatus");status.textContent=coachStatusLabel(p.status);status.className="pill "+(p.status==="active"?"ok":"");
+    const publish=document.getElementById("coachPublishProgram");
+    publish.classList.toggle("hidden",p.status!=="draft");
+    document.getElementById("coachBuilderWeekCount").textContent=coachState.weeks.length;
+    document.getElementById("coachBuilderSessionCount").textContent=coachState.sessions.length;
+    document.getElementById("coachBuilderExerciseCount").textContent=coachState.sessionExercises.length;
+    document.getElementById("coachWeekNumber").value=nextOrder(coachState.weeks,"week_number");
+
+    const wbox=document.getElementById("coachWeeksList");
+    if(!coachState.weeks.length) wbox.innerHTML='<div class="coach-empty">Nessuna settimana. Crea la prima settimana del programma.</div>';
+    else wbox.innerHTML=coachState.weeks.map(w=>{
+      const ss=coachState.sessions.filter(x=>x.training_week_id===w.id);
+      const exCount=ss.reduce((n,x)=>n+coachState.sessionExercises.filter(e=>e.session_id===x.id).length,0);
+      return `<div class="builder-item ${coachState.selectedWeekId===w.id?"active":""}"><div class="builder-item-head"><div><h3>Settimana ${w.week_number}${w.block_name?` · ${escapeHtml(w.block_name)}`:""}</h3><div class="small">${escapeHtml(w.phase||"fase non indicata")}${w.start_date?` · dal ${dateIt(w.start_date)}`:""}</div></div><span class="pill ${w.status==="current"?"ok":""}">${escapeHtml(w.status)}</span></div><div class="coach-meta"><span class="pill">${ss.length} sessioni</span><span class="pill">${exCount} esercizi</span></div>${w.notes?`<div class="small">${escapeHtml(w.notes)}</div>`:""}<div class="builder-item-actions"><button type="button" class="secondary open-week" data-week-id="${escapeHtml(w.id)}">Apri settimana</button></div></div>`;
+    }).join("");
+    renderCoachWeekDetail();
+    populateRxLibrary();
+  }
+
+  function openCoachWeek(weekId){
+    coachState.selectedWeekId=weekId;coachState.selectedSessionId=null;
+    document.getElementById("coachWeekDetail").classList.remove("hidden");
+    document.getElementById("coachSessionDetail").classList.add("hidden");
+    renderCoachProgramBuilder();
+    document.getElementById("coachWeekDetail").scrollIntoView({behavior:"smooth",block:"start"});
+  }
+
+  function renderCoachWeekDetail(){
+    const box=document.getElementById("coachWeekDetail"), w=selectedWeek();
+    if(!w){box.classList.add("hidden");return;}
+    box.classList.remove("hidden");
+    document.getElementById("coachWeekDetailTitle").textContent=`Settimana ${w.week_number}${w.block_name?` · ${w.block_name}`:""}`;
+    document.getElementById("coachWeekDetailMeta").textContent=`${w.phase||"fase non indicata"} · ${w.status}${w.start_date?` · ${dateIt(w.start_date)}`:""}`;
+    const ss=coachState.sessions.filter(x=>x.training_week_id===w.id).sort((a,b)=>a.session_order-b.session_order);
+    const boxList=document.getElementById("coachSessionsList");
+    if(!ss.length) boxList.innerHTML='<div class="coach-empty">Nessuna sessione in questa settimana.</div>';
+    else boxList.innerHTML=ss.map(x=>{
+      const exs=coachState.sessionExercises.filter(e=>e.session_id===x.id);
+      return `<div class="builder-item ${coachState.selectedSessionId===x.id?"active":""}"><div class="builder-item-head"><div><h3>Sessione ${x.session_order} · ${escapeHtml(x.title)}</h3><div class="small">${escapeHtml(x.objective||"obiettivo non indicato")}${x.duration_minutes?` · ${x.duration_minutes} min`:""}</div></div><span class="pill">${exs.length} esercizi</span></div>${x.coach_notes?`<div class="small">${escapeHtml(x.coach_notes)}</div>`:""}<div class="builder-item-actions"><button type="button" class="secondary open-session" data-session-id="${escapeHtml(x.id)}">Apri sessione</button></div></div>`;
+    }).join("");
+    renderCoachSessionDetail();
+  }
+
+  function openCoachSession(sessionId){
+    coachState.selectedSessionId=sessionId;
+    document.getElementById("coachSessionDetail").classList.remove("hidden");
+    renderCoachWeekDetail();
+    document.getElementById("coachSessionDetail").scrollIntoView({behavior:"smooth",block:"start"});
+  }
+
+  function rxPreview(e){
+    const p=e.prescription||{};
+    const dose=[p.sets?`${p.sets} serie`:"",p.dose||""].filter(Boolean).join(" × ");
+    const load=[loadTypeLabel(p.load_type),p.load_value||"",p.unit||""].filter(Boolean).join(" ");
+    const rest=e.rest_seconds!==null&&e.rest_seconds!==undefined?`rec ${e.rest_seconds}s`:"";
+    const rpe=(e.target_rpe_min!==null&&e.target_rpe_min!==undefined)||(e.target_rpe_max!==null&&e.target_rpe_max!==undefined)?`RPE ${e.target_rpe_min??"—"}–${e.target_rpe_max??"—"}`:"";
+    return [dose,load,rest,rpe].filter(Boolean).join(" · ")||"Prescrizione non specificata";
+  }
+
+  function renderCoachSessionDetail(){
+    const box=document.getElementById("coachSessionDetail"), session=selectedSession();
+    if(!session){box.classList.add("hidden");return;}
+    box.classList.remove("hidden");
+    document.getElementById("coachSessionDetailTitle").textContent=`Sessione ${session.session_order} · ${session.title}`;
+    document.getElementById("coachSessionDetailMeta").textContent=`${session.objective||"obiettivo non indicato"}${session.duration_minutes?` · ${session.duration_minutes} min`:""}`;
+    const exs=coachState.sessionExercises.filter(e=>e.session_id===session.id).sort((a,b)=>a.exercise_order-b.exercise_order);
+    const list=document.getElementById("coachSessionExercisesList");
+    if(!exs.length) list.innerHTML='<div class="coach-empty">Nessun esercizio prescritto.</div>';
+    else list.innerHTML=exs.map(e=>`<div class="builder-item"><div class="builder-item-head"><div><h3>${e.exercise_order} · ${escapeHtml(e.exercise_name)}</h3></div><span class="pill">${escapeHtml(loadTypeLabel(e.prescription?.load_type))}</span></div><div class="rx-preview">${escapeHtml(rxPreview(e))}</div>${e.instructions?`<div class="small" style="margin-top:7px">${escapeHtml(e.instructions)}</div>`:""}</div>`).join("");
+  }
+
+  function populateRxLibrary(){
+    const sel=document.getElementById("coachRxLibrary"); if(!sel)return;
+    const current=sel.value;
+    sel.innerHTML='<option value="">— esercizio personalizzato —</option>'+coachState.library.map(e=>`<option value="${escapeHtml(e.id)}">${escapeHtml(e.name)}</option>`).join("");
+    if(coachState.library.some(x=>x.id===current)) sel.value=current;
+  }
+
+
+
+  const athleteCloud={programs:[],weeks:[],sessions:[],exercises:[],sessionLogs:[],exerciseLogs:[],selectedProgramId:null,selectedWeekId:null,selectedSessionId:null};
+
+  function athleteCloudProgram(){ return athleteCloud.programs.find(p=>p.id===athleteCloud.selectedProgramId)||null; }
+  function athleteCloudWeek(){ return athleteCloud.weeks.find(w=>w.id===athleteCloud.selectedWeekId)||null; }
+  function athleteCloudSession(){ return athleteCloud.sessions.find(s=>s.id===athleteCloud.selectedSessionId)||null; }
+  function athleteSessionLog(sessionId){ return athleteCloud.sessionLogs.find(x=>x.session_id===sessionId)||null; }
+  function athleteExerciseLog(exerciseId){ return athleteCloud.exerciseLogs.find(x=>x.session_exercise_id===exerciseId)||null; }
+  function cloudStatusLabel(status){ return ({planned:"da eseguire",in_progress:"in corso",completed:"completata",skipped:"saltata"})[status]||status||"da eseguire"; }
+
+  function switchAthleteTab(id){
+    const btn=document.querySelector(`.tab[data-tab="${id}"]`);
+    if(!btn)return;
+    document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b===btn));
+    document.querySelectorAll(".tabpage").forEach(p=>p.classList.toggle("hidden",p.id!==id));
+  }
+
+  async function loadAthleteCloudPlan(){
+    if(!currentUser || currentProfile?.role==="coach") return;
+    const loading=document.getElementById("athleteCloudLoading"),content=document.getElementById("athleteCloudContent"),empty=document.getElementById("athleteCloudEmpty");
+    loading.classList.remove("hidden");content.classList.add("hidden");empty.classList.add("hidden");
+    try{
+      const {data:programs,error:perr}=await sb.from("programs")
+        .select("id,athlete_id,coach_id,name,goal,status,start_date,end_date,created_at,updated_at")
+        .eq("athlete_id",currentUser.id)
+        .neq("status","draft")
+        .order("created_at",{ascending:false});
+      if(perr) throw perr;
+      athleteCloud.programs=programs||[];
+      if(!athleteCloud.programs.length){
+        loading.classList.add("hidden");empty.classList.remove("hidden");switchAthleteTab("cloudPlan");return;
+      }
+      if(!athleteCloud.selectedProgramId || !athleteCloud.programs.some(p=>p.id===athleteCloud.selectedProgramId)){
+        const active=athleteCloud.programs.find(p=>p.status==="active");
+        athleteCloud.selectedProgramId=(active||athleteCloud.programs[0]).id;
+      }
+      await loadAthleteCloudStructure();
+      loading.classList.add("hidden");content.classList.remove("hidden");switchAthleteTab("cloudPlan");
+    }catch(err){
+      loading.innerHTML=`<div class="notice">Non riesco a caricare la programmazione cloud: ${escapeHtml(err?.message||"errore")}</div>`;
+    }
+  }
+
+  async function loadAthleteCloudStructure(){
+    const p=athleteCloudProgram();if(!p)return;
+    const {data:weeks,error:werr}=await sb.from("training_weeks")
+      .select("id,program_id,week_number,block_name,phase,start_date,status,notes")
+      .eq("program_id",p.id).order("week_number",{ascending:true});
+    if(werr) throw werr;
+    athleteCloud.weeks=weeks||[];
+    const weekIds=athleteCloud.weeks.map(x=>x.id);
+    let sessions=[];
+    if(weekIds.length){
+      const {data,error}=await sb.from("sessions")
+        .select("id,training_week_id,session_order,title,objective,duration_minutes,coach_notes")
+        .in("training_week_id",weekIds).order("session_order",{ascending:true});
+      if(error) throw error;sessions=data||[];
+    }
+    athleteCloud.sessions=sessions;
+    const sessionIds=sessions.map(x=>x.id);
+    let exercises=[];
+    if(sessionIds.length){
+      const {data,error}=await sb.from("session_exercises")
+        .select("id,session_id,exercise_id,exercise_order,exercise_name,prescription,calculation_context,target_rpe_min,target_rpe_max,rest_seconds,instructions")
+        .in("session_id",sessionIds).order("exercise_order",{ascending:true});
+      if(error) throw error;exercises=data||[];
+    }
+    athleteCloud.exercises=exercises;
+    let sessionLogs=[];
+    if(sessionIds.length){
+      const {data,error}=await sb.from("session_logs")
+        .select("id,session_id,athlete_id,status,started_at,completed_at,duration_minutes,session_rpe,notes")
+        .eq("athlete_id",currentUser.id).in("session_id",sessionIds);
+      if(error) throw error;sessionLogs=data||[];
+    }
+    athleteCloud.sessionLogs=sessionLogs;
+    const logIds=sessionLogs.map(x=>x.id);
+    let exerciseLogs=[];
+    if(logIds.length){
+      const {data,error}=await sb.from("exercise_logs")
+        .select("id,session_log_id,session_exercise_id,athlete_id,completed,actual,rpe,notes,completed_at")
+        .eq("athlete_id",currentUser.id).in("session_log_id",logIds);
+      if(error) throw error;exerciseLogs=data||[];
+    }
+    athleteCloud.exerciseLogs=exerciseLogs;
+    if(athleteCloud.selectedWeekId && !athleteCloud.weeks.some(w=>w.id===athleteCloud.selectedWeekId)) athleteCloud.selectedWeekId=null;
+    if(!athleteCloud.selectedWeekId && athleteCloud.weeks.length){
+      const current=athleteCloud.weeks.find(w=>w.status==="current")||athleteCloud.weeks.find(w=>w.status==="planned")||athleteCloud.weeks[0];
+      athleteCloud.selectedWeekId=current.id;
+    }
+    if(athleteCloud.selectedSessionId && !athleteCloud.sessions.some(s=>s.id===athleteCloud.selectedSessionId)) athleteCloud.selectedSessionId=null;
+    renderAthleteCloudPlan();
+  }
+
+  function renderAthleteCloudPlan(){
+    const p=athleteCloudProgram();if(!p)return;
+    const psel=document.getElementById("athleteCloudProgramSelect");
+    psel.innerHTML=athleteCloud.programs.map(x=>`<option value="${escapeHtml(x.id)}">${escapeHtml(x.name)} · ${escapeHtml(coachStatusLabel(x.status))}</option>`).join("");
+    psel.value=p.id;
+    document.getElementById("athleteCloudProgramName").textContent=p.name;
+    document.getElementById("athleteCloudProgramMeta").textContent=`${p.goal||"obiettivo non indicato"} · ${p.start_date?dateIt(p.start_date):"inizio —"} → ${p.end_date?dateIt(p.end_date):"fine —"}`;
+    document.getElementById("athleteCloudWeekCount").textContent=athleteCloud.weeks.length;
+    document.getElementById("athleteCloudProgramStatus").textContent=coachStatusLabel(p.status);
+    const completed=athleteCloud.sessions.filter(s=>athleteSessionLog(s.id)?.status==="completed").length;
+    document.getElementById("athleteCloudCompletion").textContent=`${completed}/${athleteCloud.sessions.length}`;
+    const wsel=document.getElementById("athleteCloudWeekSelect");
+    wsel.innerHTML=athleteCloud.weeks.length?athleteCloud.weeks.map(w=>`<option value="${escapeHtml(w.id)}">Settimana ${w.week_number}${w.block_name?` · ${escapeHtml(w.block_name)}`:""}</option>`).join(""):'<option value="">Nessuna settimana</option>';
+    wsel.disabled=!athleteCloud.weeks.length;
+    if(athleteCloud.selectedWeekId)wsel.value=athleteCloud.selectedWeekId;
+    renderAthleteCloudWeek();
+    renderAthleteCloudSession();
+  }
+
+  function renderAthleteCloudWeek(){
+    const w=athleteCloudWeek(),meta=document.getElementById("athleteCloudWeekMeta"),notes=document.getElementById("athleteCloudWeekNotes"),box=document.getElementById("athleteCloudSessions");
+    if(!w){meta.textContent="Nessuna settimana disponibile";notes.classList.add("hidden");box.innerHTML='<div class="coach-empty">La coach non ha ancora inserito settimane.</div>';return;}
+    meta.textContent=`Settimana ${w.week_number}${w.block_name?` · ${w.block_name}`:""} · ${w.phase||"fase non indicata"}${w.start_date?` · dal ${dateIt(w.start_date)}`:""}`;
+    if(w.notes){notes.textContent=w.notes;notes.classList.remove("hidden");}else notes.classList.add("hidden");
+    const sessions=athleteCloud.sessions.filter(s=>s.training_week_id===w.id).sort((a,b)=>a.session_order-b.session_order);
+    if(!sessions.length){box.innerHTML='<div class="coach-empty">Nessuna sessione prescritta in questa settimana.</div>';return;}
+    box.innerHTML=sessions.map(s=>{
+      const log=athleteSessionLog(s.id);const exs=athleteCloud.exercises.filter(e=>e.session_id===s.id);const status=cloudStatusLabel(log?.status);
+      return `<div class="cloud-session-card"><div class="cloud-session-head"><div><h3>Sessione ${s.session_order} · ${escapeHtml(s.title)}</h3><div class="small">${escapeHtml(s.objective||"obiettivo non indicato")}${s.duration_minutes?` · ${s.duration_minutes} min prescritti`:""}</div></div><span class="pill ${log?.status==="completed"?"ok":log?.status==="in_progress"?"warn":""}">${escapeHtml(status)}</span></div><div class="coach-meta"><span class="pill">${exs.length} esercizi</span>${log?.session_rpe!==null&&log?.session_rpe!==undefined?`<span class="pill">RPE ${escapeHtml(log.session_rpe)}</span>`:""}</div><div class="cloud-session-actions"><button type="button" class="secondary athlete-open-session" data-session-id="${escapeHtml(s.id)}">${log?.status==="completed"?"Rivedi log":"Apri sessione"}</button></div></div>`;
+    }).join("");
+  }
+
+  function actualInputValue(log,key){return log?.actual&&log.actual[key]!==undefined&&log.actual[key]!==null?log.actual[key]:"";}
+  function renderAthleteCloudSession(){
+    const box=document.getElementById("athleteCloudSessionDetail"),s=athleteCloudSession();
+    if(!s){box.classList.add("hidden");return;}
+    box.classList.remove("hidden");
+    const log=athleteSessionLog(s.id);
+    document.getElementById("athleteCloudSessionTitle").textContent=`Sessione ${s.session_order} · ${s.title}`;
+    document.getElementById("athleteCloudSessionMeta").textContent=`${s.objective||"obiettivo non indicato"}${s.duration_minutes?` · ${s.duration_minutes} min prescritti`:""}`;
+    const coachNotes=document.getElementById("athleteCloudCoachNotes");
+    if(s.coach_notes){coachNotes.textContent=s.coach_notes;coachNotes.classList.remove("hidden");}else coachNotes.classList.add("hidden");
+    document.getElementById("athleteCloudDuration").value=log?.duration_minutes??"";
+    document.getElementById("athleteCloudSessionRpe").value=log?.session_rpe??"";
+    document.getElementById("athleteCloudSessionNotes").value=log?.notes??"";
+    document.getElementById("athleteCloudSessionStatus").value=cloudStatusLabel(log?.status);
+    const exs=athleteCloud.exercises.filter(e=>e.session_id===s.id).sort((a,b)=>a.exercise_order-b.exercise_order);
+    const exBox=document.getElementById("athleteCloudExercises");
+    if(!exs.length){exBox.innerHTML='<div class="coach-empty">Nessun esercizio prescritto.</div>';return;}
+    exBox.innerHTML=exs.map(e=>{
+      const l=athleteExerciseLog(e.id),p=e.prescription||{};
+      const unit=p.unit||"";
+      return `<div class="cloud-rx-card" data-cloud-exercise-id="${escapeHtml(e.id)}"><div class="cloud-rx-check"><input type="checkbox" class="cloud-ex-done" ${l?.completed?"checked":""}><label><b>${e.exercise_order} · ${escapeHtml(e.exercise_name)}</b></label></div><div class="rx-preview">${escapeHtml(rxPreview(e))}</div>${e.instructions?`<div class="small" style="margin:7px 0">${escapeHtml(e.instructions)}</div>`:""}<div class="grid3"><div><label>Valore reale${unit?` (${escapeHtml(unit)})`:""}</label><input class="cloud-ex-load" type="text" value="${escapeHtml(actualInputValue(l,"load_value"))}" placeholder="carico / intensità"></div><div><label>Dose reale</label><input class="cloud-ex-dose" type="text" value="${escapeHtml(actualInputValue(l,"dose"))}" placeholder="rep / sec / schema"></div><div><label>RPE</label><input class="cloud-ex-rpe" type="number" min="0" max="10" step="0.5" value="${l?.rpe??""}"></div></div><label>Note esercizio</label><textarea class="cloud-ex-notes">${escapeHtml(l?.notes||"")}</textarea></div>`;
+    }).join("");
+  }
+
+  function openAthleteCloudSession(id){athleteCloud.selectedSessionId=id;renderAthleteCloudSession();document.getElementById("athleteCloudSessionDetail").scrollIntoView({behavior:"smooth",block:"start"});}
+
+  async function saveAthleteCloudSession(markCompleted=false){
+    const s=athleteCloudSession();if(!s)return;
+    const status=document.getElementById("athleteCloudSaveStatus");const saveBtn=document.getElementById("athleteCloudSaveSession"),completeBtn=document.getElementById("athleteCloudCompleteSession");
+    saveBtn.disabled=true;completeBtn.disabled=true;status.textContent="Salvataggio nel cloud…";
+    try{
+      const old=athleteSessionLog(s.id);const now=new Date().toISOString();const duration=document.getElementById("athleteCloudDuration").value;const srpe=document.getElementById("athleteCloudSessionRpe").value;
+      const sessionPayload={session_id:s.id,athlete_id:currentUser.id,status:markCompleted?"completed":(old?.status==="completed"?"completed":"in_progress"),started_at:old?.started_at||now,completed_at:markCompleted?now:(old?.completed_at||null),duration_minutes:duration===""?null:Math.max(0,Number(duration)),session_rpe:srpe===""?null:Number(srpe),notes:document.getElementById("athleteCloudSessionNotes").value.trim()||null};
+      const {data:sl,error:slerr}=await sb.from("session_logs").upsert(sessionPayload,{onConflict:"session_id,athlete_id"}).select("id").single();
+      if(slerr)throw slerr;
+      const cards=[...document.querySelectorAll("#athleteCloudExercises [data-cloud-exercise-id]")];
+      for(const card of cards){
+        const exId=card.dataset.cloudExerciseId;const ex=athleteCloud.exercises.find(x=>x.id===exId);if(!ex)continue;
+        const done=card.querySelector(".cloud-ex-done").checked;const rpe=card.querySelector(".cloud-ex-rpe").value;
+        const payload={session_log_id:sl.id,session_exercise_id:exId,athlete_id:currentUser.id,completed:done,actual:{load_value:card.querySelector(".cloud-ex-load").value.trim()||null,dose:card.querySelector(".cloud-ex-dose").value.trim()||null,load_type:ex.prescription?.load_type||null,unit:ex.prescription?.unit||null},rpe:rpe===""?null:Number(rpe),notes:card.querySelector(".cloud-ex-notes").value.trim()||null,completed_at:done?(athleteExerciseLog(exId)?.completed_at||now):null};
+        const {error}=await sb.from("exercise_logs").upsert(payload,{onConflict:"session_log_id,session_exercise_id"});if(error)throw error;
+      }
+      status.textContent=markCompleted?"Sessione completata e sincronizzata con la coach.":"Progressi salvati nel cloud.";status.style.color="var(--ok)";
+      const keepProgram=athleteCloud.selectedProgramId,keepWeek=athleteCloud.selectedWeekId,keepSession=athleteCloud.selectedSessionId;
+      athleteCloud.selectedProgramId=keepProgram;await loadAthleteCloudStructure();athleteCloud.selectedWeekId=keepWeek;athleteCloud.selectedSessionId=keepSession;renderAthleteCloudPlan();
+    }catch(err){status.textContent=err?.message||"Errore durante il salvataggio.";status.style.color="#8c2b2b";}
+    finally{saveBtn.disabled=false;completeBtn.disabled=false;}
+  }
+
+
+  async function handleSession(session){
+    if(session) await showLoggedIn(session);
+    else showLoggedOut();
+  }
+
+  async function initAuth(){
+    document.getElementById("authContent").classList.add("hidden");
+    document.getElementById("recoveryContent").classList.add("hidden");
+    document.getElementById("authLoading").classList.remove("hidden");
+
+    sb.auth.onAuthStateChange((event,session)=>{
+      setTimeout(async ()=>{
+        if(event === "PASSWORD_RECOVERY"){
+          showRecoveryForm();
+          return;
+        }
+        if(recoveryMode) return;
+        await handleSession(session);
+      },0);
+    });
+
+    try{
+      const {data,error}=await sb.auth.getSession();
+      if(error) throw error;
+      if(isRecoveryUrl() && data.session){
+        showRecoveryForm();
+      }else{
+        await handleSession(data.session);
+      }
+    }catch(err){
+      recoveryMode=false;
+      showLoggedOut();
+      showAuthMessage("Impossibile verificare l'accesso. Controlla la connessione e riprova.","error");
+    }
+  }
+
+  function load(){
+    try{
+      const x = JSON.parse(localStorage.getItem(STORE_KEY));
+      if(x && x.weeks) return x;
+    }catch(e){}
+    return defaultState();
+  }
+  function save(){ if(STORE_KEY) localStorage.setItem(STORE_KEY, JSON.stringify(state)); updateSummary(); }
+  function w(){ return state.weeks[state.currentWeek]; }
+  function ex(id){
+    if(!w().ex[id]) w().ex[id]={done:[],actualLoad:"",rpe:"",notes:"",setActual:[],ana:[]};
+    return w().ex[id];
+  }
+  function roundLoad(v){
+    const inc = Number(state.settings.rounding)||0.5;
+    return Math.round(v/inc)*inc;
+  }
+  function fmt(v,d=1){
+    if(v===null || v===undefined || Number.isNaN(Number(v))) return "—";
+    return Number(v).toLocaleString("it-IT",{minimumFractionDigits:d,maximumFractionDigits:d});
+  }
+  function pullTarget(){
+    const bw=Number(state.settings.bodyWeight), rm=Number(state.settings.pull1RM);
+    if(!(bw>0) || !(rm>=0)) return null;
+    return .70*(bw+rm)-bw;
+  }
+
+  function renderWeeks(){
+    const s=document.getElementById("weekSelect"); s.innerHTML="";
+    state.weeks.forEach((x,i)=>{ const o=document.createElement("option");o.value=i;o.textContent=x.name;s.appendChild(o);});
+    s.value=state.currentWeek;
+  }
+
+  function renderSimpleSets(container, exid, n){
+    const e=ex(exid); container.innerHTML="";
+    for(let i=0;i<n;i++){
+      const row=document.createElement("div"); row.className="checkrow";
+      row.innerHTML=`<input type="checkbox" aria-label="Serie ${i+1} completata"><span>Serie ${i+1}</span><input type="number" step="0.1" placeholder="kg">`;
+      const cb=row.children[0], kg=row.children[2];
+      cb.checked=!!e.done[i]; kg.value=e.setActual[i]??"";
+      cb.addEventListener("change",()=>{e.done[i]=cb.checked;save();});
+      kg.addEventListener("input",()=>{e.setActual[i]=kg.value;save();});
+      container.appendChild(row);
+    }
+  }
+
+  function renderProgressive(container, exid){
+    const e=ex(exid); container.innerHTML="";
+    const max=Number(state.settings.block1RM)||50.4;
+    blockPct.forEach((s,i)=>{
+      const exact=max*s.pct/100, practical=roundLoad(exact);
+      const row=document.createElement("div"); row.className="checkrow";
+      row.innerHTML=`<input type="checkbox" aria-label="${s.pct}% completato"><span><b>${s.pct}% × ${s.reps}</b><br><small>${fmt(exact)} kg esatto · ${fmt(practical)} kg pratico</small></span><input type="number" step="0.1" placeholder="usato">`;
+      const cb=row.children[0], actual=row.children[2];
+      cb.checked=!!e.done[i]; actual.value=e.setActual[i]??"";
+      cb.addEventListener("change",()=>{e.done[i]=cb.checked;save();});
+      actual.addEventListener("input",()=>{e.setActual[i]=actual.value;save();});
+      container.appendChild(row);
+    });
+  }
+
+  function renderPyramid(container){
+    const e=ex("d1_pyr"); container.innerHTML="";
+    pyr.forEach((s,i)=>{
+      const row=document.createElement("div"); row.className="checkrow";
+      row.innerHTML=`<input type="checkbox"><span><b>${s.n} blocco${s.n>1?"i":""}</b> · ${s.label}</span><input type="text" placeholder="grado">`;
+      const cb=row.children[0], grade=row.children[2];
+      cb.checked=!!e.done[i]; grade.value=e.setActual[i]??"";
+      cb.addEventListener("change",()=>{e.done[i]=cb.checked;save();});
+      grade.addEventListener("input",()=>{e.setActual[i]=grade.value;save();});
+      container.appendChild(row);
+    });
+  }
+
+  function renderAna(){
+    const e=ex("d2_ana"), box=document.getElementById("anaSets"); box.innerHTML="";
+    for(let i=0;i<4;i++){
+      if(!e.ana[i]) e.ana[i]={done:false,time:"",rest:"",rpe:""};
+      const a=e.ana[i], row=document.createElement("div");row.className="panel";
+      row.style.padding="10px";
+      row.innerHTML=`<div class="setline"><input type="checkbox"><span><b>Set ${i+1}</b></span><span></span></div>
+        <div class="grid3">
+          <div><label>Tempo a parete</label><input type="number" step="1" min="0" placeholder="sec"></div>
+          <div><label>Recupero</label><input type="number" step="1" min="0" placeholder="sec"></div>
+          <div><label>RPE</label><input type="number" step="0.5" min="1" max="10"></div>
+        </div>`;
+      const inputs=row.querySelectorAll("input"); inputs[0].checked=a.done;inputs[1].value=a.time;inputs[2].value=a.rest;inputs[3].value=a.rpe;
+      inputs[0].addEventListener("change",()=>{a.done=inputs[0].checked;save();});
+      inputs[1].addEventListener("input",()=>{a.time=inputs[1].value;save();});
+      inputs[2].addEventListener("input",()=>{a.rest=inputs[2].value;save();});
+      inputs[3].addEventListener("input",()=>{a.rpe=inputs[3].value;save();});
+      box.appendChild(row);
+    }
+  }
+
+  function renderRoutes(){
+    const box=document.getElementById("routes"); box.innerHTML="";
+    w().routes.forEach((r,i)=>{
+      const d=document.createElement("div");d.className="route";
+      d.innerHTML=`<div class="grid3">
+        <div><label>Via / settore</label><input type="text" data-k="name"></div>
+        <div><label>Grado</label><input type="text" data-k="grade"></div>
+        <div><label>Tentativi</label><input type="number" min="1" data-k="tries"></div>
+      </div>
+      <div class="grid2">
+        <div><label>Esito</label><select data-k="result"><option value="">—</option><option>Flash / a vista</option><option>Chiusa</option><option>Non chiusa</option></select></div>
+        <div><label>RPE</label><input type="number" min="1" max="10" step="0.5" data-k="rpe"></div>
+      </div>
+      <label>Note</label><textarea data-k="notes"></textarea>
+      <button type="button" class="secondary removeRoute">Rimuovi</button>`;
+      d.querySelectorAll("[data-k]").forEach(inp=>{inp.value=r[inp.dataset.k]??"";inp.addEventListener("input",()=>{r[inp.dataset.k]=inp.value;save();});});
+      d.querySelector(".removeRoute").addEventListener("click",()=>{w().routes.splice(i,1);save();renderRoutes();});
+      box.appendChild(d);
+    });
+  }
+
+  function bindExerciseFields(){
+    document.querySelectorAll(".exercise").forEach(card=>{
+      const id=card.dataset.ex, e=ex(id);
+      card.querySelectorAll("[data-field]").forEach(inp=>{
+        const k=inp.dataset.field; inp.value=e[k]??"";
+        inp.oninput=()=>{e[k]=inp.value;save();};
+      });
+    });
+  }
+
+  function renderBlockTable(){
+    const max=Number(state.settings.block1RM)||50.4;
+    document.getElementById("blockMaxLabel").textContent=fmt(max)+" kg";
+    const box=document.getElementById("blockTable"); box.innerHTML="";
+    blockPct.forEach(s=>{
+      const exact=max*s.pct/100, practical=roundLoad(exact);
+      const d=document.createElement("div");d.className="checkrow";
+      d.innerHTML=`<span></span><span>${s.pct}% × ${s.reps} rep</span><b>${fmt(practical)} kg</b>`;
+      box.appendChild(d);
+    });
+  }
+
+  function updatePullUI(){
+    const t=pullTarget(), el=document.getElementById("pullTarget"), pill=document.getElementById("d1PullLoad");
+    if(t===null){ el.textContent="—"; pill.textContent="Inserisci peso + 1RM"; pill.className="pill warn"; return; }
+    const practical=roundLoad(Math.abs(t));
+    if(t>=0){
+      el.textContent="+"+fmt(practical)+" kg";
+      pill.textContent=`Target: +${fmt(practical)} kg zavorra (${fmt(t)} esatto)`;
+    }else{
+      el.textContent="−"+fmt(practical)+" kg";
+      pill.textContent=`Target: ${fmt(practical)} kg assistenza (${fmt(Math.abs(t))} esatto)`;
+    }
+    pill.className="pill ok";
+  }
+
+  function updateSummary(){
+    let total=0, done=0;
+    Object.entries(w().ex).forEach(([id,e])=>{
+      if(Array.isArray(e.done)){ total+=e.done.length; done+=e.done.filter(Boolean).length; }
+      if(Array.isArray(e.ana)){ total+=e.ana.length; done+=e.ana.filter(x=>x&&x.done).length; }
+    });
+    document.getElementById("completion").textContent=total?Math.round(done/total*100)+"%":"0%";
+    updatePullUI();
+  }
+
+  function renderAll(){
+    renderWeeks();
+    renderBlockTable();
+    renderSimpleSets(document.querySelector('[data-ex="d1_pull"] .sets'),"d1_pull",4);
+    renderSimpleSets(document.querySelector('[data-ex="d1_lock"] .sets'),"d1_lock",4);
+    renderProgressive(document.querySelector('[data-ex="d1_block"] .progressiveSets'),"d1_block");
+    renderSimpleSets(document.querySelector('[data-ex="d1_oh"] .sets'),"d1_oh",6);
+    renderPyramid(document.querySelector('[data-ex="d1_pyr"] .pyramidSets'));
+    renderProgressive(document.querySelector('[data-ex="d2_block"] .progressiveSets'),"d2_block");
+    renderSimpleSets(document.querySelector('[data-ex="d2_oh"] .sets'),"d2_oh",6);
+    renderSimpleSets(document.querySelector('[data-ex="d2_wall"] .sets'),"d2_wall",4);
+    renderAna();
+    renderSimpleSets(document.querySelector('[data-ex="d2_pan"] .sets'),"d2_pan",4);
+    bindExerciseFields();
+    document.querySelector('[data-path="weekNotes"]').value=w().weekNotes||"";
+    document.querySelector('[data-path="day3Notes"]').value=w().day3Notes||"";
+    document.getElementById("bodyWeight").value=state.settings.bodyWeight??"";
+    document.getElementById("pull1RM").value=state.settings.pull1RM??"";
+    document.getElementById("block1RM").value=state.settings.block1RM??50.4;
+    document.getElementById("rounding").value=state.settings.rounding??0.5;
+    renderRoutes(); updateSummary();
+  }
+
+  document.getElementById("athleteCloudProgramSelect").addEventListener("change",async e=>{athleteCloud.selectedProgramId=e.target.value;athleteCloud.selectedWeekId=null;athleteCloud.selectedSessionId=null;await loadAthleteCloudStructure();});
+  document.getElementById("athleteCloudWeekSelect").addEventListener("change",e=>{athleteCloud.selectedWeekId=e.target.value;athleteCloud.selectedSessionId=null;renderAthleteCloudPlan();});
+  document.getElementById("athleteCloudSessions").addEventListener("click",e=>{const b=e.target.closest(".athlete-open-session");if(b)openAthleteCloudSession(b.dataset.sessionId);});
+  document.getElementById("athleteCloudCloseSession").addEventListener("click",()=>{athleteCloud.selectedSessionId=null;renderAthleteCloudSession();});
+  document.getElementById("athleteCloudSaveSession").addEventListener("click",()=>saveAthleteCloudSession(false));
+  document.getElementById("athleteCloudCompleteSession").addEventListener("click",()=>saveAthleteCloudSession(true));
+  document.getElementById("athleteOpenLocalPlan").addEventListener("click",()=>switchAthleteTab("summary"));
+
+  document.querySelectorAll(".tab").forEach(btn=>btn.addEventListener("click",()=>{
+    document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b===btn));
+    document.querySelectorAll(".tabpage").forEach(p=>p.classList.toggle("hidden",p.id!==btn.dataset.tab));
+  }));
+  document.getElementById("weekSelect").addEventListener("change",e=>{state.currentWeek=Number(e.target.value);save();renderAll();});
+  document.getElementById("addWeek").addEventListener("click",()=>{
+    state.weeks.push(blankWeek(state.weeks.length+1)); state.currentWeek=state.weeks.length-1; save(); renderAll();
+  });
+  document.querySelector('[data-path="weekNotes"]').addEventListener("input",e=>{w().weekNotes=e.target.value;save();});
+  document.querySelector('[data-path="day3Notes"]').addEventListener("input",e=>{w().day3Notes=e.target.value;save();});
+  document.getElementById("addRoute").addEventListener("click",()=>{w().routes.push({});save();renderRoutes();});
+  document.getElementById("saveSettings").addEventListener("click",()=>{
+    state.settings.bodyWeight=document.getElementById("bodyWeight").value;
+    state.settings.pull1RM=document.getElementById("pull1RM").value;
+    state.settings.block1RM=Number(document.getElementById("block1RM").value)||50.4;
+    state.settings.rounding=Number(document.getElementById("rounding").value)||0.5;
+    save();renderAll();
+    alert("Massimali salvati e carichi ricalcolati.");
+  });
+
+  document.getElementById("exportData").addEventListener("click",()=>{
+    const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="climbing-log-backup.json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  });
+  document.getElementById("importData").addEventListener("change",async e=>{
+    const f=e.target.files[0]; if(!f)return;
+    try{const x=JSON.parse(await f.text()); if(!x.weeks)throw new Error(); state=x;save();renderAll();alert("Backup importato.");}
+    catch(err){alert("Backup non valido.");}
+    e.target.value="";
+  });
+  document.getElementById("resetData").addEventListener("click",()=>{
+    if(confirm("Cancellare definitivamente tutti i dati salvati su questo dispositivo?")){state=defaultState();save();renderAll();}
+  });
+
+  document.getElementById("toggleAuthMode").addEventListener("click",()=>{
+    setAuthMode(authMode==="signin"?"signup":"signin");
+  });
+
+  document.getElementById("authForm").addEventListener("submit",async e=>{
+    e.preventDefault();
+    const email=document.getElementById("authEmail").value.trim();
+    const password=document.getElementById("authPassword").value;
+    const fullName=document.getElementById("authName").value.trim();
+    const submit=document.getElementById("authSubmit");
+    if(!email || password.length<6){
+      showAuthMessage("Inserisci un'email valida e una password di almeno 6 caratteri.","error");
+      return;
+    }
+    if(authMode==="signup" && !fullName){
+      showAuthMessage("Inserisci nome e cognome.","error");
+      return;
+    }
+    submit.disabled=true;
+    showAuthMessage(authMode==="signup"?"Creazione account…":"Accesso…");
+    try{
+      if(authMode==="signup"){
+        const {data,error}=await sb.auth.signUp({
+          email,password,
+          options:{data:{full_name:fullName},emailRedirectTo:APP_URL}
+        });
+        if(error) throw error;
+        if(data.session){
+          showAuthMessage("Account creato e accesso effettuato.","ok");
+        }else{
+          setAuthMode("signin");
+          showAuthMessage("Account creato. Conferma l'email, poi torna qui e accedi.","ok");
+        }
+      }else{
+        const {error}=await sb.auth.signInWithPassword({email,password});
+        if(error) throw error;
+      }
+    }catch(err){
+      const msg=(err && err.message)?err.message:"Operazione non riuscita.";
+      showAuthMessage(msg,"error");
+    }finally{
+      submit.disabled=false;
+    }
+  });
+
+  document.getElementById("forgotPassword").addEventListener("click",async ()=>{
+    const email=document.getElementById("authEmail").value.trim();
+    if(!email){
+      showAuthMessage("Inserisci prima l'email dell'account da recuperare.","error");
+      document.getElementById("authEmail").focus();
+      return;
+    }
+    const btn=document.getElementById("forgotPassword");
+    btn.disabled=true;
+    showAuthMessage("Invio del link di recupero…");
+    try{
+      const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:APP_URL});
+      if(error) throw error;
+      showAuthMessage("Email inviata. Apri il link ricevuto: tornerai qui per scegliere una nuova password.","ok");
+    }catch(err){
+      showAuthMessage((err&&err.message)?err.message:"Non è stato possibile inviare l'email di recupero.","error");
+    }finally{
+      btn.disabled=false;
+    }
+  });
+
+  document.getElementById("recoveryForm").addEventListener("submit",async e=>{
+    e.preventDefault();
+    const p1=document.getElementById("newPassword").value;
+    const p2=document.getElementById("newPasswordConfirm").value;
+    const btn=document.getElementById("recoverySubmit");
+    if(p1.length<6){
+      showRecoveryMessage("La password deve contenere almeno 6 caratteri.","error");
+      return;
+    }
+    if(p1!==p2){
+      showRecoveryMessage("Le due password non coincidono.","error");
+      return;
+    }
+    btn.disabled=true;
+    showRecoveryMessage("Aggiornamento password…");
+    try{
+      const {error}=await sb.auth.updateUser({password:p1});
+      if(error) throw error;
+      await sb.auth.signOut();
+      recoveryMode=false;
+      history.replaceState({},document.title,APP_URL);
+      showStandardAuth();
+      setAuthMode("signin");
+      document.getElementById("authPassword").value="";
+      document.getElementById("newPassword").value="";
+      document.getElementById("newPasswordConfirm").value="";
+      showLoggedOut();
+      showAuthMessage("Password aggiornata. Ora puoi accedere con la nuova password.","ok");
+    }catch(err){
+      showRecoveryMessage((err&&err.message)?err.message:"Non è stato possibile aggiornare la password.","error");
+    }finally{
+      btn.disabled=false;
+    }
+  });
+
+
+  document.querySelectorAll(".coach-tab").forEach(btn=>btn.addEventListener("click",()=>coachGo(btn.dataset.coachTab)));
+  document.querySelectorAll("[data-go-coach]").forEach(btn=>btn.addEventListener("click",()=>coachGo(btn.dataset.goCoach)));
+  document.getElementById("coachAthletesList").addEventListener("click",e=>{
+    const b=e.target.closest(".open-athlete"); if(b) openCoachAthlete(b.dataset.athleteId);
+  });
+
+  document.getElementById("coachProgramsList").addEventListener("click",e=>{
+    const b=e.target.closest(".open-program"); if(b) openCoachProgram(b.dataset.programId);
+  });
+  document.getElementById("coachDetailProgramList").addEventListener("click",e=>{
+    const b=e.target.closest(".open-detail-program"); if(b) openCoachProgram(b.dataset.programId);
+  });
+  document.getElementById("coachBackPrograms").addEventListener("click",()=>closeCoachProgramBuilder(true));
+  document.getElementById("coachPublishProgram").addEventListener("click",async ()=>{
+    const p=selectedProgram();if(!p||p.status!=="draft")return;
+    const btn=document.getElementById("coachPublishProgram");btn.disabled=true;
+    try{
+      const {error}=await sb.from("programs").update({status:"active"}).eq("id",p.id);if(error)throw error;
+      p.status="active";renderCoachProgramBuilder();await loadCoachDashboard();
+      alert("Programma pubblicato. Ora è visibile nell'account dell'atleta.");
+    }catch(err){alert(err?.message||"Non è stato possibile pubblicare il programma.");}
+    finally{btn.disabled=false;}
+  });
+  document.getElementById("coachWeeksList").addEventListener("click",e=>{
+    const b=e.target.closest(".open-week"); if(b) openCoachWeek(b.dataset.weekId);
+  });
+  document.getElementById("coachSessionsList").addEventListener("click",e=>{
+    const b=e.target.closest(".open-session"); if(b) openCoachSession(b.dataset.sessionId);
+  });
+  document.getElementById("coachCloseWeek").addEventListener("click",()=>{
+    coachState.selectedWeekId=null;coachState.selectedSessionId=null;
+    document.getElementById("coachWeekDetail").classList.add("hidden");
+    document.getElementById("coachSessionDetail").classList.add("hidden");
+    renderCoachProgramBuilder();
+  });
+  document.getElementById("coachCloseSession").addEventListener("click",()=>{
+    coachState.selectedSessionId=null;document.getElementById("coachSessionDetail").classList.add("hidden");renderCoachWeekDetail();
+  });
+  document.getElementById("coachRxLibrary").addEventListener("change",()=>{
+    const id=document.getElementById("coachRxLibrary").value;
+    const item=coachState.library.find(x=>x.id===id);
+    if(!item)return;
+    document.getElementById("coachRxName").value=item.name||"";
+    document.getElementById("coachRxInstructions").value=item.default_instructions||"";
+    const p=item.default_prescription||{};
+    if(p.sets) document.getElementById("coachRxSets").value=p.sets;
+    if(p.dose) document.getElementById("coachRxDose").value=p.dose;
+    if(p.load_type) document.getElementById("coachRxLoadType").value=p.load_type;
+    if(p.load_value!==undefined&&p.load_value!==null) document.getElementById("coachRxLoadValue").value=p.load_value;
+    if(p.unit) document.getElementById("coachRxUnit").value=p.unit;
+  });
+
+  document.getElementById("coachBackAthletes").addEventListener("click",()=>{
+    coachState.selectedAthleteId=null;
+    document.getElementById("coachAthleteDetail").classList.add("hidden");
+    document.getElementById("coachAthleteListView").classList.remove("hidden");
+  });
+  document.getElementById("coachDetailNewProgram").addEventListener("click",()=>{
+    if(coachState.selectedAthleteId) document.getElementById("coachProgramAthlete").value=coachState.selectedAthleteId;
+    coachGo("coachPrograms");
+    document.getElementById("coachProgramName").focus();
+  });
+  function retestComing(){
+    alert("Il modulo completo Retest con inserimento metriche e grafici sarà il prossimo step. La struttura dati è già attiva.");
+    coachGo("coachRetests");
+  }
+  document.getElementById("coachDetailNewRetest").addEventListener("click",retestComing);
+  document.getElementById("coachNewRetest").addEventListener("click",retestComing);
+
+
+  document.getElementById("coachWeekForm").addEventListener("submit",async e=>{
+    e.preventDefault();
+    const p=selectedProgram(); if(!p)return;
+    const num=Number(document.getElementById("coachWeekNumber").value);
+    if(!(num>0)){setCoachMessage("coachWeekMessage","Inserisci un numero settimana valido.","error");return;}
+    const btn=document.getElementById("coachWeekSubmit");btn.disabled=true;setCoachMessage("coachWeekMessage","Salvataggio…");
+    try{
+      const payload={program_id:p.id,week_number:num,block_name:document.getElementById("coachWeekBlock").value.trim()||null,phase:document.getElementById("coachWeekPhase").value.trim()||null,start_date:document.getElementById("coachWeekStart").value||null,status:document.getElementById("coachWeekStatus").value,notes:document.getElementById("coachWeekNotes").value.trim()||null};
+      const {data,error}=await sb.from("training_weeks").insert(payload).select("id").single();if(error)throw error;
+      document.getElementById("coachWeekForm").reset();setCoachMessage("coachWeekMessage","Settimana aggiunta.","ok");
+      await loadCoachProgramStructure(); if(data?.id) openCoachWeek(data.id);
+    }catch(err){setCoachMessage("coachWeekMessage",err?.message||"Errore salvataggio settimana.","error");}
+    finally{btn.disabled=false;}
+  });
+
+  document.getElementById("coachSessionForm").addEventListener("submit",async e=>{
+    e.preventDefault();
+    const w=selectedWeek();if(!w)return;
+    const title=document.getElementById("coachSessionName").value.trim();if(!title){setCoachMessage("coachSessionMessage","Inserisci il titolo della sessione.","error");return;}
+    const localSessions=coachState.sessions.filter(x=>x.training_week_id===w.id);
+    const btn=document.getElementById("coachSessionSubmit");btn.disabled=true;setCoachMessage("coachSessionMessage","Salvataggio…");
+    try{
+      const dur=Number(document.getElementById("coachSessionDuration").value);
+      const payload={training_week_id:w.id,session_order:nextOrder(localSessions,"session_order"),title,objective:document.getElementById("coachSessionObjective").value.trim()||null,duration_minutes:dur>0?dur:null,coach_notes:document.getElementById("coachSessionNotes").value.trim()||null};
+      const {data,error}=await sb.from("sessions").insert(payload).select("id").single();if(error)throw error;
+      document.getElementById("coachSessionForm").reset();setCoachMessage("coachSessionMessage","Sessione aggiunta.","ok");
+      await loadCoachProgramStructure();coachState.selectedWeekId=w.id;if(data?.id) openCoachSession(data.id);
+    }catch(err){setCoachMessage("coachSessionMessage",err?.message||"Errore salvataggio sessione.","error");}
+    finally{btn.disabled=false;}
+  });
+
+  document.getElementById("coachSessionExerciseForm").addEventListener("submit",async e=>{
+    e.preventDefault();
+    const session=selectedSession();if(!session)return;
+    const name=document.getElementById("coachRxName").value.trim();if(!name){setCoachMessage("coachRxMessage","Inserisci il nome dell'esercizio.","error");return;}
+    const exs=coachState.sessionExercises.filter(x=>x.session_id===session.id);
+    const sets=Number(document.getElementById("coachRxSets").value);
+    const rest=Number(document.getElementById("coachRxRest").value);
+    const rpeMin=document.getElementById("coachRxRpeMin").value;
+    const rpeMax=document.getElementById("coachRxRpeMax").value;
+    if(rpeMin!==""&&rpeMax!==""&&Number(rpeMin)>Number(rpeMax)){setCoachMessage("coachRxMessage","RPE minimo non può superare RPE massimo.","error");return;}
+    const loadType=document.getElementById("coachRxLoadType").value;
+    const libraryId=document.getElementById("coachRxLibrary").value||null;
+    const btn=document.getElementById("coachRxSubmit");btn.disabled=true;setCoachMessage("coachRxMessage","Salvataggio…");
+    try{
+      const prescription={sets:sets>0?sets:null,dose:document.getElementById("coachRxDose").value.trim()||null,load_type:loadType,load_value:document.getElementById("coachRxLoadValue").value.trim()||null,unit:document.getElementById("coachRxUnit").value||null};
+      const calculation_context={load_basis:loadBasisForType(loadType),load_type:loadType,distinguish_total_vs_external:true};
+      const payload={session_id:session.id,exercise_id:libraryId,exercise_order:nextOrder(exs,"exercise_order"),exercise_name:name,prescription,calculation_context,target_rpe_min:rpeMin===""?null:Number(rpeMin),target_rpe_max:rpeMax===""?null:Number(rpeMax),rest_seconds:document.getElementById("coachRxRest").value===""?null:Math.max(0,rest),instructions:document.getElementById("coachRxInstructions").value.trim()||null};
+      const {error}=await sb.from("session_exercises").insert(payload);if(error)throw error;
+      document.getElementById("coachSessionExerciseForm").reset();document.getElementById("coachRxLoadType").value="not_applicable";setCoachMessage("coachRxMessage","Esercizio aggiunto alla sessione.","ok");
+      const keepSession=session.id,keepWeek=session.training_week_id;await loadCoachProgramStructure();coachState.selectedWeekId=keepWeek;coachState.selectedSessionId=keepSession;renderCoachProgramBuilder();
+    }catch(err){setCoachMessage("coachRxMessage",err?.message||"Errore salvataggio esercizio.","error");}
+    finally{btn.disabled=false;}
+  });
+
+  document.getElementById("coachProgramForm").addEventListener("submit",async e=>{
+    e.preventDefault();
+    if(!currentUser || currentProfile?.role!=="coach") return;
+    const athleteId=document.getElementById("coachProgramAthlete").value;
+    const name=document.getElementById("coachProgramName").value.trim();
+    if(!athleteId || !name){ setCoachMessage("coachProgramMessage","Seleziona atleta e nome programma.","error"); return; }
+    const btn=document.getElementById("coachProgramSubmit"); btn.disabled=true;
+    setCoachMessage("coachProgramMessage","Salvataggio…");
+    try{
+      const payload={
+        athlete_id:athleteId,coach_id:currentUser.id,name,
+        goal:document.getElementById("coachProgramGoal").value.trim()||null,
+        status:document.getElementById("coachProgramStatus").value,
+        start_date:document.getElementById("coachProgramStart").value||null,
+        end_date:document.getElementById("coachProgramEnd").value||null
+      };
+      const {data,error}=await sb.from("programs").insert(payload).select("id").single();
+      if(error) throw error;
+      document.getElementById("coachProgramForm").reset();
+      setCoachMessage("coachProgramMessage","Programma creato nel cloud.","ok");
+      await loadCoachDashboard();
+      if(data?.id) await openCoachProgram(data.id);
+    }catch(err){
+      setCoachMessage("coachProgramMessage",(err&&err.message)?err.message:"Errore durante il salvataggio.","error");
+    }finally{ btn.disabled=false; }
+  });
+
+  document.getElementById("coachLibraryForm").addEventListener("submit",async e=>{
+    e.preventDefault();
+    if(!currentUser || currentProfile?.role!=="coach") return;
+    const name=document.getElementById("coachExerciseName").value.trim();
+    if(!name){ setCoachMessage("coachLibraryMessage","Inserisci il nome dell'esercizio.","error"); return; }
+    const btn=document.getElementById("coachLibrarySubmit"); btn.disabled=true;
+    setCoachMessage("coachLibraryMessage","Salvataggio…");
+    try{
+      const payload={
+        coach_id:currentUser.id,name,
+        category:document.getElementById("coachExerciseCategory").value.trim()||null,
+        modality:document.getElementById("coachExerciseModality").value.trim()||null,
+        description:document.getElementById("coachExerciseDescription").value.trim()||null,
+        default_instructions:document.getElementById("coachExerciseInstructions").value.trim()||null,
+        default_prescription:{}
+      };
+      const {error}=await sb.from("exercise_library").insert(payload);
+      if(error) throw error;
+      document.getElementById("coachLibraryForm").reset();
+      setCoachMessage("coachLibraryMessage","Esercizio aggiunto alla libreria.","ok");
+      await loadCoachDashboard();
+    }catch(err){
+      setCoachMessage("coachLibraryMessage",(err&&err.message)?err.message:"Errore durante il salvataggio.","error");
+    }finally{ btn.disabled=false; }
+  });
+
+  async function doLogout(){
+    await sb.auth.signOut();
+    state=defaultState();
+  }
+  document.getElementById("logoutBtn").addEventListener("click",doLogout);
+  document.getElementById("coachLogoutBtn").addEventListener("click",doLogout);
+
+  document.getElementById("importLegacy").addEventListener("click",()=>{
+    try{
+      const x=getLegacyState();
+      if(!x || !x.weeks) throw new Error();
+      state=x;
+      save();
+      renderAll();
+      maybeShowLegacyImport();
+      alert("Dati precedenti importati nel profilo locale.");
+    }catch(err){
+      alert("Non è stato possibile importare i dati precedenti.");
+    }
+  });
+
+  if("serviceWorker" in navigator && location.protocol.startsWith("http")){
+    navigator.serviceWorker.register("./sw.js").catch(()=>{});
+  }
+  setAuthMode("signin");
+  initAuth();
+})();
+</script>
+</body>
+</html>

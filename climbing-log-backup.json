@@ -1,0 +1,143 @@
+{
+  "version": 1,
+  "settings": {
+    "bodyWeight": "",
+    "pull1RM": "",
+    "block1RM": 50.4,
+    "rounding": 0.5
+  },
+  "currentWeek": 0,
+  "weeks": [
+    {
+      "name": "Settimana 1",
+      "weekNotes": "",
+      "day3Notes": "",
+      "routes": [],
+      "ex": {
+        "d1_pull": {
+          "done": [],
+          "actualLoad": "",
+          "rpe": "",
+          "notes": "",
+          "setActual": [],
+          "ana": []
+        },
+        "d1_lock": {
+          "done": [],
+          "actualLoad": "",
+          "rpe": "",
+          "notes": "",
+          "setActual": [],
+          "ana": []
+        },
+        "d1_block": {
+          "done": [],
+          "actualLoad": "",
+          "rpe": "",
+          "notes": "",
+          "setActual": [],
+          "ana": []
+        },
+        "d1_oh": {
+          "done": [],
+          "actualLoad": "",
+          "rpe": "",
+          "notes": "",
+          "setActual": [],
+          "ana": []
+        },
+        "d1_pyr": {
+          "done": [],
+          "actualLoad": "",
+          "rpe": "",
+          "notes": "",
+          "setActual": [],
+          "ana": []
+        },
+        "d2_block": {
+          "done": [
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "actualLoad": "",
+          "rpe": "",
+          "notes": "",
+          "setActual": [],
+          "ana": []
+        },
+        "d2_oh": {
+          "done": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "actualLoad": "",
+          "rpe": "",
+          "notes": "",
+          "setActual": [],
+          "ana": []
+        },
+        "d2_wall": {
+          "done": [
+            true,
+            true,
+            true,
+            true
+          ],
+          "actualLoad": "",
+          "rpe": "",
+          "notes": "",
+          "setActual": [],
+          "ana": []
+        },
+        "d2_ana": {
+          "done": [],
+          "actualLoad": "",
+          "rpe": "",
+          "notes": "",
+          "setActual": [],
+          "ana": [
+            {
+              "done": false,
+              "time": "",
+              "rest": "",
+              "rpe": ""
+            },
+            {
+              "done": false,
+              "time": "",
+              "rest": "",
+              "rpe": ""
+            },
+            {
+              "done": false,
+              "time": "",
+              "rest": "",
+              "rpe": ""
+            },
+            {
+              "done": false,
+              "time": "",
+              "rest": "",
+              "rpe": ""
+            }
+          ]
+        },
+        "d2_pan": {
+          "done": [],
+          "actualLoad": "",
+          "rpe": "",
+          "notes": "",
+          "setActual": [],
+          "ana": []
+        }
+      }
+    }
+  ]
+}
