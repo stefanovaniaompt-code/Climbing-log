@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#5B2C83">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Climbing Log — Stefano</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <style>
+    :root{
+      --purple:#5B2C83; --purple2:#7E57A6; --lav:#EEE7F4;
+      --ink:#202124; --muted:#6b6870; --line:#ded9e4;
+      --ok:#19764a; --warn:#9b5a00; --bg:#f7f5f8; --card:#fff;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+    header{background:var(--purple);color:white;padding:18px 16px 14px;position:sticky;top:0;z-index:10}
+    header h1{font-size:20px;margin:0 0 4px}
+    header p{font-size:13px;opacity:.88;margin:0}
+    main{max-width:900px;margin:auto;padding:14px 12px 40px}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+    button,select,input,textarea{font:inherit}
+    button{border:0;border-radius:11px;padding:11px 13px;min-height:44px;background:var(--purple);color:white;font-weight:700}
+    button.secondary{background:white;color:var(--purple);border:1px solid var(--line)}
+    button.danger{background:#8c2b2b}
+    select,input[type="number"],input[type="text"],textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;background:white;min-height:44px}
+    textarea{min-height:72px;resize:vertical}
+    .weekbar{display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:12px}
+    .panel,.exercise{background:var(--card);border:1px solid var(--line);border-radius:14px;margin:10px 0;padding:14px}
+    .panel h2,.exercise h3{margin:0 0 8px}
+    .panel h2{font-size:18px;color:var(--purple)}
+    .exercise h3{font-size:16px}
+    .small{font-size:12px;color:var(--muted)}
+    .rx{background:var(--lav);border-radius:10px;padding:10px;margin:8px 0;font-size:14px}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    @media(max-width:620px){.grid2,.grid3{grid-template-columns:1fr}}
+    label{display:block;font-size:12px;color:var(--muted);margin:8px 0 4px}
+    .checkrow{display:grid;grid-template-columns:28px 1fr 90px;gap:8px;align-items:center;padding:7px 0;border-top:1px solid #eee}
+    .checkrow:first-child{border-top:0}
+    input[type="checkbox"]{width:22px;height:22px;accent-color:var(--purple)}
+    .metric{background:#faf9fb;border:1px solid var(--line);border-radius:10px;padding:10px}
+    .metric b{display:block;font-size:18px;color:var(--purple)}
+    .status{display:flex;gap:8px;flex-wrap:wrap}
+    .pill{display:inline-block;border-radius:999px;padding:5px 9px;background:var(--lav);font-size:12px}
+    .pill.ok{background:#e6f4ec;color:var(--ok)}
+    .pill.warn{background:#fff0da;color:var(--warn)}
+    nav{display:flex;gap:6px;overflow:auto;margin-bottom:10px}
+    nav button{white-space:nowrap;background:white;color:var(--purple);border:1px solid var(--line)}
+    nav button.active{background:var(--purple);color:white}
+    .hidden{display:none!important}
+    .setline{display:grid;grid-template-columns:32px 1fr 1fr;gap:8px;align-items:center}
+    .setline span{font-size:13px}
+    .summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    @media(max-width:520px){.summary{grid-template-columns:1fr}}
+    .route{border-top:1px solid #eee;padding-top:10px;margin-top:10px}
+    .notice{border-left:4px solid var(--warn);padding:10px;background:#fff7e9;border-radius:8px;font-size:13px}
+    footer{font-size:11px;color:var(--muted);padding-top:18px;text-align:center}
+  </style>
+</head>
+<body>
+<header>
+  <h1>Climbing Log</h1>
+  <p>Blocco 1 · Fase carico · scheda coach</p>
+</header>
+<main id="app">
+  <div class="weekbar">
+    <select id="weekSelect" aria-label="Seleziona settimana"></select>
+    <button id="addWeek">+ Settimana</button>
+  </div>
+
+  <nav>
+    <button class="tab active" data-tab="summary">Riepilogo</button>
+    <button class="tab" data-tab="day1">Giorno 1</button>
+    <button class="tab" data-tab="day2">Giorno 2</button>
+    <button class="tab" data-tab="day3">Giorno 3</button>
+    <button class="tab" data-tab="settings">Massimali</button>
+    <button class="tab" data-tab="backup">Backup</button>
+  </nav>
+
+  <section id="summary" class="tabpage">
+    <div class="panel">
+      <h2>Settimana</h2>
+      <div class="summary">
+        <div class="metric"><span class="small">Completamento</span><b id="completion">0%</b></div>
+        <div class="metric"><span class="small">Target trazioni 70%</span><b id="pullTarget">—</b></div>
+        <div class="metric"><span class="small">1RM Block Lift</span><b id="blockMaxLabel">50,4 kg</b></div>
+      </div>
+      <label>Note generali settimana</label>
+      <textarea data-path="weekNotes" placeholder="Sensazioni, recupero, sonno, dolore, modifiche..."></textarea>
+    </div>
+    <div class="panel">
+      <h2>Block Lifting — carichi già calcolati</h2>
+      <div id="blockTable"></div>
+      <p class="small">I carichi pratici sono arrotondati all'incremento scelto in “Massimali”. Il valore esatto resta sempre visibile.</p>
+    </div>
+  </section>
+
+  <section id="day1" class="tabpage hidden">
+    <div class="exercise" data-ex="d1_pull">
+      <h3>Trazioni · 70% 1RM</h3>
+      <div class="rx">4 × 4 · recupero 2'00" · salita ≤ 1 s</div>
+      <div class="status"><span class="pill" id="d1PullLoad">Inserisci 1RM trazioni</span></div>
+      <div class="sets" data-sets="4"></div>
+      <label>Carico realmente usato (kg zavorra / assistenza)</label><input type="number" step="0.1" data-field="actualLoad">
+      <label>RPE sessione</label><input type="number" min="1" max="10" step="0.5" data-field="rpe">
+      <label>Note</label><textarea data-field="notes"></textarea>
+    </div>
+
+    <div class="exercise" data-ex="d1_lock">
+      <h3>Bloccaggi 5" a 90° su manopole</h3>
+      <div class="rx">BW · 4 × 6 · recupero 1'00"</div>
+      <div class="sets" data-sets="4"></div>
+      <label>RPE</label><input type="number" min="1" max="10" step="0.5" data-field="rpe">
+      <label>Note</label><textarea data-field="notes"></textarea>
+    </div>
+
+    <div class="exercise" data-ex="d1_block">
+      <h3>Intentional Block Lifting</h3>
+      <div class="rx">60%×10 · 65%×8 · 70%×6 · 75%×4 · 85%×3 · recupero 2–3'</div>
+      <div class="progressiveSets"></div>
+      <label>RPE finale</label><input type="number" min="1" max="10" step="0.5" data-field="rpe">
+      <label>Note</label><textarea data-field="notes"></textarea>
+    </div>
+
+    <div class="exercise" data-ex="d1_oh">
+      <h3>Open Hand iso Grip</h3>
+      <div class="rx">31 kg · 6 × 10" · recupero 2'00" · trave dal basso, tacca 2 cm + pesi</div>
+      <div class="sets" data-sets="6"></div>
+      <label>Carico realmente usato (kg)</label><input type="number" step="0.1" data-field="actualLoad" value="">
+      <label>RPE</label><input type="number" min="1" max="10" step="0.5" data-field="rpe">
+      <label>Note</label><textarea data-field="notes"></textarea>
+    </div>
+
+    <div class="exercise" data-ex="d1_pyr">
+      <h3>Piramidale di forza</h3>
+      <div class="rx">Moonboard 25° / leggero strapiombo · 4–2–1–1–2–4 · recupero 4'</div>
+      <p class="small">4 = blocchi a vista · 2 = chiudibili a vista ma molto faticosi · 1 = blocco limite non chiuso.</p>
+      <div class="pyramidSets"></div>
+      <label>RPE</label><input type="number" min="1" max="10" step="0.5" data-field="rpe">
+      <label>Note</label><textarea data-field="notes"></textarea>
+    </div>
+  </section>
+
+  <section id="day2" class="tabpage hidden">
+    <div class="exercise" data-ex="d2_block">
+      <h3>Intentional Block Lifting</h3>
+      <div class="rx">60%×10 · 65%×8 · 70%×6 · 75%×4 · 85%×3 · recupero 2–3'</div>
+      <div class="progressiveSets"></div>
+      <label>RPE finale</label><input type="number" min="1" max="10" step="0.5" data-field="rpe">
+      <label>Note</label><textarea data-field="notes"></textarea>
+    </div>
+
+    <div class="exercise" data-ex="d2_oh">
+      <h3>Open Hand iso Grip</h3>
+      <div class="rx">31 kg · 6 × 10" · recupero 2'00" · trave dal basso, tacca 2 cm + pesi</div>
+      <div class="sets" data-sets="6"></div>
+      <label>Carico realmente usato (kg)</label><input type="number" step="0.1" data-field="actualLoad">
+      <label>RPE</label><input type="number" min="1" max="10" step="0.5" data-field="rpe">
+      <label>Note</label><textarea data-field="notes"></textarea>
+    </div>
+
+    <div class="exercise" data-ex="d2_wall">
+      <h3>Wall Crawl</h3>
+      <div class="rx">4 serie · 5–7 prese · recupero 2'00"</div>
+      <p class="small">Scala lento e controllato. Mantieni ogni presa 5–6". Verticale e traverso, non in discesa.</p>
+      <div class="sets" data-sets="4"></div>
+      <label>Prese effettive per serie / note tecniche</label><textarea data-field="notes"></textarea>
+    </div>
+
+    <div class="exercise" data-ex="d2_ana">
+      <h3>Anaerobic Capacity</h3>
+      <div class="rx">4 set fino a muscular failure · RPE 5–7/10 · registra il tempo totale a parete</div>
+      <p class="small">Riparti quando ti senti recuperato all'89–90%. Aumenta del 10% il tempo di riposo a ogni set.</p>
+      <div id="anaSets"></div>
+      <label>Note</label><textarea data-field="notes"></textarea>
+    </div>
+
+    <div class="exercise" data-ex="d2_pan">
+      <h3>Opzionale · Pan Gullich</h3>
+      <div class="rx">BW · tacca 2,5 cm · PDF: “4 rep (2 per braccio)” · recupero 1–2'</div>
+      <div class="notice">Da confermare: nella colonna “Ripetizioni” del PDF compare <b>05-Sep</b>, verosimilmente una conversione automatica di Excel. Non è stato interpretato.</div>
+      <div class="sets" data-sets="4"></div>
+      <label>Dato corretto / note</label><textarea data-field="notes" placeholder="Quando chiarito, scrivi qui il protocollo corretto."></textarea>
+    </div>
+  </section>
+
+  <section id="day3" class="tabpage hidden">
+    <div class="panel">
+      <h2>Scalata libera · palestra / outdoor</h2>
+      <div id="routes"></div>
+      <button id="addRoute" class="secondary">+ Aggiungi via</button>
+      <label>Note sessione</label><textarea data-path="day3Notes"></textarea>
+    </div>
+  </section>
+
+  <section id="settings" class="tabpage hidden">
+    <div class="panel">
+      <h2>Massimali e calcoli</h2>
+      <div class="grid2">
+        <div>
+          <label>Peso corporeo del test (kg)</label>
+          <input id="bodyWeight" type="number" step="0.1" placeholder="es. 73,0">
+        </div>
+        <div>
+          <label>1RM trazioni — zavorra aggiunta (kg)</label>
+          <input id="pull1RM" type="number" step="0.1" placeholder="da inserire dopo il test">
+        </div>
+        <div>
+          <label>1RM Intentional Block Lift (kg)</label>
+          <input id="block1RM" type="number" step="0.1" value="50.4">
+        </div>
+        <div>
+          <label>Arrotondamento carichi (kg)</label>
+          <select id="rounding"><option value="0.1">0,1</option><option value="0.5" selected>0,5</option><option value="1">1,0</option></select>
+        </div>
+      </div>
+      <div class="rx">
+        <b>Formula trazioni predefinita:</b><br>
+        target esterno = 70% × (peso corporeo + zavorra 1RM) − peso corporeo.
+        Se il risultato è negativo, l'app mostra l'assistenza necessaria.
+      </div>
+      <button id="saveSettings">Salva massimali</button>
+    </div>
+  </section>
+
+  <section id="backup" class="tabpage hidden">
+    <div class="panel">
+      <h2>Backup dati</h2>
+      <p class="small">I dati restano salvati localmente sul dispositivo/browser. Esporta periodicamente un backup JSON.</p>
+      <div class="toolbar">
+        <button id="exportData">Esporta backup</button>
+        <label class="secondary" style="display:inline-flex;align-items:center;padding:11px 13px;border:1px solid var(--line);border-radius:11px;color:var(--purple);font-weight:700;cursor:pointer">
+          Importa backup
+          <input id="importData" type="file" accept=".json,application/json" style="display:none">
+        </label>
+        <button id="resetData" class="danger">Azzera dati</button>
+      </div>
+    </div>
+  </section>
+
+  <footer>Programma trascritto dalla scheda PDF della coach. Nessuna modifica autonoma alla prescrizione.</footer>
+</main>
+<script>
+(() => {
+  const PLAN_VERSION = 1;
+  const STORE_KEY = "stefano-climbing-log-v1";
+  const blockPct = [
+    {pct:60,reps:10},{pct:65,reps:8},{pct:70,reps:6},{pct:75,reps:4},{pct:85,reps:3}
+  ];
+  const pyr = [
+    {n:4,label:"a vista"},{n:2,label:"molto faticosi / possibile caduta"},
+    {n:1,label:"limite, non chiuso"},{n:1,label:"limite, non chiuso"},
+    {n:2,label:"molto faticosi / possibile caduta"},{n:4,label:"a vista"}
+  ];
+
+  function blankWeek(i){
+    return {name:`Settimana ${i}`, weekNotes:"", day3Notes:"", routes:[], ex:{}};
+  }
+  function defaultState(){
+    return {version:PLAN_VERSION, settings:{bodyWeight:"",pull1RM:"",block1RM:50.4,rounding:0.5}, currentWeek:0, weeks:[blankWeek(1)]};
+  }
+  let state = load();
+  function load(){
+    try{
+      const x = JSON.parse(localStorage.getItem(STORE_KEY));
+      if(x && x.weeks) return x;
+    }catch(e){}
+    return defaultState();
+  }
+  function save(){ localStorage.setItem(STORE_KEY, JSON.stringify(state)); updateSummary(); }
+  function w(){ return state.weeks[state.currentWeek]; }
+  function ex(id){
+    if(!w().ex[id]) w().ex[id]={done:[],actualLoad:"",rpe:"",notes:"",setActual:[],ana:[]};
+    return w().ex[id];
+  }
+  function roundLoad(v){
+    const inc = Number(state.settings.rounding)||0.5;
+    return Math.round(v/inc)*inc;
+  }
+  function fmt(v,d=1){
+    if(v===null || v===undefined || Number.isNaN(Number(v))) return "—";
+    return Number(v).toLocaleString("it-IT",{minimumFractionDigits:d,maximumFractionDigits:d});
+  }
+  function pullTarget(){
+    const bw=Number(state.settings.bodyWeight), rm=Number(state.settings.pull1RM);
+    if(!(bw>0) || !(rm>=0)) return null;
+    return .70*(bw+rm)-bw;
+  }
+
+  function renderWeeks(){
+    const s=document.getElementById("weekSelect"); s.innerHTML="";
+    state.weeks.forEach((x,i)=>{ const o=document.createElement("option");o.value=i;o.textContent=x.name;s.appendChild(o);});
+    s.value=state.currentWeek;
+  }
+
+  function renderSimpleSets(container, exid, n){
+    const e=ex(exid); container.innerHTML="";
+    for(let i=0;i<n;i++){
+      const row=document.createElement("div"); row.className="checkrow";
+      row.innerHTML=`<input type="checkbox" aria-label="Serie ${i+1} completata"><span>Serie ${i+1}</span><input type="number" step="0.1" placeholder="kg">`;
+      const cb=row.children[0], kg=row.children[2];
+      cb.checked=!!e.done[i]; kg.value=e.setActual[i]??"";
+      cb.addEventListener("change",()=>{e.done[i]=cb.checked;save();});
+      kg.addEventListener("input",()=>{e.setActual[i]=kg.value;save();});
+      container.appendChild(row);
+    }
+  }
+
+  function renderProgressive(container, exid){
+    const e=ex(exid); container.innerHTML="";
+    const max=Number(state.settings.block1RM)||50.4;
+    blockPct.forEach((s,i)=>{
+      const exact=max*s.pct/100, practical=roundLoad(exact);
+      const row=document.createElement("div"); row.className="checkrow";
+      row.innerHTML=`<input type="checkbox" aria-label="${s.pct}% completato"><span><b>${s.pct}% × ${s.reps}</b><br><small>${fmt(exact)} kg esatto · ${fmt(practical)} kg pratico</small></span><input type="number" step="0.1" placeholder="usato">`;
+      const cb=row.children[0], actual=row.children[2];
+      cb.checked=!!e.done[i]; actual.value=e.setActual[i]??"";
+      cb.addEventListener("change",()=>{e.done[i]=cb.checked;save();});
+      actual.addEventListener("input",()=>{e.setActual[i]=actual.value;save();});
+      container.appendChild(row);
+    });
+  }
+
+  function renderPyramid(container){
+    const e=ex("d1_pyr"); container.innerHTML="";
+    pyr.forEach((s,i)=>{
+      const row=document.createElement("div"); row.className="checkrow";
+      row.innerHTML=`<input type="checkbox"><span><b>${s.n} blocco${s.n>1?"i":""}</b> · ${s.label}</span><input type="text" placeholder="grado">`;
+      const cb=row.children[0], grade=row.children[2];
+      cb.checked=!!e.done[i]; grade.value=e.setActual[i]??"";
+      cb.addEventListener("change",()=>{e.done[i]=cb.checked;save();});
+      grade.addEventListener("input",()=>{e.setActual[i]=grade.value;save();});
+      container.appendChild(row);
+    });
+  }
+
+  function renderAna(){
+    const e=ex("d2_ana"), box=document.getElementById("anaSets"); box.innerHTML="";
+    for(let i=0;i<4;i++){
+      if(!e.ana[i]) e.ana[i]={done:false,time:"",rest:"",rpe:""};
+      const a=e.ana[i], row=document.createElement("div");row.className="panel";
+      row.style.padding="10px";
+      row.innerHTML=`<div class="setline"><input type="checkbox"><span><b>Set ${i+1}</b></span><span></span></div>
+        <div class="grid3">
+          <div><label>Tempo a parete</label><input type="number" step="1" min="0" placeholder="sec"></div>
+          <div><label>Recupero</label><input type="number" step="1" min="0" placeholder="sec"></div>
+          <div><label>RPE</label><input type="number" step="0.5" min="1" max="10"></div>
+        </div>`;
+      const inputs=row.querySelectorAll("input"); inputs[0].checked=a.done;inputs[1].value=a.time;inputs[2].value=a.rest;inputs[3].value=a.rpe;
+      inputs[0].addEventListener("change",()=>{a.done=inputs[0].checked;save();});
+      inputs[1].addEventListener("input",()=>{a.time=inputs[1].value;save();});
+      inputs[2].addEventListener("input",()=>{a.rest=inputs[2].value;save();});
+      inputs[3].addEventListener("input",()=>{a.rpe=inputs[3].value;save();});
+      box.appendChild(row);
+    }
+  }
+
+  function renderRoutes(){
+    const box=document.getElementById("routes"); box.innerHTML="";
+    w().routes.forEach((r,i)=>{
+      const d=document.createElement("div");d.className="route";
+      d.innerHTML=`<div class="grid3">
+        <div><label>Via / settore</label><input type="text" data-k="name"></div>
+        <div><label>Grado</label><input type="text" data-k="grade"></div>
+        <div><label>Tentativi</label><input type="number" min="1" data-k="tries"></div>
+      </div>
+      <div class="grid2">
+        <div><label>Esito</label><select data-k="result"><option value="">—</option><option>Flash / a vista</option><option>Chiusa</option><option>Non chiusa</option></select></div>
+        <div><label>RPE</label><input type="number" min="1" max="10" step="0.5" data-k="rpe"></div>
+      </div>
+      <label>Note</label><textarea data-k="notes"></textarea>
+      <button type="button" class="secondary removeRoute">Rimuovi</button>`;
+      d.querySelectorAll("[data-k]").forEach(inp=>{inp.value=r[inp.dataset.k]??"";inp.addEventListener("input",()=>{r[inp.dataset.k]=inp.value;save();});});
+      d.querySelector(".removeRoute").addEventListener("click",()=>{w().routes.splice(i,1);save();renderRoutes();});
+      box.appendChild(d);
+    });
+  }
+
+  function bindExerciseFields(){
+    document.querySelectorAll(".exercise").forEach(card=>{
+      const id=card.dataset.ex, e=ex(id);
+      card.querySelectorAll("[data-field]").forEach(inp=>{
+        const k=inp.dataset.field; inp.value=e[k]??"";
+        inp.oninput=()=>{e[k]=inp.value;save();};
+      });
+    });
+  }
+
+  function renderBlockTable(){
+    const max=Number(state.settings.block1RM)||50.4;
+    document.getElementById("blockMaxLabel").textContent=fmt(max)+" kg";
+    const box=document.getElementById("blockTable"); box.innerHTML="";
+    blockPct.forEach(s=>{
+      const exact=max*s.pct/100, practical=roundLoad(exact);
+      const d=document.createElement("div");d.className="checkrow";
+      d.innerHTML=`<span></span><span>${s.pct}% × ${s.reps} rep</span><b>${fmt(practical)} kg</b>`;
+      box.appendChild(d);
+    });
+  }
+
+  function updatePullUI(){
+    const t=pullTarget(), el=document.getElementById("pullTarget"), pill=document.getElementById("d1PullLoad");
+    if(t===null){ el.textContent="—"; pill.textContent="Inserisci peso + 1RM"; pill.className="pill warn"; return; }
+    const practical=roundLoad(Math.abs(t));
+    if(t>=0){
+      el.textContent="+"+fmt(practical)+" kg";
+      pill.textContent=`Target: +${fmt(practical)} kg zavorra (${fmt(t)} esatto)`;
+    }else{
+      el.textContent="−"+fmt(practical)+" kg";
+      pill.textContent=`Target: ${fmt(practical)} kg assistenza (${fmt(Math.abs(t))} esatto)`;
+    }
+    pill.className="pill ok";
+  }
+
+  function updateSummary(){
+    let total=0, done=0;
+    Object.entries(w().ex).forEach(([id,e])=>{
+      if(Array.isArray(e.done)){ total+=e.done.length; done+=e.done.filter(Boolean).length; }
+      if(Array.isArray(e.ana)){ total+=e.ana.length; done+=e.ana.filter(x=>x&&x.done).length; }
+    });
+    document.getElementById("completion").textContent=total?Math.round(done/total*100)+"%":"0%";
+    updatePullUI();
+  }
+
+  function renderAll(){
+    renderWeeks();
+    renderBlockTable();
+    renderSimpleSets(document.querySelector('[data-ex="d1_pull"] .sets'),"d1_pull",4);
+    renderSimpleSets(document.querySelector('[data-ex="d1_lock"] .sets'),"d1_lock",4);
+    renderProgressive(document.querySelector('[data-ex="d1_block"] .progressiveSets'),"d1_block");
+    renderSimpleSets(document.querySelector('[data-ex="d1_oh"] .sets'),"d1_oh",6);
+    renderPyramid(document.querySelector('[data-ex="d1_pyr"] .pyramidSets'));
+    renderProgressive(document.querySelector('[data-ex="d2_block"] .progressiveSets'),"d2_block");
+    renderSimpleSets(document.querySelector('[data-ex="d2_oh"] .sets'),"d2_oh",6);
+    renderSimpleSets(document.querySelector('[data-ex="d2_wall"] .sets'),"d2_wall",4);
+    renderAna();
+    renderSimpleSets(document.querySelector('[data-ex="d2_pan"] .sets'),"d2_pan",4);
+    bindExerciseFields();
+    document.querySelector('[data-path="weekNotes"]').value=w().weekNotes||"";
+    document.querySelector('[data-path="day3Notes"]').value=w().day3Notes||"";
+    document.getElementById("bodyWeight").value=state.settings.bodyWeight??"";
+    document.getElementById("pull1RM").value=state.settings.pull1RM??"";
+    document.getElementById("block1RM").value=state.settings.block1RM??50.4;
+    document.getElementById("rounding").value=state.settings.rounding??0.5;
+    renderRoutes(); updateSummary();
+  }
+
+  document.querySelectorAll(".tab").forEach(btn=>btn.addEventListener("click",()=>{
+    document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b===btn));
+    document.querySelectorAll(".tabpage").forEach(p=>p.classList.toggle("hidden",p.id!==btn.dataset.tab));
+  }));
+  document.getElementById("weekSelect").addEventListener("change",e=>{state.currentWeek=Number(e.target.value);save();renderAll();});
+  document.getElementById("addWeek").addEventListener("click",()=>{
+    state.weeks.push(blankWeek(state.weeks.length+1)); state.currentWeek=state.weeks.length-1; save(); renderAll();
+  });
+  document.querySelector('[data-path="weekNotes"]').addEventListener("input",e=>{w().weekNotes=e.target.value;save();});
+  document.querySelector('[data-path="day3Notes"]').addEventListener("input",e=>{w().day3Notes=e.target.value;save();});
+  document.getElementById("addRoute").addEventListener("click",()=>{w().routes.push({});save();renderRoutes();});
+  document.getElementById("saveSettings").addEventListener("click",()=>{
+    state.settings.bodyWeight=document.getElementById("bodyWeight").value;
+    state.settings.pull1RM=document.getElementById("pull1RM").value;
+    state.settings.block1RM=Number(document.getElementById("block1RM").value)||50.4;
+    state.settings.rounding=Number(document.getElementById("rounding").value)||0.5;
+    save();renderAll();
+    alert("Massimali salvati e carichi ricalcolati.");
+  });
+
+  document.getElementById("exportData").addEventListener("click",()=>{
+    const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="climbing-log-backup.json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  });
+  document.getElementById("importData").addEventListener("change",async e=>{
+    const f=e.target.files[0]; if(!f)return;
+    try{const x=JSON.parse(await f.text()); if(!x.weeks)throw new Error(); state=x;save();renderAll();alert("Backup importato.");}
+    catch(err){alert("Backup non valido.");}
+    e.target.value="";
+  });
+  document.getElementById("resetData").addEventListener("click",()=>{
+    if(confirm("Cancellare definitivamente tutti i dati salvati su questo dispositivo?")){state=defaultState();save();renderAll();}
+  });
+
+  if("serviceWorker" in navigator && location.protocol.startsWith("http")){
+    navigator.serviceWorker.register("./sw.js").catch(()=>{});
+  }
+  renderAll();
+})();
+</script>
+</body>
+</html>
