@@ -1,0 +1,33 @@
+CLIMBING COACH — MONICA ERBESATO — V2.1
+
+NOVITÀ
+- “Password dimenticata?” nella schermata di accesso
+- email di recupero tramite Supabase
+- ritorno automatico alla PWA dal link email
+- schermata “Imposta nuova password”
+- salvataggio della nuova password e ritorno al login
+
+PER AGGIORNARE GITHUB PAGES
+Sostituisci nel repository Climbing-log:
+1. index.html
+2. sw.js
+
+manifest.webmanifest e icone non sono cambiati, ma sono inclusi nello ZIP completo.
+
+Dopo il commit:
+- attendi 1-2 minuti
+- apri il sito in Chrome e ricarica
+- se usi la PWA installata, chiudila completamente e riaprila
+
+TEST PASSWORD
+1. nella schermata Login inserisci l'email
+2. premi “Password dimenticata?”
+3. apri l'email ricevuta
+4. premi il link di recupero
+5. Climbing Coach mostra “Imposta nuova password”
+6. inserisci due volte la nuova password
+7. premi “Salva nuova password”
+8. accedi con la nuova password
+
+Site URL / Redirect URL Supabase:
+https://stefanovaniaompt-code.github.io/Climbing-log/
