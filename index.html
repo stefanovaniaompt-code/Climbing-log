@@ -108,26 +108,10 @@
         <div class="auth-actions">
           <button id="authSubmit" type="submit">Accedi</button>
           <button id="toggleAuthMode" type="button" class="secondary">Crea account atleta</button>
-                  <button id="forgotPassword" type="button" class="secondary">Password dimenticata?</button>
-</div>
+        </div>
       </form>
       <div id="authMessage" class="auth-message" aria-live="polite"></div>
       <p class="small">Gli account creati da questa schermata nascono come profilo atleta. Il ruolo coach viene assegnato in modo protetto.</p>
-    </div>
-
-    <div id="recoveryContent" class="hidden">
-      <h2>Imposta nuova password</h2>
-      <p class="small">Scegli una nuova password per il tuo account Climbing Coach.</p>
-      <form id="recoveryForm">
-        <label>Nuova password</label>
-        <input id="newPassword" type="password" autocomplete="new-password" required minlength="6" placeholder="Almeno 6 caratteri">
-        <label>Ripeti nuova password</label>
-        <input id="newPasswordConfirm" type="password" autocomplete="new-password" required minlength="6" placeholder="Ripeti la password">
-        <div class="auth-actions">
-          <button id="recoverySubmit" type="submit">Salva nuova password</button>
-        </div>
-      </form>
-      <div id="recoveryMessage" class="auth-message" aria-live="polite"></div>
     </div>
   </div>
 </section>
@@ -388,37 +372,6 @@
   let currentUser = null;
   let currentProfile = null;
   let authMode = "signin";
-  let recoveryMode = false;
-
-  function isRecoveryUrl(){
-    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-    const query = new URLSearchParams(window.location.search);
-    return hash.get("type") === "recovery" || query.get("type") === "recovery";
-  }
-
-  function showRecoveryMessage(message, kind=""){
-    const el=document.getElementById("recoveryMessage");
-    el.textContent=message||"";
-    el.className="auth-message"+(kind?` ${kind}`:"");
-  }
-
-  function showRecoveryForm(){
-    recoveryMode=true;
-    document.getElementById("appShell").classList.add("hidden");
-    document.getElementById("coachShell").classList.add("hidden");
-    document.getElementById("authGate").classList.remove("hidden");
-    document.getElementById("authLoading").classList.add("hidden");
-    document.getElementById("authContent").classList.add("hidden");
-    document.getElementById("recoveryContent").classList.remove("hidden");
-    showRecoveryMessage("");
-  }
-
-  function showStandardAuth(){
-    recoveryMode=false;
-    document.getElementById("recoveryContent").classList.add("hidden");
-    document.getElementById("authLoading").classList.add("hidden");
-    document.getElementById("authContent").classList.remove("hidden");
-  }
 
   function profileCacheKey(uid){ return `climbing-coach-profile-${uid}`; }
   function userStoreKey(uid){ return `climbing-coach-user-${uid}-v1`; }
@@ -439,7 +392,6 @@
       :"Accedi alla tua programmazione o al pannello coach.";
     document.getElementById("authSubmit").textContent=signup?"Crea account":"Accedi";
     document.getElementById("toggleAuthMode").textContent=signup?"Ho già un account":"Crea account atleta";
-    document.getElementById("forgotPassword").classList.toggle("hidden",signup);
     document.getElementById("authPassword").autocomplete=signup?"new-password":"current-password";
     showAuthMessage("");
   }
@@ -467,10 +419,7 @@
     document.getElementById("coachShell").classList.add("hidden");
     document.getElementById("authGate").classList.remove("hidden");
     document.getElementById("authLoading").classList.add("hidden");
-    if(!recoveryMode){
-      document.getElementById("recoveryContent").classList.add("hidden");
-      document.getElementById("authContent").classList.remove("hidden");
-    }
+    document.getElementById("authContent").classList.remove("hidden");
   }
 
   function getLegacyState(){
@@ -523,33 +472,18 @@
 
   async function initAuth(){
     document.getElementById("authContent").classList.add("hidden");
-    document.getElementById("recoveryContent").classList.add("hidden");
     document.getElementById("authLoading").classList.remove("hidden");
-
-    sb.auth.onAuthStateChange((event,session)=>{
-      setTimeout(async ()=>{
-        if(event === "PASSWORD_RECOVERY"){
-          showRecoveryForm();
-          return;
-        }
-        if(recoveryMode) return;
-        await handleSession(session);
-      },0);
-    });
-
     try{
       const {data,error}=await sb.auth.getSession();
       if(error) throw error;
-      if(isRecoveryUrl() && data.session){
-        showRecoveryForm();
-      }else{
-        await handleSession(data.session);
-      }
+      await handleSession(data.session);
     }catch(err){
-      recoveryMode=false;
       showLoggedOut();
       showAuthMessage("Impossibile verificare l'accesso. Controlla la connessione e riprova.","error");
     }
+    sb.auth.onAuthStateChange((_event,session)=>{
+      setTimeout(()=>{ handleSession(session); },0);
+    });
   }
 
   function load(){
@@ -813,62 +747,6 @@
       showAuthMessage(msg,"error");
     }finally{
       submit.disabled=false;
-    }
-  });
-
-  document.getElementById("forgotPassword").addEventListener("click",async ()=>{
-    const email=document.getElementById("authEmail").value.trim();
-    if(!email){
-      showAuthMessage("Inserisci prima l'email dell'account da recuperare.","error");
-      document.getElementById("authEmail").focus();
-      return;
-    }
-    const btn=document.getElementById("forgotPassword");
-    btn.disabled=true;
-    showAuthMessage("Invio del link di recupero…");
-    try{
-      const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:APP_URL});
-      if(error) throw error;
-      showAuthMessage("Email inviata. Apri il link ricevuto: tornerai qui per scegliere una nuova password.","ok");
-    }catch(err){
-      showAuthMessage((err&&err.message)?err.message:"Non è stato possibile inviare l'email di recupero.","error");
-    }finally{
-      btn.disabled=false;
-    }
-  });
-
-  document.getElementById("recoveryForm").addEventListener("submit",async e=>{
-    e.preventDefault();
-    const p1=document.getElementById("newPassword").value;
-    const p2=document.getElementById("newPasswordConfirm").value;
-    const btn=document.getElementById("recoverySubmit");
-    if(p1.length<6){
-      showRecoveryMessage("La password deve contenere almeno 6 caratteri.","error");
-      return;
-    }
-    if(p1!==p2){
-      showRecoveryMessage("Le due password non coincidono.","error");
-      return;
-    }
-    btn.disabled=true;
-    showRecoveryMessage("Aggiornamento password…");
-    try{
-      const {error}=await sb.auth.updateUser({password:p1});
-      if(error) throw error;
-      await sb.auth.signOut();
-      recoveryMode=false;
-      history.replaceState({},document.title,APP_URL);
-      showStandardAuth();
-      setAuthMode("signin");
-      document.getElementById("authPassword").value="";
-      document.getElementById("newPassword").value="";
-      document.getElementById("newPasswordConfirm").value="";
-      showLoggedOut();
-      showAuthMessage("Password aggiornata. Ora puoi accedere con la nuova password.","ok");
-    }catch(err){
-      showRecoveryMessage((err&&err.message)?err.message:"Non è stato possibile aggiornare la password.","error");
-    }finally{
-      btn.disabled=false;
     }
   });
 
