@@ -1,0 +1,16 @@
+CLIMBING COACH — MONICA ERBESATO — V2.3 PROGRAM BUILDER
+
+Sostituisci nel repository GitHub SOLO:
+- index.html con Climbing_Coach_Monica_V2_3_Program_Builder_index.html
+- sw.js con Climbing_Coach_Monica_V2_3_sw.js
+
+Nuove funzioni coach:
+- apri un programma nel builder
+- crea settimane (blocco, fase, data, stato, note)
+- crea sessioni (titolo, obiettivo, durata, note coach)
+- aggiungi esercizi da libreria o personalizzati
+- prescrivi serie, dose, recupero, RPE, indicazioni
+- distinzione esplicita tra BW, carico esterno, assistenza, carico totale e % del massimale
+
+I dati vengono salvati nelle tabelle Supabase esistenti training_weeks, sessions e session_exercises con RLS.
+I vecchi log atleta locali non vengono cancellati.
