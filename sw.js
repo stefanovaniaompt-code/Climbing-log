@@ -1,4 +1,4 @@
-const CACHE = "monica-erbesato-v2-10-athlete-invites-test-library";
+const CACHE = "monica-erbesato-v2-11-library-delete-metric-fields";
 const APP_ASSETS = [
   "./",
   "./index.html",

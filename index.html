@@ -164,6 +164,9 @@
     .invite-list{display:grid;gap:8px;margin-top:12px}
     .invite-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;background:#fff;border:1px solid var(--line);border-radius:12px}
     .invite-row .small{overflow-wrap:anywhere}
+    .test-metric-editor-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(110px,.45fr) auto;gap:8px;align-items:end;margin:8px 0}
+    .test-metric-editor-row label{margin-top:0}
+    @media(max-width:620px){.test-metric-editor-row{grid-template-columns:1fr 1fr}.test-metric-editor-row .remove-test-metric{grid-column:1/-1}}
     .test-metric{padding:10px 0;border-top:1px solid #eee}
     .test-metric:first-child{border-top:0}
     .trend-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}
@@ -845,7 +848,9 @@
           <label>Obiettivo</label><input id="coachTestObjective" placeholder="Cosa misura e perché viene scelto">
           <label>Materiale</label><input id="coachTestMaterial" placeholder="Attrezzatura necessaria">
           <label>Istruzioni, una per riga</label><textarea id="coachTestInstructions" placeholder="Standardizza il setup&#10;Esegui tre tentativi&#10;Recupera 3 minuti"></textarea>
-          <label>Risultati da raccogliere, uno per riga: nome | unità</label><textarea id="coachTestMetrics" required placeholder="Forza massima | kg&#10;Tempo al picco | ms"></textarea>
+          <label>Risultati da raccogliere</label>
+          <div id="coachTestMetricsRows"></div>
+          <button id="coachAddTestMetric" type="button" class="secondary small-btn">+ Aggiungi risultato</button>
           <label>Carica o sostituisci video dimostrativo (opzionale)</label>
           <input id="coachTestVideoFile" type="file" accept="video/mp4,video/webm,video/quicktime">
           <div class="small">MP4, WebM o MOV · massimo 200 MB · accesso privato per Monica e atleti assegnati.</div>
@@ -1319,12 +1324,12 @@
     const testAthlete=document.getElementById("coachTestPlanAthlete");
     testAthlete.innerHTML=coachState.athletes.length?coachState.athletes.map(a=>`<option value="${escapeHtml(a.id)}">${escapeHtml(a.full_name||"Atleta")}</option>`).join(""):'<option value="">Nessun atleta</option>';
     document.getElementById("coachTestPlanChoices").innerHTML=coachState.testLibrary.length?coachState.testLibrary.map(t=>`<label class="cloud-rx-check"><input type="checkbox" name="coachTestChoice" value="${escapeHtml(t.id)}"><span><b>${escapeHtml(t.name)}</b><br><span class="small">${escapeHtml([t.category,t.objective].filter(Boolean).join(" · ")||"Test personalizzato")}</span></span></label>`).join(""):'<div class="coach-empty">La libreria test è vuota.</div>';
-    document.getElementById("coachTestLibraryList").innerHTML=coachState.testLibrary.length?coachState.testLibrary.map(t=>`<div class="coach-library-row"><div class="coach-card-head"><div><b>${escapeHtml(t.name)}</b><div class="small">${escapeHtml(t.category||"Senza categoria")} · ${(t.metric_definitions||[]).length} risultati · ${t.video_path?"video caricato":t.video_url?"video collegato":"senza video"}</div></div><button type="button" class="secondary small-btn edit-library-test" data-test-id="${escapeHtml(t.id)}">Modifica</button></div>${t.objective?`<div class="small">${escapeHtml(t.objective)}</div>`:""}</div>`).join(""):'<div class="coach-empty">Nessun test in libreria.</div>';
+    document.getElementById("coachTestLibraryList").innerHTML=coachState.testLibrary.length?coachState.testLibrary.map(t=>`<div class="coach-library-row"><div class="coach-card-head"><div><b>${escapeHtml(t.name)}</b><div class="small">${escapeHtml(t.category||"Senza categoria")} · ${(t.metric_definitions||[]).length} risultati · ${t.video_path?"video caricato":t.video_url?"video collegato":"senza video"}</div></div><div class="builder-item-actions"><button type="button" class="secondary small-btn edit-library-test" data-test-id="${escapeHtml(t.id)}">Modifica</button><button type="button" class="danger small-btn archive-library-test" data-test-id="${escapeHtml(t.id)}">Elimina</button></div></div>${t.objective?`<div class="small">${escapeHtml(t.objective)}</div>`:""}</div>`).join(""):'<div class="coach-empty">Nessun test in libreria.</div>';
     document.getElementById("coachTestPlansList").innerHTML=coachState.testPlans.length?coachState.testPlans.map(p=>{const a=coachState.athletes.find(x=>x.id===p.athlete_id);const n=coachState.testPlanItems.filter(x=>x.test_plan_id===p.id).length;const done=coachState.tests.some(x=>x.test_plan_id===p.id);return `<div class="coach-test-row"><div class="coach-card-head"><div><b>${escapeHtml(p.title)}</b><div class="small">${escapeHtml(a?.full_name||"Atleta")} · ${p.scheduled_date?dateIt(p.scheduled_date):"data libera"} · ${n} test</div></div><span class="pill ${p.status==="published"||done?"ok":""}">${done?"eseguita":escapeHtml(p.status)}</span></div></div>`;}).join(""):'<div class="coach-empty">Nessuna seduta test preparata.</div>';
 
     const lbox=document.getElementById("coachLibraryList");
     if(!coachState.library.length) lbox.innerHTML='<div class="coach-empty">La libreria è vuota. Aggiungi il primo esercizio.</div>';
-    else lbox.innerHTML=coachState.library.map(e=>`<div class="coach-library-row"><div class="coach-card-head"><div><b>${escapeHtml(e.name)}</b><div class="small">${escapeHtml([e.category,e.modality].filter(Boolean).join(" · ")||"nessuna categoria")}</div></div></div>${e.description?`<div class="small" style="margin-top:4px">${escapeHtml(e.description)}</div>`:""}</div>`).join("");
+    else lbox.innerHTML=coachState.library.map(e=>`<div class="coach-library-row"><div class="coach-card-head"><div><b>${escapeHtml(e.name)}</b><div class="small">${escapeHtml([e.category,e.modality].filter(Boolean).join(" · ")||"nessuna categoria")}</div></div><button type="button" class="danger small-btn archive-library-exercise" data-exercise-id="${escapeHtml(e.id)}">Elimina</button></div>${e.description?`<div class="small" style="margin-top:4px">${escapeHtml(e.description)}</div>`:""}</div>`).join("");
 
     if(coachState.selectedAthleteId) renderCoachAthleteDetail(coachState.selectedAthleteId);
   }
@@ -2293,11 +2298,29 @@
     return base||`metric_${index+1}`;
   }
 
+  function addCoachTestMetricRow(label="",unit=""){
+    const row=document.createElement("div");row.className="test-metric-editor-row";
+    const labelBox=document.createElement("div"),unitBox=document.createElement("div");
+    const labelCaption=document.createElement("label");labelCaption.textContent="Nome risultato";
+    const labelInput=document.createElement("input");labelInput.type="text";labelInput.className="test-metric-label";labelInput.placeholder="es. Forza massima";labelInput.value=label;
+    const unitCaption=document.createElement("label");unitCaption.textContent="Unità di misura";
+    const unitInput=document.createElement("input");unitInput.type="text";unitInput.className="test-metric-unit";unitInput.placeholder="es. kg, sec, W";unitInput.value=unit;
+    const remove=document.createElement("button");remove.type="button";remove.className="secondary small-btn remove-test-metric";remove.textContent="Rimuovi riga";
+    labelBox.append(labelCaption,labelInput);unitBox.append(unitCaption,unitInput);row.append(labelBox,unitBox,remove);
+    document.getElementById("coachTestMetricsRows").appendChild(row);
+  }
+
+  function resetCoachTestMetricRows(metrics=[]){
+    const box=document.getElementById("coachTestMetricsRows");box.innerHTML="";
+    (metrics.length?metrics:[{label:"",unit:""}]).forEach(x=>addCoachTestMetricRow(x.label||x.key||"",x.unit||""));
+  }
+
   function resetCoachTestEditor(){
     coachEditingTestId=null;
     document.getElementById("coachTestLibraryForm").reset();
     document.getElementById("coachTestLibrarySubmit").textContent="Aggiungi alla libreria";
     document.getElementById("coachTestEditCancel").classList.add("hidden");
+    resetCoachTestMetricRows();
   }
 
   function editCoachLibraryTest(testId){
@@ -2308,7 +2331,7 @@
     document.getElementById("coachTestObjective").value=test.objective||"";
     document.getElementById("coachTestMaterial").value=test.material||"";
     document.getElementById("coachTestInstructions").value=(test.instructions||[]).join("\n");
-    document.getElementById("coachTestMetrics").value=(test.metric_definitions||[]).map(x=>`${x.label||x.key||"Valore"} | ${x.unit||"valore"}`).join("\n");
+    resetCoachTestMetricRows(test.metric_definitions||[]);
     document.getElementById("coachTestVideo").value=test.video_url||"";
     document.getElementById("coachTestVideoFile").value="";
     document.getElementById("coachTestLibrarySubmit").textContent="Salva modifiche";
@@ -2321,8 +2344,8 @@
     e.preventDefault();
     const name=document.getElementById("coachTestName").value.trim();
     const videoFile=document.getElementById("coachTestVideoFile").files?.[0]||null;
-    const metricLines=document.getElementById("coachTestMetrics").value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
-    if(!name||!metricLines.length){setCoachMessage("coachTestLibraryMessage","Inserisci nome e almeno un risultato da raccogliere.","error");return;}
+    const metricRows=[...document.querySelectorAll("#coachTestMetricsRows .test-metric-editor-row")].map(row=>({label:row.querySelector(".test-metric-label").value.trim(),unit:row.querySelector(".test-metric-unit").value.trim()})).filter(x=>x.label);
+    if(!name||!metricRows.length){setCoachMessage("coachTestLibraryMessage","Inserisci nome e almeno un risultato da raccogliere.","error");return;}
     const mimeByExtension={mp4:"video/mp4",webm:"video/webm",mov:"video/quicktime"};
     const extension=videoFile?.name.split(".").pop()?.toLowerCase()||"";
     const videoType=videoFile?(videoFile.type||mimeByExtension[extension]||""):"";
@@ -2331,7 +2354,7 @@
     if(videoFile&&videoFile.size>200*1024*1024){setCoachMessage("coachTestLibraryMessage","Il video supera il limite di 200 MB.","error");return;}
     const existingTest=coachEditingTestId?coachState.testLibrary.find(x=>x.id===coachEditingTestId):null;
     const oldMetrics=existingTest?.metric_definitions||[];
-    const metrics=metricLines.map((line,index)=>{const [labelRaw,unitRaw]=line.split("|");const label=(labelRaw||"").trim();const old=oldMetrics.find(x=>(x.label||"").trim().toLowerCase()===label.toLowerCase())||oldMetrics[index];return {key:old?.key||metricKeyFromLabel(label,index),label,unit:(unitRaw||"valore").trim()};}).filter(x=>x.label);
+    const metrics=metricRows.map(({label,unit},index)=>{const old=oldMetrics.find(x=>(x.label||"").trim().toLowerCase()===label.toLowerCase())||oldMetrics[index];return {key:old?.key||metricKeyFromLabel(label,index),label,unit:unit||"valore"};});
     const btn=document.getElementById("coachTestLibrarySubmit");btn.disabled=true;setCoachMessage("coachTestLibraryMessage","Salvataggio…");
     let createdTestId=null,uploadedVideoPath=null,videoUploaded=false;
     try{
@@ -2358,7 +2381,20 @@
   });
 
   document.getElementById("coachTestEditCancel").addEventListener("click",()=>{resetCoachTestEditor();setCoachMessage("coachTestLibraryMessage","");});
-  document.getElementById("coachTestLibraryList").addEventListener("click",e=>{const b=e.target.closest(".edit-library-test");if(b)editCoachLibraryTest(b.dataset.testId);});
+  document.getElementById("coachAddTestMetric").addEventListener("click",()=>addCoachTestMetricRow());
+  document.getElementById("coachTestMetricsRows").addEventListener("click",e=>{const b=e.target.closest(".remove-test-metric");if(!b)return;const rows=document.querySelectorAll("#coachTestMetricsRows .test-metric-editor-row");if(rows.length===1){rows[0].querySelector(".test-metric-label").value="";rows[0].querySelector(".test-metric-unit").value="";}else b.closest(".test-metric-editor-row").remove();});
+  document.getElementById("coachTestLibraryList").addEventListener("click",async e=>{
+    const edit=e.target.closest(".edit-library-test");if(edit){editCoachLibraryTest(edit.dataset.testId);return;}
+    const remove=e.target.closest(".archive-library-test");if(!remove)return;
+    const test=coachState.testLibrary.find(x=>x.id===remove.dataset.testId);if(!test)return;
+    if(!confirm(`Eliminare “${test.name}” dalla Libreria test? I risultati storici resteranno disponibili.`))return;
+    remove.disabled=true;
+    try{
+      const {error}=await sb.from("test_library").update({archived:true}).eq("id",test.id).eq("coach_id",currentUser.id);if(error)throw error;
+      if(coachEditingTestId===test.id)resetCoachTestEditor();
+      setCoachMessage("coachTestLibraryMessage","Test eliminato dalla libreria.","ok");await loadCoachDashboard();
+    }catch(err){setCoachMessage("coachTestLibraryMessage",err?.message||"Non è stato possibile eliminare il test.","error");remove.disabled=false;}
+  });
 
   document.getElementById("coachTestPlanForm").addEventListener("submit",async e=>{
     e.preventDefault();
@@ -2485,6 +2521,17 @@
     }finally{ btn.disabled=false; }
   });
 
+  document.getElementById("coachLibraryList").addEventListener("click",async e=>{
+    const remove=e.target.closest(".archive-library-exercise");if(!remove)return;
+    const exercise=coachState.library.find(x=>x.id===remove.dataset.exerciseId);if(!exercise)return;
+    if(!confirm(`Eliminare “${exercise.name}” dalla Libreria esercizi? Le sessioni già create non verranno modificate.`))return;
+    remove.disabled=true;
+    try{
+      const {error}=await sb.from("exercise_library").update({archived:true}).eq("id",exercise.id).eq("coach_id",currentUser.id);if(error)throw error;
+      setCoachMessage("coachLibraryMessage","Esercizio eliminato dalla libreria.","ok");await loadCoachDashboard();
+    }catch(err){setCoachMessage("coachLibraryMessage",err?.message||"Non è stato possibile eliminare l'esercizio.","error");remove.disabled=false;}
+  });
+
   async function doLogout(){
     await sb.auth.signOut();
     state=defaultState();
@@ -2509,6 +2556,7 @@
   if("serviceWorker" in navigator && location.protocol.startsWith("http")){
     navigator.serviceWorker.register("./sw.js").catch(()=>{});
   }
+  resetCoachTestMetricRows();
   setAuthMode("signin");
   initAuth();
 })();
