@@ -6,11 +6,11 @@
   <meta name="theme-color" content="#5B2C83">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
-  <title>Climbing Coach — Monica Erbesato</title>
+  <title>Monica Erbesato</title>
   <link rel="manifest" href="manifest.webmanifest">
   <style>
     :root{
-      --purple:#5B2C83; --purple2:#7E57A6; --lav:#EEE7F4;
+      --purple:#5B2C83; --purple2:#7E57A6; --lav:#EEE7F4; --mustard:#D6A21D;
       --ink:#202124; --muted:#6b6870; --line:#ded9e4;
       --ok:#19764a; --warn:#9b5a00; --bg:#f7f5f8; --card:#fff;
     }
@@ -136,7 +136,7 @@
 
     .athlete-cloud-head{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end}
     @media(max-width:620px){.athlete-cloud-head{grid-template-columns:1fr}}
-    .athlete-cloud-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+    .athlete-cloud-summary{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px}
     @media(max-width:620px){.athlete-cloud-summary{grid-template-columns:1fr}}
     .cloud-session-card{background:white;border:1px solid var(--line);border-radius:14px;padding:13px;margin:10px 0}
     .cloud-session-card h3{margin:0 0 4px;color:var(--purple);font-size:16px}
@@ -161,13 +161,26 @@
     .test-video{display:grid;place-items:center;min-height:130px;border:1px dashed var(--line);border-radius:12px;background:#fbfafc;color:var(--muted);text-align:center;padding:16px;margin:12px 0}
     .test-metric{padding:10px 0;border-top:1px solid #eee}
     .test-metric:first-child{border-top:0}
+    .trend-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}
+    @media(max-width:680px){.trend-grid{grid-template-columns:1fr}}
+    .trend-card{background:#fbfafc;border:1px solid var(--line);border-radius:12px;padding:12px}
+    .trend-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:8px}
+    .trend-head h3{margin:0 0 3px;color:var(--purple);font-size:15px}
+    .trend-value{text-align:right;white-space:nowrap}
+    .trend-value b{display:block;color:var(--purple);font-size:18px}
+    .trend-chart{display:block;width:100%;height:auto;min-height:128px}
+    .trend-chart text{font-size:10px;fill:var(--muted)}
+    .trend-chart .grid{stroke:var(--line);stroke-width:1}
+    .trend-chart .line{fill:none;stroke:var(--purple);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+    .trend-chart .point{fill:var(--mustard);stroke:white;stroke-width:2}
+    .trend-history{margin-top:6px;line-height:1.5}
 
   </style>
 </head>
 <body>
 <section id="authGate" class="auth-wrap">
   <div class="auth-brand">
-    <h1>Climbing Coach</h1>
+    <h1>Monica Erbesato</h1>
     <p>Monica Erbesato · Climbing Performance Coaching</p>
   </div>
   <div class="auth-card">
@@ -196,7 +209,7 @@
 
     <div id="recoveryContent" class="hidden">
       <h2>Imposta nuova password</h2>
-      <p class="small">Scegli una nuova password per il tuo account Climbing Coach.</p>
+      <p class="small">Scegli una nuova password per il tuo account Monica Erbesato.</p>
       <form id="recoveryForm">
         <label>Nuova password</label>
         <input id="newPassword" type="password" autocomplete="new-password" required minlength="6" placeholder="Almeno 6 caratteri">
@@ -213,20 +226,19 @@
 
 <div id="appShell" class="hidden">
 <header>
-  <h1>Climbing Coach</h1>
+  <h1>Monica Erbesato</h1>
   <p>La mia programmazione</p>
   <div class="brandline">Monica Erbesato · Fisioterapista MSc OMPT · Performance Coach</div>
   <div class="userbar">
     <div class="identity">
       <strong id="userDisplay">Atleta</strong>
       <span class="role-pill">atleta</span>
-      <span class="sync-pill">programmazione cloud · log cloud + storico locale</span>
     </div>
     <div class="toolbar"><button class="secondary accountSecurityBtn" type="button">Sicurezza account</button><button id="logoutBtn" type="button">Esci</button></div>
   </div>
 </header>
 <main id="app">
-  <div class="weekbar">
+  <div id="localWeekbar" class="weekbar hidden">
     <select id="weekSelect" aria-label="Seleziona settimana"></select>
     <button id="addWeek">+ Settimana</button>
   </div>
@@ -269,7 +281,7 @@
       <div class="panel">
         <div class="athlete-cloud-head">
           <div>
-            <div class="coach-kicker">Programmazione cloud</div>
+            <div class="coach-kicker">Programmazione</div>
             <h2 id="athleteCloudProgramName" style="margin:3px 0 5px">—</h2>
             <div id="athleteCloudProgramMeta" class="small">—</div>
           </div>
@@ -281,14 +293,13 @@
         <div class="athlete-cloud-summary">
           <div class="metric"><span class="small">Settimane</span><b id="athleteCloudWeekCount">0</b></div>
           <div class="metric"><span class="small">Sessioni completate</span><b id="athleteCloudCompletion">0/0</b></div>
-          <div class="metric"><span class="small">Stato programma</span><b id="athleteCloudProgramStatus">—</b></div>
         </div>
       </div>
 
       <div class="panel">
         <div class="athlete-cloud-head">
           <div><h2 style="margin-bottom:4px">Settimana</h2><div id="athleteCloudWeekMeta" class="small">—</div></div>
-          <div><label>Seleziona settimana</label><select id="athleteCloudWeekSelect"></select></div>
+          <div><label>Settimana del programma</label><select id="athleteCloudWeekSelect"></select></div>
         </div>
         <div id="athleteCloudWeekNotes" class="rx hidden"></div>
         <div id="athleteCloudSessions"></div>
@@ -487,13 +498,13 @@
     </div>
   </section>
 
-  <footer>Climbing Coach · Monica Erbesato — Fisioterapista MSc OMPT · Performance Coach</footer>
+  <footer>Monica Erbesato — Fisioterapista MSc OMPT · Performance Coach</footer>
 </main>
 </div>
 
 <section id="coachShell" class="coach-shell hidden">
   <header>
-    <h1>Climbing Coach</h1>
+    <h1>Monica Erbesato</h1>
     <p>Dashboard Coach</p>
     <div class="brandline">Monica Erbesato · Climbing Performance Coaching</div>
     <div class="userbar">
@@ -1159,11 +1170,16 @@
 
     const tbox=document.getElementById("coachRetestsList");
     if(!coachState.tests.length) tbox.innerHTML='<div class="coach-empty">Nessun retest cloud registrato.</div>';
-    else tbox.innerHTML=coachState.tests.map(t=>{
-      const a=coachState.athletes.find(x=>x.id===t.athlete_id);
-      const values=coachState.testResults.filter(x=>x.test_session_id===t.id);
-      return `<div class="coach-test-row"><b>${escapeHtml(a?.full_name||"Atleta")}</b><div class="small">${dateIt(t.tested_at)}${t.body_weight_kg?` · ${escapeHtml(t.body_weight_kg)} kg`:""}${t.protocol_version?` · ${escapeHtml(t.protocol_version)}`:""}</div>${values.length?`<div class="small" style="margin-top:6px">${values.map(x=>`<b>${escapeHtml(x.metric_label)}:</b> ${escapeHtml(x.value)} ${escapeHtml(x.unit||"")}`).join(" · ")}</div>`:'<div class="small">Nessun valore registrato</div>'}${t.notes?`<div class="small" style="margin-top:4px">Note: ${escapeHtml(t.notes)}</div>`:""}</div>`;
-    }).join("");
+    else{
+      const athleteIds=[...new Set(coachState.tests.map(t=>t.athlete_id))];
+      tbox.innerHTML=athleteIds.map(athleteId=>{
+        const athlete=coachState.athletes.find(x=>x.id===athleteId),sessions=coachState.tests.filter(x=>x.athlete_id===athleteId).sort((a,b)=>new Date(a.tested_at)-new Date(b.tested_at));
+        const sessionMap=new Map(sessions.map(s=>[s.id,s]));
+        const groups=new Map();coachState.testResults.filter(r=>sessionMap.has(r.test_session_id)).forEach(r=>{const row={...r,tested_at:sessionMap.get(r.test_session_id).tested_at};const list=groups.get(r.metric_key)||[];list.push(row);groups.set(r.metric_key,list);});
+        const sessionHistory=sessions.map(s=>`${dateIt(s.tested_at)}${s.body_weight_kg?` · ${escapeHtml(s.body_weight_kg)} kg`:""}${s.notes?` · ${escapeHtml(s.notes)}`:""}`).join("<br>");
+        return `<div class="coach-test-row"><div class="coach-card-head"><div><h3>${escapeHtml(athlete?.full_name||"Atleta")}</h3><div class="small">${sessions.length} ${sessions.length===1?"rilevazione":"rilevazioni"}</div></div></div><div class="trend-grid">${[...groups.values()].map(renderTestTrendCard).join("")||'<div class="coach-empty">Nessun valore registrato.</div>'}</div><details style="margin-top:10px"><summary class="small">Dettaglio sedute</summary><div class="small trend-history">${sessionHistory}</div></details></div>`;
+      }).join("");
+    }
 
     const testAthlete=document.getElementById("coachTestPlanAthlete");
     testAthlete.innerHTML=coachState.athletes.length?coachState.athletes.map(a=>`<option value="${escapeHtml(a.id)}">${escapeHtml(a.full_name||"Atleta")}</option>`).join(""):'<option value="">Nessun atleta</option>';
@@ -1419,17 +1435,24 @@
     finally{btn.disabled=false;}
   }
 
-  function testSparkline(values){
-    if(values.length<2)return "";const nums=values.map(Number),min=Math.min(...nums),max=Math.max(...nums),range=max-min||1;
-    const pts=nums.map((v,i)=>`${(i/(nums.length-1))*180},${42-((v-min)/range)*34}`).join(" ");
-    return `<svg viewBox="0 0 180 50" width="180" height="50" role="img" aria-label="Andamento"><polyline points="${pts}" fill="none" stroke="var(--purple)" stroke-width="3"/><line x1="0" y1="44" x2="180" y2="44" stroke="#ddd"/></svg>`;
+  function renderTestTrendCard(inputRows){
+    const rows=[...inputRows].filter(r=>Number.isFinite(Number(r.value))&&r.tested_at).sort((a,b)=>new Date(a.tested_at)-new Date(b.tested_at));if(!rows.length)return "";
+    const first=rows[0],last=rows.at(-1),values=rows.map(r=>Number(r.value)),rawMin=Math.min(...values),rawMax=Math.max(...values),span=rawMax-rawMin,pad=span?span*.18:Math.max(Math.abs(rawMax)*.1,1),min=rawMin-pad,max=rawMax+pad;
+    const w=320,h=150,left=42,right=12,top=12,bottom=30,plotW=w-left-right,plotH=h-top-bottom;
+    const x=i=>rows.length===1?left+plotW/2:left+(i/(rows.length-1))*plotW,y=v=>top+((max-v)/(max-min))*plotH;
+    const points=values.map((v,i)=>`${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" "),ticks=[max,(max+min)/2,min];
+    const yGrid=ticks.map(v=>`<line class="grid" x1="${left}" y1="${y(v)}" x2="${w-right}" y2="${y(v)}"/><text x="${left-5}" y="${y(v)+3}" text-anchor="end">${Number(v.toFixed(1))}</text>`).join("");
+    const xLabels=rows.map((r,i)=>rows.length<=4||i===0||i===rows.length-1?`<text x="${x(i)}" y="${h-8}" text-anchor="${i===0&&rows.length>1?"start":i===rows.length-1&&rows.length>1?"end":"middle"}">${dateIt(r.tested_at)}</text>`:"").join("");
+    const marks=values.map((v,i)=>`<circle class="point" cx="${x(i)}" cy="${y(v)}" r="5"><title>${dateIt(rows[i].tested_at)}: ${v} ${escapeHtml(last.unit||"")}</title></circle>`).join("");
+    const delta=Number(last.value)-Number(first.value),pct=Number(first.value)!==0?(delta/Math.abs(Number(first.value)))*100:null,deltaText=rows.length>1?`${delta>0?"+":""}${Number(delta.toFixed(2))} ${last.unit||""}${pct===null?"":` · ${pct>0?"+":""}${pct.toFixed(1)}%`}`:"Prima rilevazione";
+    return `<article class="trend-card"><div class="trend-head"><div><h3>${escapeHtml(last.metric_label)}</h3><div class="small">${escapeHtml(deltaText)}</div></div><div class="trend-value"><b>${escapeHtml(last.value)} ${escapeHtml(last.unit||"")}</b><span class="small">${dateIt(last.tested_at)}</span></div></div><svg class="trend-chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="Andamento di ${escapeHtml(last.metric_label)} da ${escapeHtml(first.value)} a ${escapeHtml(last.value)} ${escapeHtml(last.unit||"")}">${yGrid}${xLabels}${rows.length>1?`<polyline class="line" points="${points}"/>`:""}${marks}</svg><div class="small trend-history">${rows.map(r=>`${dateIt(r.tested_at)}: <b>${escapeHtml(r.value)} ${escapeHtml(r.unit||"")}</b>`).join(" · ")}</div></article>`;
   }
 
   function renderAthleteTestHistory(){
     const box=document.getElementById("athleteTestHistory");
     if(!athleteTestState.sessions.length){box.innerHTML='<div class="coach-empty">Nessun test completato.</div>';return;}
     const groups=new Map();athleteTestState.results.forEach(r=>{if(r.setup?.protocol_key==="derived_target")return;const list=groups.get(r.metric_key)||[];list.push(r);groups.set(r.metric_key,list);});
-    box.innerHTML=[...groups.values()].map(rows=>{rows.sort((a,b)=>new Date(a.tested_at)-new Date(b.tested_at));const last=rows.at(-1);return `<div class="coach-card"><div class="coach-card-head"><div><h3>${escapeHtml(last.metric_label)}</h3><div class="small">Ultimo valore · ${dateIt(last.tested_at)}</div></div><b>${escapeHtml(last.value)} ${escapeHtml(last.unit)}</b></div>${testSparkline(rows.map(x=>x.value))}<div class="small">${rows.map(x=>`${dateIt(x.tested_at)}: ${escapeHtml(x.value)} ${escapeHtml(x.unit)}`).join(" · ")}</div></div>`;}).join("")||'<div class="coach-empty">Nessun risultato disponibile.</div>';
+    box.innerHTML=`<div class="trend-grid">${[...groups.values()].map(renderTestTrendCard).join("")||'<div class="coach-empty">Nessun risultato disponibile.</div>'}</div>`;
   }
 
   async function loadAthleteTestPlans(){
@@ -1465,6 +1488,7 @@
     if(!btn)return;
     document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b===btn));
     document.querySelectorAll(".tabpage").forEach(p=>p.classList.toggle("hidden",p.id!==id));
+    document.getElementById("localWeekbar").classList.toggle("hidden",id==="cloudPlan"||id==="testModule");
   }
 
   async function loadAthleteCloudPlan(){
@@ -1547,12 +1571,11 @@
   function renderAthleteCloudPlan(){
     const p=athleteCloudProgram();if(!p)return;
     const psel=document.getElementById("athleteCloudProgramSelect");
-    psel.innerHTML=athleteCloud.programs.map(x=>`<option value="${escapeHtml(x.id)}">${escapeHtml(x.name)} · ${escapeHtml(coachStatusLabel(x.status))}</option>`).join("");
+    psel.innerHTML=athleteCloud.programs.map(x=>`<option value="${escapeHtml(x.id)}">${escapeHtml(x.name)}</option>`).join("");
     psel.value=p.id;
     document.getElementById("athleteCloudProgramName").textContent=p.name;
     document.getElementById("athleteCloudProgramMeta").textContent=`${p.goal||"obiettivo non indicato"} · ${p.start_date?dateIt(p.start_date):"inizio —"} → ${p.end_date?dateIt(p.end_date):"fine —"}`;
     document.getElementById("athleteCloudWeekCount").textContent=athleteCloud.weeks.length;
-    document.getElementById("athleteCloudProgramStatus").textContent=coachStatusLabel(p.status);
     const completed=athleteCloud.sessions.filter(s=>athleteSessionLog(s.id)?.status==="completed").length;
     document.getElementById("athleteCloudCompletion").textContent=`${completed}/${athleteCloud.sessions.length}`;
     const wsel=document.getElementById("athleteCloudWeekSelect");
@@ -1848,7 +1871,14 @@
   }
 
   document.getElementById("athleteCloudProgramSelect").addEventListener("change",async e=>{athleteCloud.selectedProgramId=e.target.value;athleteCloud.selectedWeekId=null;athleteCloud.selectedSessionId=null;await loadAthleteCloudStructure();});
-  document.getElementById("athleteCloudWeekSelect").addEventListener("change",e=>{athleteCloud.selectedWeekId=e.target.value;athleteCloud.selectedSessionId=null;renderAthleteCloudPlan();});
+  document.getElementById("athleteCloudWeekSelect").addEventListener("change",e=>{
+    const weekId=e.target.value;
+    if(!athleteCloud.weeks.some(w=>w.id===weekId))return;
+    athleteCloud.selectedWeekId=weekId;
+    athleteCloud.selectedSessionId=null;
+    renderAthleteCloudWeek();
+    renderAthleteCloudSession();
+  });
   document.getElementById("athleteCloudSessions").addEventListener("click",e=>{const b=e.target.closest(".athlete-open-session");if(b)openAthleteCloudSession(b.dataset.sessionId);});
   document.getElementById("athleteCloudCloseSession").addEventListener("click",()=>{athleteCloud.selectedSessionId=null;renderAthleteCloudSession();});
   document.getElementById("athleteCloudSaveSession").addEventListener("click",()=>saveAthleteCloudSession(false));
@@ -1857,10 +1887,7 @@
   document.getElementById("athleteTestPrev").addEventListener("click",()=>{collectAthleteTestStep();if(athleteTestStep>0){athleteTestStep--;renderAthleteTest();}});
   document.getElementById("athleteTestNext").addEventListener("click",async()=>{collectAthleteTestStep();if(athleteTestStep<athleteTestState.steps.length-1){athleteTestStep++;renderAthleteTest();}else await saveAthleteTest();});
 
-  document.querySelectorAll(".tab").forEach(btn=>btn.addEventListener("click",()=>{
-    document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b===btn));
-    document.querySelectorAll(".tabpage").forEach(p=>p.classList.toggle("hidden",p.id!==btn.dataset.tab));
-  }));
+  document.querySelectorAll(".tab").forEach(btn=>btn.addEventListener("click",()=>switchAthleteTab(btn.dataset.tab)));
   document.getElementById("weekSelect").addEventListener("change",e=>{state.currentWeek=Number(e.target.value);save();renderAll();});
   document.getElementById("addWeek").addEventListener("click",()=>{
     state.weeks.push(blankWeek(state.weeks.length+1)); state.currentWeek=state.weeks.length-1; save(); renderAll();

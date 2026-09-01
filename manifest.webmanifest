@@ -1,6 +1,6 @@
 {
-  "name": "Climbing Coach — Monica Erbesato",
-  "short_name": "Climbing Coach",
+  "name": "Monica Erbesato",
+  "short_name": "Monica Erbesato",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

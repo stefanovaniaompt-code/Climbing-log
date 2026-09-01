@@ -1,4 +1,4 @@
-const CACHE = "climbing-coach-monica-v2-6";
+const CACHE = "monica-erbesato-v2-7";
 const APP_ASSETS = [
   "./",
   "./index.html",
