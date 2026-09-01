@@ -161,6 +161,9 @@
     .test-video{display:grid;place-items:center;min-height:130px;border:1px dashed var(--line);border-radius:12px;background:#fbfafc;color:var(--muted);text-align:center;padding:16px;margin:12px 0}
     .test-video video{display:block;width:100%;max-height:420px;border-radius:10px 20px 10px 20px;background:#170b20}
     .coach-form input[type="file"]{width:100%;border:1px dashed rgba(91,44,131,.35);border-radius:10px 18px 10px 18px;padding:12px;background:#fff;color:var(--ink)}
+    .invite-list{display:grid;gap:8px;margin-top:12px}
+    .invite-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;background:#fff;border:1px solid var(--line);border-radius:12px}
+    .invite-row .small{overflow-wrap:anywhere}
     .test-metric{padding:10px 0;border-top:1px solid #eee}
     .test-metric:first-child{border-top:0}
     .trend-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}
@@ -330,6 +333,7 @@
     <button class="tab" data-tab="settings">Massimali</button>
     <button class="tab" data-tab="backup">Backup</button>
   </nav>
+  <div id="athleteConnectionNotice" class="notice hidden" aria-live="polite"></div>
 
   <section id="testModule" class="tabpage hidden">
     <div class="panel">
@@ -597,7 +601,7 @@
       <button class="coach-tab active" data-coach-tab="coachDashboard">Dashboard</button>
       <button class="coach-tab" data-coach-tab="coachAthletes">Atleti</button>
       <button class="coach-tab" data-coach-tab="coachPrograms">Programmi</button>
-      <button class="coach-tab" data-coach-tab="coachRetests">Retest</button>
+      <button class="coach-tab" data-coach-tab="coachRetests">Test</button>
       <button class="coach-tab" data-coach-tab="coachLibrary">Libreria</button>
     </nav>
 
@@ -616,7 +620,7 @@
         <div class="coach-actions">
           <button type="button" data-go-coach="coachAthletes">Apri atleti</button>
           <button type="button" class="secondary" data-go-coach="coachPrograms">Crea / gestisci programma</button>
-          <button type="button" class="secondary" data-go-coach="coachRetests">Retest e andamento</button>
+          <button type="button" class="secondary" data-go-coach="coachRetests">Test e risultati</button>
           <button type="button" class="secondary" data-go-coach="coachLibrary">Libreria esercizi</button>
         </div>
       </div>
@@ -631,6 +635,17 @@
 
     <section id="coachAthletes" class="coach-page hidden">
       <div id="coachAthleteListView">
+        <div class="panel">
+          <div class="coach-section-title"><h2>Aggiungi atleta</h2><span class="pill">invito email</span></div>
+          <p class="small">Inserisci l'email dell'atleta. Riceverà un link per creare o aprire il suo account; al primo accesso sarà collegato automaticamente a Monica.</p>
+          <form id="coachInviteForm" class="coach-form">
+            <label>Email atleta</label>
+            <input id="coachInviteEmail" type="email" autocomplete="email" required placeholder="atleta@email.it">
+            <div class="form-actions"><button id="coachInviteSubmit" type="submit">Invia invito</button></div>
+            <div id="coachInviteMessage" class="auth-message" aria-live="polite"></div>
+          </form>
+          <div id="coachInvitationsList" class="invite-list"></div>
+        </div>
         <div class="panel">
           <div class="coach-section-title"><h2>Atleti</h2><span id="coachAthleteCount" class="pill">—</span></div>
           <p class="small">Apri un atleta per vedere programmi cloud, retest e attività registrate.</p>
@@ -813,8 +828,15 @@
         <div id="coachTestPlansList"></div>
       </div>
       <div class="panel">
+        <div class="coach-section-title"><h2>Risultati e retest</h2><span class="pill">storico</span></div>
+        <div id="coachRetestsList"></div>
+      </div>
+    </section>
+
+    <section id="coachLibrary" class="coach-page hidden">
+      <div class="panel">
         <div class="coach-section-title"><h2>Libreria test</h2><span class="pill">personalizzabile</span></div>
-        <p class="small">Monica può usare i test esistenti oppure aggiungerne di nuovi.</p>
+        <p class="small">Crea nuovi test o modifica quelli esistenti. Questi test potranno essere scelti sia per la valutazione iniziale sia per i retest.</p>
         <form id="coachTestLibraryForm" class="coach-form">
           <div class="grid2">
             <div><label>Nome test</label><input id="coachTestName" required placeholder="es. RFD dita 20 mm"></div>
@@ -824,21 +846,15 @@
           <label>Materiale</label><input id="coachTestMaterial" placeholder="Attrezzatura necessaria">
           <label>Istruzioni, una per riga</label><textarea id="coachTestInstructions" placeholder="Standardizza il setup&#10;Esegui tre tentativi&#10;Recupera 3 minuti"></textarea>
           <label>Risultati da raccogliere, uno per riga: nome | unità</label><textarea id="coachTestMetrics" required placeholder="Forza massima | kg&#10;Tempo al picco | ms"></textarea>
-          <label>Carica video dimostrativo (opzionale)</label>
+          <label>Carica o sostituisci video dimostrativo (opzionale)</label>
           <input id="coachTestVideoFile" type="file" accept="video/mp4,video/webm,video/quicktime">
           <div class="small">MP4, WebM o MOV · massimo 200 MB · accesso privato per Monica e atleti assegnati.</div>
-          <label>Oppure URL video esterno (opzionale)</label><input id="coachTestVideo" type="url" placeholder="https://..."><div class="form-actions"><button id="coachTestLibrarySubmit" type="submit">Aggiungi alla libreria</button></div>
+          <label>Oppure URL video esterno (opzionale)</label><input id="coachTestVideo" type="url" placeholder="https://...">
+          <div class="form-actions"><button id="coachTestLibrarySubmit" type="submit">Aggiungi alla libreria</button><button id="coachTestEditCancel" type="button" class="secondary hidden">Annulla modifica</button></div>
           <div id="coachTestLibraryMessage" class="auth-message" aria-live="polite"></div>
         </form>
         <div id="coachTestLibraryList"></div>
       </div>
-      <div class="panel">
-        <div class="coach-section-title"><h2>Risultati e retest</h2><span class="pill">storico</span></div>
-        <div id="coachRetestsList"></div>
-      </div>
-    </section>
-
-    <section id="coachLibrary" class="coach-page hidden">
       <div class="panel">
         <div class="coach-section-title"><h2>Libreria esercizi</h2><span class="pill">coach</span></div>
         <p class="small">Crea esercizi riutilizzabili per velocizzare la costruzione delle schede.</p>
@@ -1033,6 +1049,7 @@
       document.getElementById("coachShell").classList.add("hidden");
       document.getElementById("appShell").classList.remove("hidden");
       document.getElementById("userDisplay").textContent=currentProfile.full_name||currentUser.email||"Atleta";
+      await claimCoachInvitations();
       state=load();
       renderAll();
       maybeShowLegacyImport();
@@ -1040,8 +1057,33 @@
     }
   }
 
+  async function claimCoachInvitations(){
+    const notice=document.getElementById("athleteConnectionNotice");
+    notice.classList.add("hidden");
+    const normalizedEmail=(currentUser?.email||"").trim().toLowerCase();
+    if(!normalizedEmail||currentProfile?.role!=="athlete")return;
+    try{
+      const {data,error}=await sb.from("athlete_invitations")
+        .select("id")
+        .eq("email_normalized",normalizedEmail)
+        .eq("status","pending");
+      if(error)throw error;
+      if(!(data||[]).length)return;
+      const ids=data.map(x=>x.id);
+      const {error:updateError}=await sb.from("athlete_invitations")
+        .update({status:"accepted",athlete_id:currentUser.id,accepted_at:new Date().toISOString()})
+        .in("id",ids);
+      if(updateError)throw updateError;
+      notice.textContent="Account collegato a Monica. La coach ora ti vede nella sua Dashboard.";
+      notice.classList.remove("hidden");
+    }catch(err){
+      console.error("Collegamento invito non riuscito",err);
+    }
+  }
 
-  const coachState={athletes:[],programs:[],tests:[],testResults:[],library:[],testLibrary:[],testPlans:[],testPlanItems:[],sessionLogs:[],loggedSessions:[],loggedExercises:[],exerciseLogs:[],selectedAthleteId:null,selectedProgramId:null,selectedWeekId:null,selectedSessionId:null,weeks:[],sessions:[],sessionExercises:[]};
+
+  const coachState={athletes:[],invitations:[],programs:[],tests:[],testResults:[],library:[],testLibrary:[],testPlans:[],testPlanItems:[],sessionLogs:[],loggedSessions:[],loggedExercises:[],exerciseLogs:[],selectedAthleteId:null,selectedProgramId:null,selectedWeekId:null,selectedSessionId:null,weeks:[],sessions:[],sessionExercises:[]};
+  let coachEditingTestId=null;
 
   function escapeHtml(value){
     return String(value??"").replace(/[&<>'"]/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[ch]));
@@ -1081,6 +1123,12 @@
         .eq("status","active");
       if(linkErr) throw linkErr;
       const athleteIds=(links||[]).map(x=>x.athlete_id);
+
+      const {data:invitations,error:invitationErr}=await sb.from("athlete_invitations")
+        .select("id,coach_id,email,email_normalized,athlete_id,status,invited_at,accepted_at")
+        .eq("coach_id",currentUser.id)
+        .order("invited_at",{ascending:false});
+      if(invitationErr) throw invitationErr;
 
       let athletes=[];
       if(athleteIds.length){
@@ -1172,6 +1220,7 @@
       }
 
       coachState.athletes=athletes;
+      coachState.invitations=invitations||[];
       coachState.programs=programs||[];
       coachState.tests=tests||[];
       coachState.testResults=testResults;
@@ -1234,6 +1283,12 @@
       list.innerHTML=coachState.athletes.map(a=>athleteCard(a,false)).join("");
     }
 
+    const invitationBox=document.getElementById("coachInvitationsList");
+    const pendingInvites=coachState.invitations.filter(x=>x.status==="pending");
+    invitationBox.innerHTML=pendingInvites.length
+      ? `<div class="small"><b>Inviti in attesa (${pendingInvites.length})</b></div>`+pendingInvites.map(inv=>`<div class="invite-row"><div><b>${escapeHtml(inv.email)}</b><div class="small">Inviato il ${dateIt(inv.invited_at)} · in attesa del primo accesso</div></div><button type="button" class="secondary small-btn resend-athlete-invite" data-invite-email="${escapeHtml(inv.email)}">Reinvia</button></div>`).join("")
+      : '<div class="small">Nessun invito in attesa.</div>';
+
     const athleteSelect=document.getElementById("coachProgramAthlete");
     athleteSelect.innerHTML=coachState.athletes.length
       ? coachState.athletes.map(a=>`<option value="${escapeHtml(a.id)}">${escapeHtml(a.full_name||"Atleta")}</option>`).join("")
@@ -1264,7 +1319,7 @@
     const testAthlete=document.getElementById("coachTestPlanAthlete");
     testAthlete.innerHTML=coachState.athletes.length?coachState.athletes.map(a=>`<option value="${escapeHtml(a.id)}">${escapeHtml(a.full_name||"Atleta")}</option>`).join(""):'<option value="">Nessun atleta</option>';
     document.getElementById("coachTestPlanChoices").innerHTML=coachState.testLibrary.length?coachState.testLibrary.map(t=>`<label class="cloud-rx-check"><input type="checkbox" name="coachTestChoice" value="${escapeHtml(t.id)}"><span><b>${escapeHtml(t.name)}</b><br><span class="small">${escapeHtml([t.category,t.objective].filter(Boolean).join(" · ")||"Test personalizzato")}</span></span></label>`).join(""):'<div class="coach-empty">La libreria test è vuota.</div>';
-    document.getElementById("coachTestLibraryList").innerHTML=coachState.testLibrary.length?coachState.testLibrary.map(t=>`<div class="coach-library-row"><b>${escapeHtml(t.name)}</b><div class="small">${escapeHtml(t.category||"Senza categoria")} · ${(t.metric_definitions||[]).length} risultati · ${t.video_path?"video caricato":t.video_url?"video collegato":"senza video"}</div>${t.objective?`<div class="small">${escapeHtml(t.objective)}</div>`:""}</div>`).join(""):'<div class="coach-empty">Nessun test in libreria.</div>';
+    document.getElementById("coachTestLibraryList").innerHTML=coachState.testLibrary.length?coachState.testLibrary.map(t=>`<div class="coach-library-row"><div class="coach-card-head"><div><b>${escapeHtml(t.name)}</b><div class="small">${escapeHtml(t.category||"Senza categoria")} · ${(t.metric_definitions||[]).length} risultati · ${t.video_path?"video caricato":t.video_url?"video collegato":"senza video"}</div></div><button type="button" class="secondary small-btn edit-library-test" data-test-id="${escapeHtml(t.id)}">Modifica</button></div>${t.objective?`<div class="small">${escapeHtml(t.objective)}</div>`:""}</div>`).join(""):'<div class="coach-empty">Nessun test in libreria.</div>';
     document.getElementById("coachTestPlansList").innerHTML=coachState.testPlans.length?coachState.testPlans.map(p=>{const a=coachState.athletes.find(x=>x.id===p.athlete_id);const n=coachState.testPlanItems.filter(x=>x.test_plan_id===p.id).length;const done=coachState.tests.some(x=>x.test_plan_id===p.id);return `<div class="coach-test-row"><div class="coach-card-head"><div><b>${escapeHtml(p.title)}</b><div class="small">${escapeHtml(a?.full_name||"Atleta")} · ${p.scheduled_date?dateIt(p.scheduled_date):"data libera"} · ${n} test</div></div><span class="pill ${p.status==="published"||done?"ok":""}">${done?"eseguita":escapeHtml(p.status)}</span></div></div>`;}).join(""):'<div class="coach-empty">Nessuna seduta test preparata.</div>';
 
     const lbox=document.getElementById("coachLibraryList");
@@ -2140,6 +2195,37 @@
     const b=e.target.closest(".open-athlete"); if(b) openCoachAthlete(b.dataset.athleteId);
   });
 
+  async function sendCoachAthleteInvite(email){
+    const normalized=email.trim().toLowerCase();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized))throw new Error("Inserisci un indirizzo email valido.");
+    const {data,error}=await sb.functions.invoke("invite-athlete",{body:{email:normalized}});
+    if(error)throw error;
+    if(data?.error)throw new Error(data.error);
+    return data;
+  }
+
+  document.getElementById("coachInviteForm").addEventListener("submit",async e=>{
+    e.preventDefault();
+    const email=document.getElementById("coachInviteEmail").value;
+    const btn=document.getElementById("coachInviteSubmit");btn.disabled=true;
+    setCoachMessage("coachInviteMessage","Invio dell'invito…");
+    try{
+      await sendCoachAthleteInvite(email);
+      document.getElementById("coachInviteForm").reset();
+      setCoachMessage("coachInviteMessage","Invito inviato. L'atleta sarà collegato automaticamente al primo accesso.","ok");
+      await loadCoachDashboard();
+    }catch(err){setCoachMessage("coachInviteMessage",err?.message||"Non è stato possibile inviare l'invito.","error");}
+    finally{btn.disabled=false;}
+  });
+
+  document.getElementById("coachInvitationsList").addEventListener("click",async e=>{
+    const btn=e.target.closest(".resend-athlete-invite");if(!btn)return;
+    btn.disabled=true;setCoachMessage("coachInviteMessage","Reinvio dell'invito…");
+    try{await sendCoachAthleteInvite(btn.dataset.inviteEmail);setCoachMessage("coachInviteMessage","Invito reinviato.","ok");await loadCoachDashboard();}
+    catch(err){setCoachMessage("coachInviteMessage",err?.message||"Reinvio non riuscito.","error");}
+    finally{btn.disabled=false;}
+  });
+
   document.getElementById("coachProgramsList").addEventListener("click",e=>{
     const b=e.target.closest(".open-program"); if(b) openCoachProgram(b.dataset.programId);
   });
@@ -2207,6 +2293,30 @@
     return base||`metric_${index+1}`;
   }
 
+  function resetCoachTestEditor(){
+    coachEditingTestId=null;
+    document.getElementById("coachTestLibraryForm").reset();
+    document.getElementById("coachTestLibrarySubmit").textContent="Aggiungi alla libreria";
+    document.getElementById("coachTestEditCancel").classList.add("hidden");
+  }
+
+  function editCoachLibraryTest(testId){
+    const test=coachState.testLibrary.find(x=>x.id===testId);if(!test)return;
+    coachEditingTestId=test.id;
+    document.getElementById("coachTestName").value=test.name||"";
+    document.getElementById("coachTestCategory").value=test.category||"";
+    document.getElementById("coachTestObjective").value=test.objective||"";
+    document.getElementById("coachTestMaterial").value=test.material||"";
+    document.getElementById("coachTestInstructions").value=(test.instructions||[]).join("\n");
+    document.getElementById("coachTestMetrics").value=(test.metric_definitions||[]).map(x=>`${x.label||x.key||"Valore"} | ${x.unit||"valore"}`).join("\n");
+    document.getElementById("coachTestVideo").value=test.video_url||"";
+    document.getElementById("coachTestVideoFile").value="";
+    document.getElementById("coachTestLibrarySubmit").textContent="Salva modifiche";
+    document.getElementById("coachTestEditCancel").classList.remove("hidden");
+    setCoachMessage("coachTestLibraryMessage",test.video_path?"Video caricato presente: scegli un nuovo file solo se vuoi sostituirlo.":"");
+    document.getElementById("coachTestLibraryForm").scrollIntoView({behavior:"smooth",block:"start"});
+  }
+
   document.getElementById("coachTestLibraryForm").addEventListener("submit",async e=>{
     e.preventDefault();
     const name=document.getElementById("coachTestName").value.trim();
@@ -2219,19 +2329,26 @@
     const extensionByMime={"video/mp4":"mp4","video/webm":"webm","video/quicktime":"mov"};
     if(videoFile&&!extensionByMime[videoType]){setCoachMessage("coachTestLibraryMessage","Formato video non supportato. Usa MP4, WebM o MOV.","error");return;}
     if(videoFile&&videoFile.size>200*1024*1024){setCoachMessage("coachTestLibraryMessage","Il video supera il limite di 200 MB.","error");return;}
-    const metrics=metricLines.map((line,index)=>{const [labelRaw,unitRaw]=line.split("|");const label=(labelRaw||"").trim();return {key:metricKeyFromLabel(label,index),label,unit:(unitRaw||"valore").trim()};}).filter(x=>x.label);
+    const existingTest=coachEditingTestId?coachState.testLibrary.find(x=>x.id===coachEditingTestId):null;
+    const oldMetrics=existingTest?.metric_definitions||[];
+    const metrics=metricLines.map((line,index)=>{const [labelRaw,unitRaw]=line.split("|");const label=(labelRaw||"").trim();const old=oldMetrics.find(x=>(x.label||"").trim().toLowerCase()===label.toLowerCase())||oldMetrics[index];return {key:old?.key||metricKeyFromLabel(label,index),label,unit:(unitRaw||"valore").trim()};}).filter(x=>x.label);
     const btn=document.getElementById("coachTestLibrarySubmit");btn.disabled=true;setCoachMessage("coachTestLibraryMessage","Salvataggio…");
     let createdTestId=null,uploadedVideoPath=null,videoUploaded=false;
     try{
       const payload={coach_id:currentUser.id,name,category:document.getElementById("coachTestCategory").value.trim()||null,objective:document.getElementById("coachTestObjective").value.trim()||null,material:document.getElementById("coachTestMaterial").value.trim()||null,instructions:document.getElementById("coachTestInstructions").value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean),metric_definitions:metrics,video_url:document.getElementById("coachTestVideo").value.trim()||null};
-      const {data:created,error}=await sb.from("test_library").insert(payload).select("id").single();if(error)throw error;createdTestId=created.id;
+      let targetTestId=existingTest?.id||null;
+      if(!targetTestId){const {data:created,error}=await sb.from("test_library").insert(payload).select("id").single();if(error)throw error;createdTestId=created.id;targetTestId=created.id;}
       if(videoFile){
         setCoachMessage("coachTestLibraryMessage","Caricamento video in corso…");
-        uploadedVideoPath=`${currentUser.id}/${createdTestId}/${crypto.randomUUID()}.${extensionByMime[videoType]}`;
+        uploadedVideoPath=`${currentUser.id}/${targetTestId}/${crypto.randomUUID()}.${extensionByMime[videoType]}`;
         const {error:uploadErr}=await sb.storage.from("test-videos").upload(uploadedVideoPath,videoFile,{cacheControl:"3600",contentType:videoType,upsert:false});if(uploadErr)throw uploadErr;videoUploaded=true;
-        const {error:updateErr}=await sb.from("test_library").update({video_path:uploadedVideoPath}).eq("id",createdTestId);if(updateErr)throw updateErr;
+        payload.video_path=uploadedVideoPath;
       }
-      document.getElementById("coachTestLibraryForm").reset();setCoachMessage("coachTestLibraryMessage",videoFile?"Test e video aggiunti alla libreria.":"Test aggiunto alla libreria.","ok");await loadCoachDashboard();coachGo("coachRetests");
+      if(existingTest){const {error:updateErr}=await sb.from("test_library").update(payload).eq("id",targetTestId);if(updateErr)throw updateErr;}
+      else if(videoFile){const {error:updateErr}=await sb.from("test_library").update({video_path:uploadedVideoPath}).eq("id",targetTestId);if(updateErr)throw updateErr;}
+      if(existingTest?.video_path&&uploadedVideoPath&&existingTest.video_path!==uploadedVideoPath)await sb.storage.from("test-videos").remove([existingTest.video_path]);
+      const successMessage=existingTest?"Test aggiornato nella libreria.":videoFile?"Test e video aggiunti alla libreria.":"Test aggiunto alla libreria.";
+      resetCoachTestEditor();setCoachMessage("coachTestLibraryMessage",successMessage,"ok");await loadCoachDashboard();coachGo("coachLibrary");
     }catch(err){
       if(videoUploaded&&uploadedVideoPath)await sb.storage.from("test-videos").remove([uploadedVideoPath]);
       if(createdTestId)await sb.from("test_library").delete().eq("id",createdTestId);
@@ -2239,6 +2356,9 @@
     }
     finally{btn.disabled=false;}
   });
+
+  document.getElementById("coachTestEditCancel").addEventListener("click",()=>{resetCoachTestEditor();setCoachMessage("coachTestLibraryMessage","");});
+  document.getElementById("coachTestLibraryList").addEventListener("click",e=>{const b=e.target.closest(".edit-library-test");if(b)editCoachLibraryTest(b.dataset.testId);});
 
   document.getElementById("coachTestPlanForm").addEventListener("submit",async e=>{
     e.preventDefault();

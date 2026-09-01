@@ -189,3 +189,90 @@ using (
   and (storage.foldername(name))[1] = (select auth.uid())::text
   and private.current_user_is_coach()
 );
+
+-- V2.10 - inviti coach -> atleta con accettazione automatica al primo accesso.
+create table if not exists public.athlete_invitations (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null references public.profiles(id) on delete cascade,
+  email text not null check (length(btrim(email)) between 3 and 320),
+  email_normalized text generated always as (lower(btrim(email))) stored,
+  athlete_id uuid references public.profiles(id) on delete cascade,
+  status text not null default 'pending' check (status in ('pending','accepted','revoked')),
+  invited_at timestamptz not null default now(),
+  accepted_at timestamptz,
+  unique (coach_id, email_normalized)
+);
+
+create index if not exists athlete_invitations_email_idx
+  on public.athlete_invitations(email_normalized, status);
+create index if not exists athlete_invitations_athlete_idx
+  on public.athlete_invitations(athlete_id) where athlete_id is not null;
+
+alter table public.athlete_invitations enable row level security;
+revoke all on public.athlete_invitations from anon, authenticated;
+grant select, insert, delete on public.athlete_invitations to authenticated;
+grant update (status, athlete_id, accepted_at) on public.athlete_invitations to authenticated;
+
+drop policy if exists athlete_invitations_select_related on public.athlete_invitations;
+create policy athlete_invitations_select_related
+on public.athlete_invitations for select to authenticated
+using (
+  coach_id = (select auth.uid())
+  or email_normalized = lower(coalesce((select auth.jwt())->>'email', ''))
+);
+
+drop policy if exists athlete_invitations_insert_coach on public.athlete_invitations;
+create policy athlete_invitations_insert_coach
+on public.athlete_invitations for insert to authenticated
+with check (coach_id = (select auth.uid()) and private.current_user_is_coach());
+
+drop policy if exists athlete_invitations_update_related on public.athlete_invitations;
+create policy athlete_invitations_update_related
+on public.athlete_invitations for update to authenticated
+using (
+  (coach_id = (select auth.uid()) and private.current_user_is_coach())
+  or (
+    status = 'pending'
+    and email_normalized = lower(coalesce((select auth.jwt())->>'email', ''))
+  )
+)
+with check (
+  (coach_id = (select auth.uid()) and private.current_user_is_coach())
+  or (
+    status = 'accepted'
+    and athlete_id = (select auth.uid())
+    and email_normalized = lower(coalesce((select auth.jwt())->>'email', ''))
+  )
+);
+
+drop policy if exists athlete_invitations_delete_coach on public.athlete_invitations;
+create policy athlete_invitations_delete_coach
+on public.athlete_invitations for delete to authenticated
+using (coach_id = (select auth.uid()) and private.current_user_is_coach());
+
+create or replace function private.activate_athlete_invitation()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if new.status = 'accepted' and old.status = 'pending' and new.athlete_id is not null then
+    if not exists (select 1 from public.profiles p where p.id = new.coach_id and p.role = 'coach') then
+      raise exception 'Coach non valido';
+    end if;
+    if not exists (select 1 from public.profiles p where p.id = new.athlete_id and p.role = 'athlete') then
+      raise exception 'Atleta non valido';
+    end if;
+    insert into public.coach_athletes (coach_id, athlete_id, status)
+    values (new.coach_id, new.athlete_id, 'active')
+    on conflict (coach_id, athlete_id) do update set status = 'active';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists athlete_invitation_activate on public.athlete_invitations;
+create trigger athlete_invitation_activate
+after update of status on public.athlete_invitations
+for each row execute function private.activate_athlete_invitation();
