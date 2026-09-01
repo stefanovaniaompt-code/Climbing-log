@@ -159,6 +159,8 @@
     .test-progress{height:8px;background:#eee7f0;border-radius:999px;overflow:hidden;margin:10px 0 16px}
     .test-progress span{display:block;height:100%;background:var(--mustard);transition:width .2s ease}
     .test-video{display:grid;place-items:center;min-height:130px;border:1px dashed var(--line);border-radius:12px;background:#fbfafc;color:var(--muted);text-align:center;padding:16px;margin:12px 0}
+    .test-video video{display:block;width:100%;max-height:420px;border-radius:10px 20px 10px 20px;background:#170b20}
+    .coach-form input[type="file"]{width:100%;border:1px dashed rgba(91,44,131,.35);border-radius:10px 18px 10px 18px;padding:12px;background:#fff;color:var(--ink)}
     .test-metric{padding:10px 0;border-top:1px solid #eee}
     .test-metric:first-child{border-top:0}
     .trend-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}
@@ -822,7 +824,10 @@
           <label>Materiale</label><input id="coachTestMaterial" placeholder="Attrezzatura necessaria">
           <label>Istruzioni, una per riga</label><textarea id="coachTestInstructions" placeholder="Standardizza il setup&#10;Esegui tre tentativi&#10;Recupera 3 minuti"></textarea>
           <label>Risultati da raccogliere, uno per riga: nome | unità</label><textarea id="coachTestMetrics" required placeholder="Forza massima | kg&#10;Tempo al picco | ms"></textarea>
-          <label>URL video dimostrativo (opzionale)</label><input id="coachTestVideo" type="url" placeholder="https://..."><div class="form-actions"><button id="coachTestLibrarySubmit" type="submit">Aggiungi alla libreria</button></div>
+          <label>Carica video dimostrativo (opzionale)</label>
+          <input id="coachTestVideoFile" type="file" accept="video/mp4,video/webm,video/quicktime">
+          <div class="small">MP4, WebM o MOV · massimo 200 MB · accesso privato per Monica e atleti assegnati.</div>
+          <label>Oppure URL video esterno (opzionale)</label><input id="coachTestVideo" type="url" placeholder="https://..."><div class="form-actions"><button id="coachTestLibrarySubmit" type="submit">Aggiungi alla libreria</button></div>
           <div id="coachTestLibraryMessage" class="auth-message" aria-live="polite"></div>
         </form>
         <div id="coachTestLibraryList"></div>
@@ -1108,7 +1113,7 @@
       }
 
       const {data:testLibrary,error:testLibraryErr}=await sb.from("test_library")
-        .select("id,coach_id,name,category,objective,material,instructions,metric_definitions,video_url,archived")
+        .select("id,coach_id,name,category,objective,material,instructions,metric_definitions,video_url,video_path,archived")
         .eq("coach_id",currentUser.id).eq("archived",false).order("name");
       if(testLibraryErr) throw testLibraryErr;
 
@@ -1259,7 +1264,7 @@
     const testAthlete=document.getElementById("coachTestPlanAthlete");
     testAthlete.innerHTML=coachState.athletes.length?coachState.athletes.map(a=>`<option value="${escapeHtml(a.id)}">${escapeHtml(a.full_name||"Atleta")}</option>`).join(""):'<option value="">Nessun atleta</option>';
     document.getElementById("coachTestPlanChoices").innerHTML=coachState.testLibrary.length?coachState.testLibrary.map(t=>`<label class="cloud-rx-check"><input type="checkbox" name="coachTestChoice" value="${escapeHtml(t.id)}"><span><b>${escapeHtml(t.name)}</b><br><span class="small">${escapeHtml([t.category,t.objective].filter(Boolean).join(" · ")||"Test personalizzato")}</span></span></label>`).join(""):'<div class="coach-empty">La libreria test è vuota.</div>';
-    document.getElementById("coachTestLibraryList").innerHTML=coachState.testLibrary.length?coachState.testLibrary.map(t=>`<div class="coach-library-row"><b>${escapeHtml(t.name)}</b><div class="small">${escapeHtml(t.category||"Senza categoria")} · ${(t.metric_definitions||[]).length} risultati</div>${t.objective?`<div class="small">${escapeHtml(t.objective)}</div>`:""}</div>`).join(""):'<div class="coach-empty">Nessun test in libreria.</div>';
+    document.getElementById("coachTestLibraryList").innerHTML=coachState.testLibrary.length?coachState.testLibrary.map(t=>`<div class="coach-library-row"><b>${escapeHtml(t.name)}</b><div class="small">${escapeHtml(t.category||"Senza categoria")} · ${(t.metric_definitions||[]).length} risultati · ${t.video_path?"video caricato":t.video_url?"video collegato":"senza video"}</div>${t.objective?`<div class="small">${escapeHtml(t.objective)}</div>`:""}</div>`).join(""):'<div class="coach-empty">Nessun test in libreria.</div>';
     document.getElementById("coachTestPlansList").innerHTML=coachState.testPlans.length?coachState.testPlans.map(p=>{const a=coachState.athletes.find(x=>x.id===p.athlete_id);const n=coachState.testPlanItems.filter(x=>x.test_plan_id===p.id).length;const done=coachState.tests.some(x=>x.test_plan_id===p.id);return `<div class="coach-test-row"><div class="coach-card-head"><div><b>${escapeHtml(p.title)}</b><div class="small">${escapeHtml(a?.full_name||"Atleta")} · ${p.scheduled_date?dateIt(p.scheduled_date):"data libera"} · ${n} test</div></div><span class="pill ${p.status==="published"||done?"ok":""}">${done?"eseguita":escapeHtml(p.status)}</span></div></div>`;}).join(""):'<div class="coach-empty">Nessuna seduta test preparata.</div>';
 
     const lbox=document.getElementById("coachLibraryList");
@@ -1484,7 +1489,7 @@
       const completed=Object.values(athleteTestDraft.values).filter(v=>v!==""&&v!==null&&v!==undefined).length;
       extra=`<div class="notice">Valori compilati: <b>${completed}</b>. Puoi salvare anche una batteria parziale e completare gli altri protocolli in una nuova sessione test.</div><label>Dolore o fastidi</label><textarea id="athleteTestPain" placeholder="Zona, intensità 0–10, test e gestione del carico...">${escapeHtml(athleteTestDraft.pain)}</textarea><label>Note generali</label><textarea id="athleteTestNotes">${escapeHtml(athleteTestDraft.notes)}</textarea>`;
     }
-    const video=p.video_url?`<div class="test-video"><a href="${escapeHtml(p.video_url)}" target="_blank" rel="noopener" class="secondary">Guarda video dimostrativo</a></div>`:`<div class="test-video"><div><b>Video dimostrativo</b><br><span class="small">Non ancora collegato dalla coach</span></div></div>`;
+    const video=p.video_url?(p.video_kind==="upload"?`<div class="test-video"><video controls playsinline preload="metadata" src="${escapeHtml(p.video_url)}">Il browser non supporta la riproduzione video.</video></div>`:`<div class="test-video"><a href="${escapeHtml(p.video_url)}" target="_blank" rel="noopener" class="secondary">Guarda video dimostrativo</a></div>`):`<div class="test-video"><div><b>Video dimostrativo</b><br><span class="small">Non ancora collegato dalla coach</span></div></div>`;
     document.getElementById("athleteTestContent").innerHTML=`<div class="rx"><b>Materiale</b><br>${escapeHtml(p.material||"Come concordato con la coach")}</div>${extra}<h3>Protocollo</h3>${instructions}${video}${metrics}`;
     setCoachMessage("athleteTestMessage","");
   }
@@ -1540,10 +1545,10 @@
     const runner=document.getElementById("athleteTestRunner"),empty=document.getElementById("athleteTestEmpty"),summary=document.getElementById("athleteTestPlanSummary");
     if(!active){runner.classList.add("hidden");empty.classList.remove("hidden");summary.textContent="Nessuna seduta test da eseguire.";athleteTestState.steps=[];renderAthleteTestHistory();return;}
     const {data:items,error:itemErr}=await sb.from("test_plan_items").select("id,test_plan_id,test_library_id,item_order,instructions_override,required").eq("test_plan_id",active.id).order("item_order");if(itemErr)throw itemErr;
-    const ids=(items||[]).map(x=>x.test_library_id);let library=[];if(ids.length){const {data,error}=await sb.from("test_library").select("id,name,category,objective,material,instructions,metric_definitions,video_url").in("id",ids);if(error)throw error;library=data||[];}
+    const ids=(items||[]).map(x=>x.test_library_id);let library=[];if(ids.length){const {data,error}=await sb.from("test_library").select("id,name,category,objective,material,instructions,metric_definitions,video_url,video_path").in("id",ids);if(error)throw error;library=data||[];await Promise.all(library.map(async t=>{if(!t.video_path)return;const {data:signed,error:signedErr}=await sb.storage.from("test-videos").createSignedUrl(t.video_path,21600);if(!signedErr)t.video_signed_url=signed?.signedUrl||null;}));}
     athleteTestState.items=items||[];athleteTestState.library=library;
     const prep={key:"setup",title:"Preparazione",material:"Bilancia e attrezzatura indicata dalla coach",instructions:["Esegui la seduta nelle condizioni concordate con Monica.","Completa il riscaldamento e rispetta recuperi e criteri di stop."],metrics:[{key:"body_weight_kg",label:"Peso corporeo",unit:"kg"}]};
-    const prescribed=(items||[]).map(item=>{const t=library.find(x=>x.id===item.test_library_id);return t?{key:`library_${t.id}`,title:t.name,material:t.material,instructions:item.instructions_override?[item.instructions_override]:(t.instructions||[]),metrics:(t.metric_definitions||[]).map(m=>({...m,key:`${t.id}__${m.key}`})),video_url:t.video_url}:null;}).filter(Boolean);
+    const prescribed=(items||[]).map(item=>{const t=library.find(x=>x.id===item.test_library_id);return t?{key:`library_${t.id}`,title:t.name,material:t.material,instructions:item.instructions_override?[item.instructions_override]:(t.instructions||[]),metrics:(t.metric_definitions||[]).map(m=>({...m,key:`${t.id}__${m.key}`})),video_url:t.video_signed_url||t.video_url,video_kind:t.video_signed_url?"upload":"link"}:null;}).filter(Boolean);
     const review={key:"review",title:"Dolore, note e invio",material:"Riepilogo seduta",instructions:["Controlla i valori inseriti.","Descrivi eventuale dolore o modifica del protocollo."],metrics:[]};
     athleteTestState.steps=[prep,...prescribed,review];athleteTestStep=0;athleteTestDraft={values:{},pain:"",notes:"",tested_at:new Date().toISOString().slice(0,10),setup_mode:"pin"};
     summary.innerHTML=`<b>${escapeHtml(active.title)}</b><br><span class="small">${active.scheduled_date?dateIt(active.scheduled_date):"Data libera"} · ${prescribed.length} test${active.coach_notes?` · ${escapeHtml(active.coach_notes)}`:""}</span>`;empty.classList.add("hidden");runner.classList.remove("hidden");renderAthleteTest();renderAthleteTestHistory();
@@ -2205,15 +2210,33 @@
   document.getElementById("coachTestLibraryForm").addEventListener("submit",async e=>{
     e.preventDefault();
     const name=document.getElementById("coachTestName").value.trim();
+    const videoFile=document.getElementById("coachTestVideoFile").files?.[0]||null;
     const metricLines=document.getElementById("coachTestMetrics").value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
     if(!name||!metricLines.length){setCoachMessage("coachTestLibraryMessage","Inserisci nome e almeno un risultato da raccogliere.","error");return;}
+    const mimeByExtension={mp4:"video/mp4",webm:"video/webm",mov:"video/quicktime"};
+    const extension=videoFile?.name.split(".").pop()?.toLowerCase()||"";
+    const videoType=videoFile?(videoFile.type||mimeByExtension[extension]||""):"";
+    const extensionByMime={"video/mp4":"mp4","video/webm":"webm","video/quicktime":"mov"};
+    if(videoFile&&!extensionByMime[videoType]){setCoachMessage("coachTestLibraryMessage","Formato video non supportato. Usa MP4, WebM o MOV.","error");return;}
+    if(videoFile&&videoFile.size>200*1024*1024){setCoachMessage("coachTestLibraryMessage","Il video supera il limite di 200 MB.","error");return;}
     const metrics=metricLines.map((line,index)=>{const [labelRaw,unitRaw]=line.split("|");const label=(labelRaw||"").trim();return {key:metricKeyFromLabel(label,index),label,unit:(unitRaw||"valore").trim()};}).filter(x=>x.label);
     const btn=document.getElementById("coachTestLibrarySubmit");btn.disabled=true;setCoachMessage("coachTestLibraryMessage","Salvataggio…");
+    let createdTestId=null,uploadedVideoPath=null,videoUploaded=false;
     try{
       const payload={coach_id:currentUser.id,name,category:document.getElementById("coachTestCategory").value.trim()||null,objective:document.getElementById("coachTestObjective").value.trim()||null,material:document.getElementById("coachTestMaterial").value.trim()||null,instructions:document.getElementById("coachTestInstructions").value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean),metric_definitions:metrics,video_url:document.getElementById("coachTestVideo").value.trim()||null};
-      const {error}=await sb.from("test_library").insert(payload);if(error)throw error;
-      document.getElementById("coachTestLibraryForm").reset();setCoachMessage("coachTestLibraryMessage","Test aggiunto alla libreria.","ok");await loadCoachDashboard();coachGo("coachRetests");
-    }catch(err){setCoachMessage("coachTestLibraryMessage",err?.message||"Errore durante il salvataggio.","error");}
+      const {data:created,error}=await sb.from("test_library").insert(payload).select("id").single();if(error)throw error;createdTestId=created.id;
+      if(videoFile){
+        setCoachMessage("coachTestLibraryMessage","Caricamento video in corso…");
+        uploadedVideoPath=`${currentUser.id}/${createdTestId}/${crypto.randomUUID()}.${extensionByMime[videoType]}`;
+        const {error:uploadErr}=await sb.storage.from("test-videos").upload(uploadedVideoPath,videoFile,{cacheControl:"3600",contentType:videoType,upsert:false});if(uploadErr)throw uploadErr;videoUploaded=true;
+        const {error:updateErr}=await sb.from("test_library").update({video_path:uploadedVideoPath}).eq("id",createdTestId);if(updateErr)throw updateErr;
+      }
+      document.getElementById("coachTestLibraryForm").reset();setCoachMessage("coachTestLibraryMessage",videoFile?"Test e video aggiunti alla libreria.":"Test aggiunto alla libreria.","ok");await loadCoachDashboard();coachGo("coachRetests");
+    }catch(err){
+      if(videoUploaded&&uploadedVideoPath)await sb.storage.from("test-videos").remove([uploadedVideoPath]);
+      if(createdTestId)await sb.from("test_library").delete().eq("id",createdTestId);
+      setCoachMessage("coachTestLibraryMessage",err?.message||"Errore durante il salvataggio.","error");
+    }
     finally{btn.disabled=false;}
   });
 

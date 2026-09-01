@@ -1,4 +1,4 @@
-const CACHE = "monica-erbesato-v2-8-boulder";
+const CACHE = "monica-erbesato-v2-9-test-video-upload";
 const APP_ASSETS = [
   "./",
   "./index.html",

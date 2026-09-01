@@ -133,3 +133,59 @@ using (exists (
     and tp.coach_id = (select auth.uid())
     and private.is_coach_of(tp.athlete_id)
 ));
+
+-- Video dimostrativi privati per la libreria test.
+alter table public.test_library add column if not exists video_path text;
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'test-videos', 'test-videos', false, 209715200,
+  array['video/mp4','video/webm','video/quicktime']::text[]
+)
+on conflict (id) do update
+set public = false,
+    file_size_limit = excluded.file_size_limit,
+    allowed_mime_types = excluded.allowed_mime_types;
+
+create policy test_videos_insert on storage.objects for insert to authenticated
+with check (
+  bucket_id = 'test-videos'
+  and (storage.foldername(name))[1] = (select auth.uid())::text
+  and private.current_user_is_coach()
+);
+
+create policy test_videos_select on storage.objects for select to authenticated
+using (
+  bucket_id = 'test-videos'
+  and (
+    ((storage.foldername(name))[1] = (select auth.uid())::text and private.current_user_is_coach())
+    or exists (
+      select 1
+      from public.test_library tl
+      join public.test_plan_items tpi on tpi.test_library_id = tl.id
+      join public.test_plans tp on tp.id = tpi.test_plan_id
+      where tl.video_path = storage.objects.name
+        and tp.athlete_id = (select auth.uid())
+        and tp.status in ('published', 'completed')
+    )
+  )
+);
+
+create policy test_videos_update on storage.objects for update to authenticated
+using (
+  bucket_id = 'test-videos'
+  and (storage.foldername(name))[1] = (select auth.uid())::text
+  and private.current_user_is_coach()
+)
+with check (
+  bucket_id = 'test-videos'
+  and (storage.foldername(name))[1] = (select auth.uid())::text
+  and private.current_user_is_coach()
+);
+
+create policy test_videos_delete on storage.objects for delete to authenticated
+using (
+  bucket_id = 'test-videos'
+  and (storage.foldername(name))[1] = (select auth.uid())::text
+  and private.current_user_is_coach()
+);
