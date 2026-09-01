@@ -245,6 +245,9 @@
   <section id="testModule" class="tabpage hidden">
     <div class="panel">
       <div class="coach-kicker">Testing performance</div>
+      <div id="athleteTestPlanSummary" class="notice"></div>
+      <div id="athleteTestEmpty" class="coach-empty hidden">Monica non ha ancora pubblicato una seduta test per te.</div>
+      <div id="athleteTestRunner">
       <h2 id="athleteTestTitle">Test</h2>
       <div id="athleteTestStepLabel" class="small"></div>
       <div class="test-progress"><span id="athleteTestProgress"></span></div>
@@ -254,6 +257,8 @@
         <button id="athleteTestNext" type="button">Avanti →</button>
       </div>
       <div id="athleteTestMessage" class="auth-message" aria-live="polite"></div>
+      </div>
+      <div style="margin-top:18px"><h2>I miei risultati</h2><div id="athleteTestHistory"></div></div>
     </div>
   </section>
 
@@ -701,12 +706,45 @@
 
     <section id="coachRetests" class="coach-page hidden">
       <div class="panel">
-        <div class="coach-section-title"><h2>Retest</h2><span class="pill">trend</span></div>
-        <p class="small">Qui confluiranno i test longitudinali e i grafici di miglioramento. Le sessioni test già presenti nel database vengono mostrate subito.</p>
-        <div id="coachRetestsList"></div>
-        <button id="coachNewRetest" type="button">+ Registra nuovo retest</button>
+        <div class="coach-section-title"><h2>Prepara seduta test</h2><span class="pill">coach → atleta</span></div>
+        <p class="small">Scegli l'atleta e soltanto i test utili ai suoi obiettivi. Le bozze non sono visibili all'atleta.</p>
+        <form id="coachTestPlanForm" class="coach-form">
+          <div class="grid2">
+            <div><label>Atleta</label><select id="coachTestPlanAthlete" required></select></div>
+            <div><label>Stato</label><select id="coachTestPlanStatus"><option value="draft">Bozza</option><option value="published">Pubblica all'atleta</option></select></div>
+            <div><label>Titolo seduta</label><input id="coachTestPlanTitle" required placeholder="es. Baseline forza dita"></div>
+            <div><label>Data prevista</label><input id="coachTestPlanDate" type="date"></div>
+          </div>
+          <label>Test da inserire</label>
+          <div id="coachTestPlanChoices" class="coach-form"></div>
+          <label>Note per l'atleta</label><textarea id="coachTestPlanNotes" placeholder="Riposo, ordine dei test, setup specifico, criteri di stop..."></textarea>
+          <div class="form-actions"><button id="coachTestPlanSubmit" type="submit">Crea seduta test</button></div>
+          <div id="coachTestPlanMessage" class="auth-message" aria-live="polite"></div>
+        </form>
+        <h2 style="margin-top:18px">Sedute preparate</h2>
+        <div id="coachTestPlansList"></div>
       </div>
-      <div class="cloud-note">La struttura dati per i grafici è già pronta: data, peso corporeo, protocollo/setup, metrica, lato/grip e normalizzazione sul peso corporeo. Il form completo dei test sarà il prossimo modulo.</div>
+      <div class="panel">
+        <div class="coach-section-title"><h2>Libreria test</h2><span class="pill">personalizzabile</span></div>
+        <p class="small">Monica può usare i test esistenti oppure aggiungerne di nuovi.</p>
+        <form id="coachTestLibraryForm" class="coach-form">
+          <div class="grid2">
+            <div><label>Nome test</label><input id="coachTestName" required placeholder="es. RFD dita 20 mm"></div>
+            <div><label>Categoria</label><input id="coachTestCategory" placeholder="es. Dita · potenza"></div>
+          </div>
+          <label>Obiettivo</label><input id="coachTestObjective" placeholder="Cosa misura e perché viene scelto">
+          <label>Materiale</label><input id="coachTestMaterial" placeholder="Attrezzatura necessaria">
+          <label>Istruzioni, una per riga</label><textarea id="coachTestInstructions" placeholder="Standardizza il setup&#10;Esegui tre tentativi&#10;Recupera 3 minuti"></textarea>
+          <label>Risultati da raccogliere, uno per riga: nome | unità</label><textarea id="coachTestMetrics" required placeholder="Forza massima | kg&#10;Tempo al picco | ms"></textarea>
+          <label>URL video dimostrativo (opzionale)</label><input id="coachTestVideo" type="url" placeholder="https://..."><div class="form-actions"><button id="coachTestLibrarySubmit" type="submit">Aggiungi alla libreria</button></div>
+          <div id="coachTestLibraryMessage" class="auth-message" aria-live="polite"></div>
+        </form>
+        <div id="coachTestLibraryList"></div>
+      </div>
+      <div class="panel">
+        <div class="coach-section-title"><h2>Risultati e retest</h2><span class="pill">storico</span></div>
+        <div id="coachRetestsList"></div>
+      </div>
     </section>
 
     <section id="coachLibrary" class="coach-page hidden">
@@ -779,16 +817,6 @@
   let recoveryMode = false;
 
   const TEST_PROTOCOL_VERSION="climbing-performance-v1";
-  const TEST_PROTOCOLS=[
-    {key:"setup",title:"Preparazione",material:"Area riscaldamento, bilancia e attrezzatura concordata",instructions:["Esegui i test dopo almeno un giorno di riposo completo, meglio due.","Dividi la batteria in due giornate.","Esegui un riscaldamento completo per spalle, core e dita.","Riposa 10 minuti tra test diversi."],metrics:[{key:"body_weight_kg",label:"Peso corporeo",unit:"kg"}]},
-    {key:"pull",title:"Trazioni e parte superiore",material:"Sbarra, cintura, pesi ed eventuale sistema di scarico",instructions:["Trova gradualmente il carico con cui completi una sola trazione, mento sopra la sbarra.","Riposa 3 minuti tra i tentativi.","Calcola il 60% del carico totale e completa il massimo numero di trazioni di qualità.","Interrompi se perdi il range completo o compare dolore."],metrics:[{key:"pull_1rm_external_kg",label:"1RM: sovraccarico (+) o assistenza (-)",unit:"kg"},{key:"pull_60_reps",label:"Ripetizioni complete al 60%",unit:"rep"}]},
-    {key:"core_push",title:"Core e spinta",material:"Tappetino e cronometro",instructions:["Mantieni il plank laterale fino alla perdita della posizione standardizzata.","Riposa 2 minuti tra destra e sinistra.","Esegui piegamenti a corpo libero mantenendo una buona qualità."],metrics:[{key:"side_plank_right_sec",label:"Plank laterale destro",unit:"sec",side:"right"},{key:"side_plank_left_sec",label:"Plank laterale sinistro",unit:"sec",side:"left"},{key:"pushups_max_reps",label:"Massimo piegamenti",unit:"rep"}]},
-    {key:"finger_max",title:"Forza massimale dita · 20 mm",material:"Trave 20 mm oppure travetto portatile + PIN + pesi",instructions:["Usa il setup concordato e mantienilo identico nei retest.","Trova il massimo carico sostenibile per 7 secondi esatti.","Testa open hand, half crimp e full crimp.","Riposa 3 minuti tra i tentativi."],metrics:["open_hand","half_crimp","full_crimp"].flatMap(grip=>["right","left"].map(side=>({key:`finger_max_${grip}_${side}_kg`,label:`${grip.replaceAll("_"," ")} · ${side==="right"?"DX":"SX"}`,unit:"kg",grip,side})))},
-    {key:"finger_capacity",title:"Capacità anaerobica · 60%",material:"Stesso setup del test massimale + cronometro",instructions:["Calcola il 60% del massimale per presa e lato.","Mantieni il carico fino al fallimento tecnico.","Registra i secondi effettivi.","Mantieni invariati tacca, posizione e presa."],metrics:["open_hand","half_crimp","full_crimp"].flatMap(grip=>["right","left"].map(side=>({key:`finger_capacity60_${grip}_${side}_sec`,label:`${grip.replaceAll("_"," ")} · ${side==="right"?"DX":"SX"}`,unit:"sec",grip,side})))},
-    {key:"repeaters60",title:"Capacità 60% · protocollo 7:3",material:"Trave 20 mm, scarico/sovraccarico e timer intervalli",instructions:["Preferibilmente usa due mani al trave.","Calcola il 60% del carico totale del massimale.","Alterna 7 secondi appeso e 3 secondi di riposo.","Termina quando non completi una sospensione da 7 secondi."],metrics:[{key:"repeaters60_open_hand_reps",label:"Open hand · ripetizioni complete",unit:"rep",grip:"open_hand"},{key:"repeaters60_half_crimp_reps",label:"Half crimp · ripetizioni complete",unit:"rep",grip:"half_crimp"}]},
-    {key:"repeaters80",title:"Capacità 80% · protocollo 7:3",material:"Trave 20 mm, scarico/sovraccarico e timer intervalli",instructions:["Preferibilmente usa due mani al trave.","Calcola l'80% del carico totale del massimale.","Alterna 7 secondi appeso e 3 secondi di riposo.","Termina quando non completi una sospensione da 7 secondi."],metrics:[{key:"repeaters80_open_hand_reps",label:"Open hand · ripetizioni complete",unit:"rep",grip:"open_hand"},{key:"repeaters80_half_crimp_reps",label:"Half crimp · ripetizioni complete",unit:"rep",grip:"half_crimp"}]},
-    {key:"review",title:"Dolore, note e invio",material:"Riepilogo della batteria",instructions:["Controlla i valori prima dell'invio.","Se è comparso dolore, descrivi zona, intensità e test in cui è comparso.","Non usare dolore crescente come criterio per proseguire il test."],metrics:[]}
-  ];
   let athleteTestStep=0;
   let athleteTestDraft={values:{},pain:"",notes:""};
 
@@ -916,14 +944,13 @@
       document.getElementById("userDisplay").textContent=currentProfile.full_name||currentUser.email||"Atleta";
       state=load();
       renderAll();
-      renderAthleteTest();
       maybeShowLegacyImport();
-      await loadAthleteCloudPlan();
+      await Promise.all([loadAthleteCloudPlan(),loadAthleteTestPlans()]);
     }
   }
 
 
-  const coachState={athletes:[],programs:[],tests:[],library:[],sessionLogs:[],loggedSessions:[],loggedExercises:[],exerciseLogs:[],selectedAthleteId:null,selectedProgramId:null,selectedWeekId:null,selectedSessionId:null,weeks:[],sessions:[],sessionExercises:[]};
+  const coachState={athletes:[],programs:[],tests:[],testResults:[],library:[],testLibrary:[],testPlans:[],testPlanItems:[],sessionLogs:[],loggedSessions:[],loggedExercises:[],exerciseLogs:[],selectedAthleteId:null,selectedProgramId:null,selectedWeekId:null,selectedSessionId:null,weeks:[],sessions:[],sessionExercises:[]};
 
   function escapeHtml(value){
     return String(value??"").replace(/[&<>'"]/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[ch]));
@@ -981,10 +1008,34 @@
       if(programErr) throw programErr;
 
       const {data:tests,error:testErr}=await sb.from("test_sessions")
-        .select("id,athlete_id,coach_id,tested_at,body_weight_kg,protocol_version,notes")
+        .select("id,athlete_id,coach_id,test_plan_id,tested_at,body_weight_kg,protocol_version,notes")
         .eq("coach_id",currentUser.id)
         .order("tested_at",{ascending:false});
       if(testErr) throw testErr;
+      let testResults=[];
+      const testSessionIds=(tests||[]).map(x=>x.id);
+      if(testSessionIds.length){
+        const {data,error}=await sb.from("test_results")
+          .select("id,test_session_id,metric_key,metric_label,value,unit,side,grip")
+          .in("test_session_id",testSessionIds);
+        if(error)throw error;testResults=data||[];
+      }
+
+      const {data:testLibrary,error:testLibraryErr}=await sb.from("test_library")
+        .select("id,coach_id,name,category,objective,material,instructions,metric_definitions,video_url,archived")
+        .eq("coach_id",currentUser.id).eq("archived",false).order("name");
+      if(testLibraryErr) throw testLibraryErr;
+
+      const {data:testPlans,error:testPlansErr}=await sb.from("test_plans")
+        .select("id,coach_id,athlete_id,title,scheduled_date,status,coach_notes,created_at")
+        .eq("coach_id",currentUser.id).order("created_at",{ascending:false});
+      if(testPlansErr) throw testPlansErr;
+      let testPlanItems=[];
+      const testPlanIds=(testPlans||[]).map(x=>x.id);
+      if(testPlanIds.length){
+        const {data,error}=await sb.from("test_plan_items").select("id,test_plan_id,test_library_id,item_order,instructions_override,required").in("test_plan_id",testPlanIds).order("item_order");
+        if(error)throw error;testPlanItems=data||[];
+      }
 
       const {data:library,error:libraryErr}=await sb.from("exercise_library")
         .select("id,name,category,modality,description,default_instructions,archived,created_at,updated_at")
@@ -1032,7 +1083,11 @@
       coachState.athletes=athletes;
       coachState.programs=programs||[];
       coachState.tests=tests||[];
+      coachState.testResults=testResults;
       coachState.library=library||[];
+      coachState.testLibrary=testLibrary||[];
+      coachState.testPlans=testPlans||[];
+      coachState.testPlanItems=testPlanItems;
       coachState.sessionLogs=sessionLogs;
       coachState.loggedSessions=loggedSessions;
       coachState.loggedExercises=loggedExercises;
@@ -1106,8 +1161,15 @@
     if(!coachState.tests.length) tbox.innerHTML='<div class="coach-empty">Nessun retest cloud registrato.</div>';
     else tbox.innerHTML=coachState.tests.map(t=>{
       const a=coachState.athletes.find(x=>x.id===t.athlete_id);
-      return `<div class="coach-test-row"><b>${escapeHtml(a?.full_name||"Atleta")}</b><div class="small">${dateIt(t.tested_at)}${t.body_weight_kg?` · ${escapeHtml(t.body_weight_kg)} kg`:""}${t.protocol_version?` · ${escapeHtml(t.protocol_version)}`:""}</div></div>`;
+      const values=coachState.testResults.filter(x=>x.test_session_id===t.id);
+      return `<div class="coach-test-row"><b>${escapeHtml(a?.full_name||"Atleta")}</b><div class="small">${dateIt(t.tested_at)}${t.body_weight_kg?` · ${escapeHtml(t.body_weight_kg)} kg`:""}${t.protocol_version?` · ${escapeHtml(t.protocol_version)}`:""}</div>${values.length?`<div class="small" style="margin-top:6px">${values.map(x=>`<b>${escapeHtml(x.metric_label)}:</b> ${escapeHtml(x.value)} ${escapeHtml(x.unit||"")}`).join(" · ")}</div>`:'<div class="small">Nessun valore registrato</div>'}${t.notes?`<div class="small" style="margin-top:4px">Note: ${escapeHtml(t.notes)}</div>`:""}</div>`;
     }).join("");
+
+    const testAthlete=document.getElementById("coachTestPlanAthlete");
+    testAthlete.innerHTML=coachState.athletes.length?coachState.athletes.map(a=>`<option value="${escapeHtml(a.id)}">${escapeHtml(a.full_name||"Atleta")}</option>`).join(""):'<option value="">Nessun atleta</option>';
+    document.getElementById("coachTestPlanChoices").innerHTML=coachState.testLibrary.length?coachState.testLibrary.map(t=>`<label class="cloud-rx-check"><input type="checkbox" name="coachTestChoice" value="${escapeHtml(t.id)}"><span><b>${escapeHtml(t.name)}</b><br><span class="small">${escapeHtml([t.category,t.objective].filter(Boolean).join(" · ")||"Test personalizzato")}</span></span></label>`).join(""):'<div class="coach-empty">La libreria test è vuota.</div>';
+    document.getElementById("coachTestLibraryList").innerHTML=coachState.testLibrary.length?coachState.testLibrary.map(t=>`<div class="coach-library-row"><b>${escapeHtml(t.name)}</b><div class="small">${escapeHtml(t.category||"Senza categoria")} · ${(t.metric_definitions||[]).length} risultati</div>${t.objective?`<div class="small">${escapeHtml(t.objective)}</div>`:""}</div>`).join(""):'<div class="coach-empty">Nessun test in libreria.</div>';
+    document.getElementById("coachTestPlansList").innerHTML=coachState.testPlans.length?coachState.testPlans.map(p=>{const a=coachState.athletes.find(x=>x.id===p.athlete_id);const n=coachState.testPlanItems.filter(x=>x.test_plan_id===p.id).length;const done=coachState.tests.some(x=>x.test_plan_id===p.id);return `<div class="coach-test-row"><div class="coach-card-head"><div><b>${escapeHtml(p.title)}</b><div class="small">${escapeHtml(a?.full_name||"Atleta")} · ${p.scheduled_date?dateIt(p.scheduled_date):"data libera"} · ${n} test</div></div><span class="pill ${p.status==="published"||done?"ok":""}">${done?"eseguita":escapeHtml(p.status)}</span></div></div>`;}).join(""):'<div class="coach-empty">Nessuna seduta test preparata.</div>';
 
     const lbox=document.getElementById("coachLibraryList");
     if(!coachState.library.length) lbox.innerHTML='<div class="coach-empty">La libreria è vuota. Aggiungi il primo esercizio.</div>';
@@ -1304,6 +1366,8 @@
 
 
 
+  const athleteTestState={plans:[],items:[],library:[],sessions:[],results:[],activePlan:null,steps:[]};
+
   function collectAthleteTestStep(){
     document.querySelectorAll("#athleteTestContent [data-test-key]").forEach(el=>{athleteTestDraft.values[el.dataset.testKey]=el.value;});
     const pain=document.getElementById("athleteTestPain"),notes=document.getElementById("athleteTestNotes"),date=document.getElementById("athleteTestDate"),setup=document.getElementById("athleteTestSetup");
@@ -1314,10 +1378,11 @@
   }
 
   function renderAthleteTest(){
-    const p=TEST_PROTOCOLS[athleteTestStep],last=athleteTestStep===TEST_PROTOCOLS.length-1;
+    const steps=athleteTestState.steps;if(!steps.length)return;
+    const p=steps[athleteTestStep],last=athleteTestStep===steps.length-1;
     document.getElementById("athleteTestTitle").textContent=p.title;
-    document.getElementById("athleteTestStepLabel").textContent=`Step ${athleteTestStep+1} di ${TEST_PROTOCOLS.length}`;
-    document.getElementById("athleteTestProgress").style.width=`${((athleteTestStep+1)/TEST_PROTOCOLS.length)*100}%`;
+    document.getElementById("athleteTestStepLabel").textContent=`Step ${athleteTestStep+1} di ${steps.length}`;
+    document.getElementById("athleteTestProgress").style.width=`${((athleteTestStep+1)/steps.length)*100}%`;
     document.getElementById("athleteTestPrev").disabled=athleteTestStep===0;
     document.getElementById("athleteTestNext").textContent=last?"Salva test nel cloud":"Avanti →";
     const instructions=`<ol>${p.instructions.map(x=>`<li>${escapeHtml(x)}</li>`).join("")}</ol>`;
@@ -1328,7 +1393,8 @@
       const completed=Object.values(athleteTestDraft.values).filter(v=>v!==""&&v!==null&&v!==undefined).length;
       extra=`<div class="notice">Valori compilati: <b>${completed}</b>. Puoi salvare anche una batteria parziale e completare gli altri protocolli in una nuova sessione test.</div><label>Dolore o fastidi</label><textarea id="athleteTestPain" placeholder="Zona, intensità 0–10, test e gestione del carico...">${escapeHtml(athleteTestDraft.pain)}</textarea><label>Note generali</label><textarea id="athleteTestNotes">${escapeHtml(athleteTestDraft.notes)}</textarea>`;
     }
-    document.getElementById("athleteTestContent").innerHTML=`<div class="rx"><b>Materiale</b><br>${escapeHtml(p.material)}</div>${extra}<h3>Protocollo</h3>${instructions}<div class="test-video"><div><b>Video dimostrativo</b><br><span class="small">Slot predisposto · il video verrà collegato nel prossimo step</span></div></div>${metrics}`;
+    const video=p.video_url?`<div class="test-video"><a href="${escapeHtml(p.video_url)}" target="_blank" rel="noopener" class="secondary">Guarda video dimostrativo</a></div>`:`<div class="test-video"><div><b>Video dimostrativo</b><br><span class="small">Non ancora collegato dalla coach</span></div></div>`;
+    document.getElementById("athleteTestContent").innerHTML=`<div class="rx"><b>Materiale</b><br>${escapeHtml(p.material||"Come concordato con la coach")}</div>${extra}<h3>Protocollo</h3>${instructions}${video}${metrics}`;
     setCoachMessage("athleteTestMessage","");
   }
 
@@ -1340,19 +1406,49 @@
     if(!numericEntries.length){setCoachMessage("athleteTestMessage","Inserisci almeno un risultato prima di salvare.","error");return;}
     const btn=document.getElementById("athleteTestNext");btn.disabled=true;setCoachMessage("athleteTestMessage","Salvataggio test…");
     try{
-      const {data:link,error:linkErr}=await sb.from("coach_athletes").select("coach_id").eq("athlete_id",currentUser.id).eq("status","active").maybeSingle();
-      if(linkErr)throw linkErr;
-      const sessionPayload={athlete_id:currentUser.id,coach_id:link?.coach_id||null,tested_at:athleteTestDraft.tested_at||new Date().toISOString().slice(0,10),body_weight_kg:bodyWeight,protocol_version:TEST_PROTOCOL_VERSION,context:{setup_mode:athleteTestDraft.setup_mode||"pin",pain:athleteTestDraft.pain||null},notes:athleteTestDraft.notes||null};
+      const plan=athleteTestState.activePlan;if(!plan)throw new Error("Nessuna seduta test pubblicata.");
+      const sessionPayload={athlete_id:currentUser.id,coach_id:plan.coach_id,test_plan_id:plan.id,tested_at:athleteTestDraft.tested_at||new Date().toISOString().slice(0,10),body_weight_kg:bodyWeight,protocol_version:TEST_PROTOCOL_VERSION,context:{setup_mode:athleteTestDraft.setup_mode||"pin",pain:athleteTestDraft.pain||null},notes:athleteTestDraft.notes||null};
       const {data:sessionRow,error:sessionErr}=await sb.from("test_sessions").insert(sessionPayload).select("id").single();
       if(sessionErr)throw sessionErr;
-      const metricMap=new Map(TEST_PROTOCOLS.flatMap(p=>p.metrics.map(m=>[m.key,{...m,protocol_key:p.key}])));
+      const metricMap=new Map(athleteTestState.steps.flatMap(p=>p.metrics.map(m=>[m.key,{...m,protocol_key:p.key}])));
       const rows=numericEntries.map(([key,value])=>{const m=metricMap.get(key)||{label:key,unit:"",protocol_key:"custom"};return {test_session_id:sessionRow.id,metric_key:key,metric_label:m.label,value:Number(value),unit:m.unit,side:m.side||null,grip:m.grip||null,normalize_to_body_weight:m.unit==="kg",setup:{protocol_key:m.protocol_key,setup_mode:athleteTestDraft.setup_mode||"pin"},notes:null};});
-      numericEntries.filter(([key])=>key.startsWith("finger_max_")).forEach(([key,value])=>{const m=metricMap.get(key);[60,80].forEach(pct=>rows.push({test_session_id:sessionRow.id,metric_key:`${key}_target_${pct}`,metric_label:`${m.label} · target ${pct}%`,value:Number(value)*pct/100,unit:"kg",side:m.side||null,grip:m.grip||null,normalize_to_body_weight:true,setup:{protocol_key:"derived_target",source_metric:key,percentage:pct,setup_mode:athleteTestDraft.setup_mode||"pin"},notes:"Calcolo automatico"}));});
+      numericEntries.filter(([key])=>key.includes("__finger_max_")).forEach(([key,value])=>{const m=metricMap.get(key);[60,80].forEach(pct=>rows.push({test_session_id:sessionRow.id,metric_key:`${key}_target_${pct}`,metric_label:`${m.label} · target ${pct}%`,value:Number(value)*pct/100,unit:"kg",side:m.side||null,grip:m.grip||null,normalize_to_body_weight:true,setup:{protocol_key:"derived_target",source_metric:key,percentage:pct,setup_mode:athleteTestDraft.setup_mode||"pin"},notes:"Calcolo automatico"}));});
       const {error:resultsErr}=await sb.from("test_results").insert(rows);if(resultsErr)throw resultsErr;
-      athleteTestDraft={values:{},pain:"",notes:"",tested_at:new Date().toISOString().slice(0,10),setup_mode:"pin"};athleteTestStep=0;renderAthleteTest();
-      setCoachMessage("athleteTestMessage","Test salvato nel cloud e condiviso con la coach.","ok");
+      athleteTestDraft={values:{},pain:"",notes:"",tested_at:new Date().toISOString().slice(0,10),setup_mode:"pin"};athleteTestStep=0;await loadAthleteTestPlans();
     }catch(err){setCoachMessage("athleteTestMessage",err?.message||"Errore durante il salvataggio del test.","error");}
     finally{btn.disabled=false;}
+  }
+
+  function testSparkline(values){
+    if(values.length<2)return "";const nums=values.map(Number),min=Math.min(...nums),max=Math.max(...nums),range=max-min||1;
+    const pts=nums.map((v,i)=>`${(i/(nums.length-1))*180},${42-((v-min)/range)*34}`).join(" ");
+    return `<svg viewBox="0 0 180 50" width="180" height="50" role="img" aria-label="Andamento"><polyline points="${pts}" fill="none" stroke="var(--purple)" stroke-width="3"/><line x1="0" y1="44" x2="180" y2="44" stroke="#ddd"/></svg>`;
+  }
+
+  function renderAthleteTestHistory(){
+    const box=document.getElementById("athleteTestHistory");
+    if(!athleteTestState.sessions.length){box.innerHTML='<div class="coach-empty">Nessun test completato.</div>';return;}
+    const groups=new Map();athleteTestState.results.forEach(r=>{if(r.setup?.protocol_key==="derived_target")return;const list=groups.get(r.metric_key)||[];list.push(r);groups.set(r.metric_key,list);});
+    box.innerHTML=[...groups.values()].map(rows=>{rows.sort((a,b)=>new Date(a.tested_at)-new Date(b.tested_at));const last=rows.at(-1);return `<div class="coach-card"><div class="coach-card-head"><div><h3>${escapeHtml(last.metric_label)}</h3><div class="small">Ultimo valore · ${dateIt(last.tested_at)}</div></div><b>${escapeHtml(last.value)} ${escapeHtml(last.unit)}</b></div>${testSparkline(rows.map(x=>x.value))}<div class="small">${rows.map(x=>`${dateIt(x.tested_at)}: ${escapeHtml(x.value)} ${escapeHtml(x.unit)}`).join(" · ")}</div></div>`;}).join("")||'<div class="coach-empty">Nessun risultato disponibile.</div>';
+  }
+
+  async function loadAthleteTestPlans(){
+    if(!currentUser||currentProfile?.role==="coach")return;
+    const {data:plans,error:planErr}=await sb.from("test_plans").select("id,coach_id,athlete_id,title,scheduled_date,status,coach_notes,created_at").eq("athlete_id",currentUser.id).in("status",["published","completed"]).order("created_at",{ascending:false});if(planErr)throw planErr;
+    const {data:sessions,error:sessionErr}=await sb.from("test_sessions").select("id,test_plan_id,tested_at,body_weight_kg,notes").eq("athlete_id",currentUser.id).order("tested_at");if(sessionErr)throw sessionErr;
+    let results=[];const sessionIds=(sessions||[]).map(x=>x.id);if(sessionIds.length){const {data,error}=await sb.from("test_results").select("id,test_session_id,metric_key,metric_label,value,unit,side,grip,setup").in("test_session_id",sessionIds);if(error)throw error;results=(data||[]).map(r=>({...r,tested_at:(sessions||[]).find(s=>s.id===r.test_session_id)?.tested_at}));}
+    athleteTestState.plans=plans||[];athleteTestState.sessions=sessions||[];athleteTestState.results=results;
+    const completedPlanIds=new Set((sessions||[]).map(x=>x.test_plan_id));const active=(plans||[]).find(p=>p.status==="published"&&!completedPlanIds.has(p.id))||null;athleteTestState.activePlan=active;
+    const runner=document.getElementById("athleteTestRunner"),empty=document.getElementById("athleteTestEmpty"),summary=document.getElementById("athleteTestPlanSummary");
+    if(!active){runner.classList.add("hidden");empty.classList.remove("hidden");summary.textContent="Nessuna seduta test da eseguire.";athleteTestState.steps=[];renderAthleteTestHistory();return;}
+    const {data:items,error:itemErr}=await sb.from("test_plan_items").select("id,test_plan_id,test_library_id,item_order,instructions_override,required").eq("test_plan_id",active.id).order("item_order");if(itemErr)throw itemErr;
+    const ids=(items||[]).map(x=>x.test_library_id);let library=[];if(ids.length){const {data,error}=await sb.from("test_library").select("id,name,category,objective,material,instructions,metric_definitions,video_url").in("id",ids);if(error)throw error;library=data||[];}
+    athleteTestState.items=items||[];athleteTestState.library=library;
+    const prep={key:"setup",title:"Preparazione",material:"Bilancia e attrezzatura indicata dalla coach",instructions:["Esegui la seduta nelle condizioni concordate con Monica.","Completa il riscaldamento e rispetta recuperi e criteri di stop."],metrics:[{key:"body_weight_kg",label:"Peso corporeo",unit:"kg"}]};
+    const prescribed=(items||[]).map(item=>{const t=library.find(x=>x.id===item.test_library_id);return t?{key:`library_${t.id}`,title:t.name,material:t.material,instructions:item.instructions_override?[item.instructions_override]:(t.instructions||[]),metrics:(t.metric_definitions||[]).map(m=>({...m,key:`${t.id}__${m.key}`})),video_url:t.video_url}:null;}).filter(Boolean);
+    const review={key:"review",title:"Dolore, note e invio",material:"Riepilogo seduta",instructions:["Controlla i valori inseriti.","Descrivi eventuale dolore o modifica del protocollo."],metrics:[]};
+    athleteTestState.steps=[prep,...prescribed,review];athleteTestStep=0;athleteTestDraft={values:{},pain:"",notes:"",tested_at:new Date().toISOString().slice(0,10),setup_mode:"pin"};
+    summary.innerHTML=`<b>${escapeHtml(active.title)}</b><br><span class="small">${active.scheduled_date?dateIt(active.scheduled_date):"Data libera"} · ${prescribed.length} test${active.coach_notes?` · ${escapeHtml(active.coach_notes)}`:""}</span>`;empty.classList.add("hidden");runner.classList.remove("hidden");renderAthleteTest();renderAthleteTestHistory();
   }
 
   const athleteCloud={programs:[],weeks:[],sessions:[],exercises:[],sessionLogs:[],exerciseLogs:[],selectedProgramId:null,selectedWeekId:null,selectedSessionId:null};
@@ -1759,7 +1855,7 @@
   document.getElementById("athleteCloudCompleteSession").addEventListener("click",()=>saveAthleteCloudSession(true));
   document.getElementById("athleteOpenLocalPlan").addEventListener("click",()=>switchAthleteTab("summary"));
   document.getElementById("athleteTestPrev").addEventListener("click",()=>{collectAthleteTestStep();if(athleteTestStep>0){athleteTestStep--;renderAthleteTest();}});
-  document.getElementById("athleteTestNext").addEventListener("click",async()=>{collectAthleteTestStep();if(athleteTestStep<TEST_PROTOCOLS.length-1){athleteTestStep++;renderAthleteTest();}else await saveAthleteTest();});
+  document.getElementById("athleteTestNext").addEventListener("click",async()=>{collectAthleteTestStep();if(athleteTestStep<athleteTestState.steps.length-1){athleteTestStep++;renderAthleteTest();}else await saveAthleteTest();});
 
   document.querySelectorAll(".tab").forEach(btn=>btn.addEventListener("click",()=>{
     document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b===btn));
@@ -1993,12 +2089,47 @@
     coachGo("coachPrograms");
     document.getElementById("coachProgramName").focus();
   });
-  function retestComing(){
-    alert("Il modulo completo Retest con inserimento metriche e grafici sarà il prossimo step. La struttura dati è già attiva.");
+  document.getElementById("coachDetailNewRetest").addEventListener("click",()=>{
     coachGo("coachRetests");
+    if(coachState.selectedAthleteId)document.getElementById("coachTestPlanAthlete").value=coachState.selectedAthleteId;
+    document.getElementById("coachTestPlanTitle").focus();
+  });
+
+  function metricKeyFromLabel(label,index){
+    const base=label.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"");
+    return base||`metric_${index+1}`;
   }
-  document.getElementById("coachDetailNewRetest").addEventListener("click",retestComing);
-  document.getElementById("coachNewRetest").addEventListener("click",retestComing);
+
+  document.getElementById("coachTestLibraryForm").addEventListener("submit",async e=>{
+    e.preventDefault();
+    const name=document.getElementById("coachTestName").value.trim();
+    const metricLines=document.getElementById("coachTestMetrics").value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+    if(!name||!metricLines.length){setCoachMessage("coachTestLibraryMessage","Inserisci nome e almeno un risultato da raccogliere.","error");return;}
+    const metrics=metricLines.map((line,index)=>{const [labelRaw,unitRaw]=line.split("|");const label=(labelRaw||"").trim();return {key:metricKeyFromLabel(label,index),label,unit:(unitRaw||"valore").trim()};}).filter(x=>x.label);
+    const btn=document.getElementById("coachTestLibrarySubmit");btn.disabled=true;setCoachMessage("coachTestLibraryMessage","Salvataggio…");
+    try{
+      const payload={coach_id:currentUser.id,name,category:document.getElementById("coachTestCategory").value.trim()||null,objective:document.getElementById("coachTestObjective").value.trim()||null,material:document.getElementById("coachTestMaterial").value.trim()||null,instructions:document.getElementById("coachTestInstructions").value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean),metric_definitions:metrics,video_url:document.getElementById("coachTestVideo").value.trim()||null};
+      const {error}=await sb.from("test_library").insert(payload);if(error)throw error;
+      document.getElementById("coachTestLibraryForm").reset();setCoachMessage("coachTestLibraryMessage","Test aggiunto alla libreria.","ok");await loadCoachDashboard();coachGo("coachRetests");
+    }catch(err){setCoachMessage("coachTestLibraryMessage",err?.message||"Errore durante il salvataggio.","error");}
+    finally{btn.disabled=false;}
+  });
+
+  document.getElementById("coachTestPlanForm").addEventListener("submit",async e=>{
+    e.preventDefault();
+    const athleteId=document.getElementById("coachTestPlanAthlete").value,title=document.getElementById("coachTestPlanTitle").value.trim();
+    const selected=[...document.querySelectorAll('input[name="coachTestChoice"]:checked')].map(x=>x.value);
+    if(!athleteId||!title||!selected.length){setCoachMessage("coachTestPlanMessage","Seleziona atleta, titolo e almeno un test.","error");return;}
+    const btn=document.getElementById("coachTestPlanSubmit");btn.disabled=true;setCoachMessage("coachTestPlanMessage","Creazione seduta…");
+    try{
+      const payload={coach_id:currentUser.id,athlete_id:athleteId,title,scheduled_date:document.getElementById("coachTestPlanDate").value||null,status:document.getElementById("coachTestPlanStatus").value,coach_notes:document.getElementById("coachTestPlanNotes").value.trim()||null};
+      const {data:plan,error:planErr}=await sb.from("test_plans").insert(payload).select("id").single();if(planErr)throw planErr;
+      const items=selected.map((testId,index)=>({test_plan_id:plan.id,test_library_id:testId,item_order:index+1,required:true}));
+      const {error:itemErr}=await sb.from("test_plan_items").insert(items);if(itemErr)throw itemErr;
+      document.getElementById("coachTestPlanForm").reset();setCoachMessage("coachTestPlanMessage",payload.status==="published"?"Seduta pubblicata all'atleta.":"Seduta salvata in bozza.","ok");await loadCoachDashboard();coachGo("coachRetests");
+    }catch(err){setCoachMessage("coachTestPlanMessage",err?.message||"Errore durante la creazione.","error");}
+    finally{btn.disabled=false;}
+  });
 
 
   document.getElementById("coachWeekForm").addEventListener("submit",async e=>{
