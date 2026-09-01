@@ -175,6 +175,81 @@
     .trend-chart .point{fill:var(--mustard);stroke:white;stroke-width:2}
     .trend-history{margin-top:6px;line-height:1.5}
 
+    /* Direzione grafica D · Boulder */
+    body{
+      background:
+        radial-gradient(circle at 8% 2%,rgba(214,162,29,.18),transparent 24rem),
+        linear-gradient(150deg,#f7f2fa 0%,#eee7f4 48%,#f9f5e8 100%);
+      min-height:100vh;
+    }
+    header{
+      background:linear-gradient(128deg,var(--purple) 0%,#3b1558 72%,#2c0e43 100%);
+      border-bottom:5px solid var(--mustard);
+      box-shadow:0 10px 28px rgba(53,19,79,.2);
+      overflow:hidden;
+    }
+    header::after{
+      content:"";position:absolute;right:-45px;top:-75px;width:230px;height:180px;
+      background:rgba(214,162,29,.16);transform:rotate(24deg);border-radius:46px;pointer-events:none;
+    }
+    header>*{position:relative;z-index:1}
+    header h1{font-size:24px;letter-spacing:-.025em}
+    .brandline{color:#f3e8fa;font-weight:600}
+    .role-pill{background:var(--mustard);color:#2d2104;font-weight:800}
+    main,.coach-shell main{max-width:1040px}
+    button{
+      background:var(--mustard);color:#2b2004;border-radius:10px 18px 10px 18px;
+      box-shadow:0 4px 0 rgba(77,54,0,.16);transition:transform .16s ease,box-shadow .16s ease;
+    }
+    button:hover{transform:translateY(-1px);box-shadow:0 6px 0 rgba(77,54,0,.14)}
+    button:active{transform:translateY(1px);box-shadow:0 2px 0 rgba(77,54,0,.15)}
+    button.secondary{background:#fff;color:var(--purple);border:1px solid #d7cde0;box-shadow:none}
+    button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid rgba(214,162,29,.55);outline-offset:2px}
+    nav,.coach-nav{padding:4px 1px 7px}
+    nav button,.coach-nav button{border:0;background:#fff;color:var(--purple);box-shadow:0 4px 14px rgba(53,19,79,.08)}
+    nav button.active,.coach-nav button.active{
+      background:var(--mustard);color:#2b2004;transform:rotate(-.6deg);box-shadow:0 5px 0 rgba(77,54,0,.13);
+    }
+    .panel,.exercise,.coach-card,.cloud-rx-card,.builder-subpanel{
+      border:1px solid rgba(91,44,131,.1);border-radius:22px 10px 22px 10px;
+      box-shadow:0 12px 30px rgba(53,19,79,.08);
+    }
+    .panel:nth-of-type(even),.exercise:nth-of-type(even),.coach-card:nth-of-type(even){border-radius:10px 22px 10px 22px}
+    .panel h2,.exercise h3,.coach-card h3,.builder-subpanel h2,.builder-subpanel h3{letter-spacing:-.015em}
+    .coach-kicker{color:var(--purple);letter-spacing:.12em}
+    .metric{background:#fff;border:0;border-radius:18px 8px 18px 8px;box-shadow:0 5px 18px rgba(53,19,79,.08)}
+    .athlete-cloud-summary .metric:first-child,.coach-metrics .metric:first-child{background:var(--mustard);color:#2b2004;transform:rotate(-.5deg)}
+    .athlete-cloud-summary .metric:first-child .small,.coach-metrics .metric:first-child .small{color:#4d3904}
+    .athlete-cloud-summary .metric:first-child b,.coach-metrics .metric:first-child b{color:#2b2004}
+    .cloud-session-card{
+      background:linear-gradient(135deg,var(--purple),#3b1558);color:#fff;border:0;
+      border-radius:10px 24px 10px 24px;box-shadow:0 12px 28px rgba(53,19,79,.18);
+    }
+    .cloud-session-card h3{color:#fff}
+    .cloud-session-card .small{color:#e7dcec}
+    .cloud-session-card .pill{background:rgba(255,255,255,.14);color:#fff}
+    .cloud-session-card .pill.ok{background:#dff3e8;color:#155c3b}
+    .cloud-session-card button.secondary{background:#fff;color:var(--purple);border:0}
+    .rx,.rx-preview,.cloud-note{background:#f0e8f5;border-radius:8px 18px 8px 18px}
+    .notice{border-left:0;border-top:5px solid var(--mustard);border-radius:8px 18px 8px 18px;background:#fff8e7}
+    .coach-empty,.cloud-program-empty{background:rgba(255,255,255,.66);border:1px dashed rgba(91,44,131,.32);border-radius:18px 8px 18px 8px}
+    .coach-form,.cloud-session-form{background:#faf7fc;border:1px solid rgba(91,44,131,.13);border-radius:10px 22px 10px 22px}
+    .trend-card{background:#fff;border:0;border-radius:22px 10px 22px 10px;box-shadow:0 8px 22px rgba(53,19,79,.09)}
+    .trend-chart .line{stroke-width:4}
+    .trend-chart .point{stroke-width:3;r:6px}
+    .auth-wrap{padding-top:46px}
+    .auth-brand h1{font-size:36px;letter-spacing:-.04em}
+    .auth-brand::before{content:"ME";display:grid;place-items:center;width:58px;height:58px;margin:0 auto 12px;background:var(--mustard);color:#2b2004;border-radius:18px 8px 18px 8px;font-weight:900;transform:rotate(-3deg);box-shadow:0 8px 0 rgba(91,44,131,.12)}
+    .auth-card{border:0;border-radius:10px 28px 10px 28px;box-shadow:0 22px 55px rgba(53,19,79,.16)}
+    footer{font-weight:600;color:#574b5e}
+    @media(max-width:620px){
+      header{padding-top:15px}header h1{font-size:22px}
+      main,.coach-shell main{padding-left:9px;padding-right:9px}
+      .panel,.exercise,.coach-card{padding:13px}
+      .athlete-cloud-summary{grid-template-columns:1fr 1fr}
+      .userbar .toolbar{width:100%;margin-bottom:0}.userbar .toolbar button{flex:1}
+    }
+
   </style>
 </head>
 <body>
