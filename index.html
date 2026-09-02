@@ -134,6 +134,9 @@
     .builder-counts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
     @media(max-width:620px){.builder-counts{grid-template-columns:1fr}}
     .small-btn{min-height:36px;padding:7px 10px}
+    .coach-library-row .coach-card-head>div:first-child{min-width:0}
+    .coach-library-row .builder-item-actions{flex:0 0 auto;flex-wrap:nowrap;margin-top:0;gap:5px}
+    .coach-library-row .builder-item-actions .small-btn{min-height:30px;padding:5px 8px;font-size:11px;white-space:nowrap;border-radius:9px}
 
     .athlete-cloud-head{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end}
     @media(max-width:620px){.athlete-cloud-head{grid-template-columns:1fr}}
@@ -143,8 +146,18 @@
     .cloud-session-card h3{margin:0 0 4px;color:var(--purple);font-size:16px}
     .cloud-session-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
     .cloud-session-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-    .cloud-rx-card{background:#fbfafc;border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0}
-    .cloud-rx-card h4{margin:0 0 6px;font-size:15px}
+    .cloud-rx-card{background:#fbfafc;border:1px solid var(--line);border-radius:12px;padding:0;margin:10px 0;overflow:hidden}
+    .cloud-rx-card.expanded{border-color:rgba(91,44,131,.45);box-shadow:0 7px 18px rgba(53,19,79,.08)}
+    .cloud-rx-summary{padding:13px}
+    .cloud-rx-toggle{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;width:100%;min-height:0;padding:0;background:transparent;color:var(--purple);border:0;border-radius:0;text-align:left;box-shadow:none}
+    .cloud-rx-toggle:hover,.cloud-rx-toggle:focus-visible{background:transparent;color:var(--purple)}
+    .cloud-rx-title{display:flex;align-items:baseline;gap:8px;font-size:19px;line-height:1.2;font-weight:850}
+    .cloud-rx-number{flex:0 0 auto;color:var(--mustard);font-size:14px}
+    .cloud-rx-chevron{flex:0 0 auto;font-size:22px;line-height:1;transition:transform .18s ease}
+    .cloud-rx-toggle[aria-expanded="true"] .cloud-rx-chevron{transform:rotate(180deg)}
+    .cloud-rx-helper{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:8px}
+    .cloud-rx-log{padding:13px;border-top:1px solid var(--line);background:#fff}
+    .cloud-rx-log-title{margin:0 0 4px;color:var(--purple);font-size:15px}
     .cloud-rx-grid{display:grid;grid-template-columns:1fr 120px;gap:8px;align-items:end}
     @media(max-width:620px){.cloud-rx-grid{grid-template-columns:1fr}}
     .cloud-rx-check{display:flex;gap:8px;align-items:center;margin-bottom:8px}
@@ -1985,7 +1998,10 @@
     exBox.innerHTML=exs.length?exs.map(e=>{
       const l=athleteExerciseLog(e.id),p=e.prescription||{},local=draft?.exercises?.[e.id]||null;
       const unit=(p.load_type||"").startsWith("percent_")?"%":p.unit||"";
-      return `<div class="cloud-rx-card" data-cloud-exercise-id="${escapeHtml(e.id)}"><h4>${e.exercise_order} · ${escapeHtml(e.exercise_name)}</h4><div class="rx-preview">${escapeHtml(rxPreview(e))}</div>${e.instructions?`<div class="small" style="margin:7px 0">${escapeHtml(e.instructions)}</div>`:""}<div class="grid3"><div><label>Valore reale${unit?` (${escapeHtml(unit)})`:""}</label><input class="cloud-ex-load" type="text" value="${escapeHtml(local?.loadValue??actualInputValue(l,"load_value"))}" placeholder="carico / intensità"></div><div><label>Dose reale</label><input class="cloud-ex-dose" type="text" value="${escapeHtml(local?.dose??actualInputValue(l,"dose"))}" placeholder="rep / sec / schema"></div><div><label>RPE</label><input class="cloud-ex-rpe" type="number" min="0" max="10" step="0.5" value="${local?.rpe??l?.rpe??""}"></div></div><label>Note esercizio</label><textarea class="cloud-ex-notes">${escapeHtml(local?.notes??l?.notes??"")}</textarea></div>`;
+      const loadValue=local?.loadValue??actualInputValue(l,"load_value"),dose=local?.dose??actualInputValue(l,"dose"),rpe=local?.rpe??l?.rpe??"",notes=local?.notes??l?.notes??"";
+      const hasLog=[loadValue,dose,rpe,notes].some(value=>value!==""&&value!==null&&value!==undefined);
+      const logId=`cloud-rx-log-${e.id}`;
+      return `<div class="cloud-rx-card" data-cloud-exercise-id="${escapeHtml(e.id)}"><div class="cloud-rx-summary"><button type="button" class="cloud-rx-toggle" aria-expanded="false" aria-controls="${escapeHtml(logId)}"><span class="cloud-rx-title"><span class="cloud-rx-number">${e.exercise_order}</span><span>${escapeHtml(e.exercise_name)}</span></span><span class="cloud-rx-chevron" aria-hidden="true">⌄</span></button><div class="rx-preview">${escapeHtml(rxPreview(e))}</div>${e.instructions?`<div class="small" style="margin:7px 0">${escapeHtml(e.instructions)}</div>`:""}<div class="cloud-rx-helper">${hasLog?'<span class="pill ok">Dati registrati</span>':'<span class="small">Tocca il nome per registrare carichi e sensazioni</span>'}</div></div><div id="${escapeHtml(logId)}" class="cloud-rx-log hidden"><h4 class="cloud-rx-log-title">Registrazione facoltativa</h4><div class="small">Compila soltanto i dati che vuoi condividere con Monica.</div><div class="grid3"><div><label>Carico / intensità usata${unit?` (${escapeHtml(unit)})`:""}</label><input class="cloud-ex-load" type="text" value="${escapeHtml(loadValue)}" placeholder="carico / intensità"></div><div><label>Dose eseguita</label><input class="cloud-ex-dose" type="text" value="${escapeHtml(dose)}" placeholder="rep / sec / schema"></div><div><label>RPE</label><input class="cloud-ex-rpe" type="number" min="0" max="10" step="0.5" value="${escapeHtml(rpe)}"></div></div><label>Note esercizio</label><textarea class="cloud-ex-notes">${escapeHtml(notes)}</textarea></div></div>`;
     }).join(""):'<div class="coach-empty">Nessun esercizio prescritto.</div>';
     document.getElementById("athleteCloudSkippedExercises").innerHTML=exs.map(e=>`<label class="skipped-exercise"><input type="checkbox" value="${escapeHtml(e.id)}" ${skippedIds.has(e.id)?"checked":""}> <span>${e.exercise_order} · ${escapeHtml(e.exercise_name)}</span></label>`).join("");
     updateSkippedExerciseVisibility();
@@ -2284,6 +2300,14 @@
     renderAthleteCloudSession();
   });
   document.getElementById("athleteCloudSessions").addEventListener("click",e=>{const b=e.target.closest(".athlete-open-session");if(b)openAthleteCloudSession(b.dataset.sessionId);});
+  document.getElementById("athleteCloudExercises").addEventListener("click",e=>{
+    const toggle=e.target.closest(".cloud-rx-toggle");if(!toggle)return;
+    const card=toggle.closest(".cloud-rx-card"),log=card?.querySelector(".cloud-rx-log");if(!card||!log)return;
+    const expanded=toggle.getAttribute("aria-expanded")==="true";
+    toggle.setAttribute("aria-expanded",String(!expanded));
+    log.classList.toggle("hidden",expanded);
+    card.classList.toggle("expanded",!expanded);
+  });
   document.getElementById("athleteCloudCloseSession").addEventListener("click",()=>{athleteCloud.selectedSessionId=null;renderAthleteCloudSession();});
   document.getElementById("athleteCloudCompleteSession").addEventListener("click",()=>saveAthleteCloudSession(true));
   document.getElementById("athleteCloudSessionDetail").addEventListener("input",e=>{if(e.target.matches("input,textarea"))scheduleAthleteCloudAutosave();});

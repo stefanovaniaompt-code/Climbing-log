@@ -1,4 +1,4 @@
-const CACHE = "climbing-coach-v2-12-onboarding-autosave-pwa";
+const CACHE = "climbing-coach-v2-13-compact-library-exercise-details";
 const APP_ASSETS = [
   "./",
   "./index.html",
