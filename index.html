@@ -3,11 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#5B2C83">
+  <meta name="theme-color" content="#b8c89a">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
-  <title>Monica Erbesato</title>
+  <title>Climbing Coach — Monica Erbesato</title>
   <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
   <style>
     :root{
       --purple:#5B2C83; --purple2:#7E57A6; --lav:#EEE7F4; --mustard:#D6A21D;
@@ -25,7 +26,7 @@
     button{border:0;border-radius:11px;padding:11px 13px;min-height:44px;background:var(--purple);color:white;font-weight:700}
     button.secondary{background:white;color:var(--purple);border:1px solid var(--line)}
     button.danger{background:#8c2b2b}
-    select,input[type="number"],input[type="text"],textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;background:white;min-height:44px}
+    select,input[type="number"],input[type="text"],input[type="date"],textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;background:white;min-height:44px}
     textarea{min-height:72px;resize:vertical}
     .weekbar{display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:12px}
     .panel,.exercise{background:var(--card);border:1px solid var(--line);border-radius:14px;margin:10px 0;padding:14px}
@@ -164,9 +165,9 @@
     .invite-list{display:grid;gap:8px;margin-top:12px}
     .invite-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;background:#fff;border:1px solid var(--line);border-radius:12px}
     .invite-row .small{overflow-wrap:anywhere}
-    .test-metric-editor-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(110px,.45fr) auto;gap:8px;align-items:end;margin:8px 0}
+    .test-metric-editor-row{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(90px,.5fr) minmax(105px,.55fr) minmax(110px,.65fr) auto;gap:8px;align-items:end;margin:8px 0}
     .test-metric-editor-row label{margin-top:0}
-    @media(max-width:620px){.test-metric-editor-row{grid-template-columns:1fr 1fr}.test-metric-editor-row .remove-test-metric{grid-column:1/-1}}
+    @media(max-width:760px){.test-metric-editor-row{grid-template-columns:1fr 1fr}.test-metric-editor-row .remove-test-metric{grid-column:1/-1}}
     .test-metric{padding:10px 0;border-top:1px solid #eee}
     .test-metric:first-child{border-top:0}
     .trend-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}
@@ -182,6 +183,24 @@
     .trend-chart .line{fill:none;stroke:var(--purple);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
     .trend-chart .point{fill:var(--mustard);stroke:white;stroke-width:2}
     .trend-history{margin-top:6px;line-height:1.5}
+    .trend-chart .line-right{stroke:var(--purple)}
+    .trend-chart .line-left{stroke:var(--mustard)}
+    .trend-chart .point-right{fill:var(--purple)}
+    .trend-chart .point-left{fill:var(--mustard)}
+    .trend-legend{display:flex;gap:14px;flex-wrap:wrap;margin:5px 0 8px;font-size:12px;color:var(--muted)}
+    .trend-legend span{display:inline-flex;align-items:center;gap:6px}
+    .trend-legend i{display:inline-block;width:22px;height:4px;border-radius:999px}
+    .outcome-options{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 0 12px}
+    .outcome-option{display:flex;align-items:center;gap:10px;margin:0;padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);font-size:14px;font-weight:700;cursor:pointer}
+    .outcome-option:has(input:checked){border-color:var(--purple);box-shadow:0 0 0 2px var(--lav)}
+    .outcome-option input{width:22px;height:22px;accent-color:var(--purple);flex:0 0 auto}
+    .skipped-exercises{display:grid;gap:7px;margin:8px 0 14px}
+    .skipped-exercise{display:flex;align-items:center;gap:9px;padding:9px 10px;background:#fff;border:1px solid var(--line);border-radius:10px;color:var(--ink);font-size:13px}
+    .skipped-exercise input{flex:0 0 auto}
+    .profile-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    @media(max-width:620px){.outcome-options,.profile-grid{grid-template-columns:1fr}}
+    .autosave-note{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .autosave-note .cloud-save-status{margin:0}
 
     /* Direzione grafica D · Boulder */
     body{
@@ -263,7 +282,7 @@
 <body>
 <section id="authGate" class="auth-wrap">
   <div class="auth-brand">
-    <h1>Monica Erbesato</h1>
+    <h1>Climbing Coach</h1>
     <p>Monica Erbesato · Climbing Performance Coaching</p>
   </div>
   <div class="auth-card">
@@ -309,7 +328,7 @@
 
 <div id="appShell" class="hidden">
 <header>
-  <h1>Monica Erbesato</h1>
+  <h1>Climbing Coach</h1>
   <p>La mia programmazione</p>
   <div class="brandline">Monica Erbesato · Fisioterapista MSc OMPT · Performance Coach</div>
   <div class="userbar">
@@ -317,7 +336,7 @@
       <strong id="userDisplay">Atleta</strong>
       <span class="role-pill">atleta</span>
     </div>
-    <div class="toolbar"><button class="secondary accountSecurityBtn" type="button">Sicurezza account</button><button id="logoutBtn" type="button">Esci</button></div>
+    <div class="toolbar"><button id="athleteProfileBtn" class="secondary" type="button">Il mio profilo</button><button class="secondary accountSecurityBtn" type="button">Sicurezza account</button><button id="logoutBtn" type="button">Esci</button></div>
   </div>
 </header>
 <main id="app">
@@ -397,17 +416,28 @@
         <div id="athleteCloudCoachNotes" class="rx hidden"></div>
         <div id="athleteCloudExercises"></div>
         <div class="cloud-session-form">
-          <div class="grid3">
+          <div class="grid2">
             <div><label>Durata reale (min)</label><input id="athleteCloudDuration" type="number" min="0" step="1"></div>
             <div><label>RPE sessione</label><input id="athleteCloudSessionRpe" type="number" min="0" max="10" step="0.5"></div>
-            <div><label>Stato</label><input id="athleteCloudSessionStatus" type="text" value="da eseguire" disabled></div>
           </div>
           <label>Note sessione per il coach</label><textarea id="athleteCloudSessionNotes" placeholder="Sensazioni, recupero, qualità tecnica, difficoltà, eventuali modifiche..."></textarea>
-          <div class="cloud-session-actions">
-            <button id="athleteCloudSaveSession" type="button" class="secondary">Salva progressi</button>
-            <button id="athleteCloudCompleteSession" type="button">Segna sessione completata</button>
+          <h3 style="margin:16px 0 4px">Esito allenamento</h3>
+          <div class="outcome-options" role="radiogroup" aria-label="Esito allenamento">
+            <label class="outcome-option"><input type="radio" name="athleteCloudOutcome" value="completed"> Allenamento completato</label>
+            <label class="outcome-option"><input type="radio" name="athleteCloudOutcome" value="partial"> Allenamento non completato</label>
           </div>
-          <div id="athleteCloudSaveStatus" class="cloud-save-status" aria-live="polite"></div>
+          <div id="athleteCloudSkippedWrap" class="hidden">
+            <label style="font-size:14px;color:var(--ink);font-weight:800">Quali esercizi non hai eseguito?</label>
+            <div class="small">Seleziona soltanto gli esercizi saltati.</div>
+            <div id="athleteCloudSkippedExercises" class="skipped-exercises"></div>
+          </div>
+          <div class="cloud-session-actions">
+            <button id="athleteCloudCompleteSession" type="button">Salva e concludi allenamento</button>
+          </div>
+          <div class="autosave-note">
+            <span class="small">La bozza viene salvata automaticamente.</span>
+            <div id="athleteCloudSaveStatus" class="cloud-save-status" aria-live="polite"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -588,7 +618,7 @@
 
 <section id="coachShell" class="coach-shell hidden">
   <header>
-    <h1>Monica Erbesato</h1>
+    <h1>Climbing Coach</h1>
     <p>Dashboard Coach</p>
     <div class="brandline">Monica Erbesato · Climbing Performance Coaching</div>
     <div class="userbar">
@@ -670,6 +700,8 @@
             <div class="metric"><span class="small">Ultimo retest</span><b id="coachDetailTest">—</b></div>
             <div class="metric"><span class="small">Sessioni cloud completate</span><b id="coachDetailSessions">0</b></div>
           </div>
+          <div id="coachDetailProfile" class="coach-form"></div>
+          <button id="coachRemoveAthlete" type="button" class="danger">Rimuovi atleta</button>
         </div>
         <div class="panel">
           <h2>Programmazione</h2>
@@ -802,7 +834,7 @@
             </div>
             <div class="load-warning"><b>Carico:</b> scegli sempre se il numero rappresenta BW, carico esterno aggiunto, assistenza oppure carico totale. Le percentuali del massimale vengono salvate con la loro base di calcolo per evitare ambiguità.</div>
             <label>Indicazioni tecniche / esecuzione</label><textarea id="coachRxInstructions" placeholder="Setup, tacca, presa, velocità, criteri tecnici, stop criteria..."></textarea>
-            <div class="form-actions"><button id="coachRxSubmit" type="submit">+ Aggiungi esercizio</button></div>
+            <div class="form-actions"><button id="coachRxSubmit" type="submit">+ Aggiungi esercizio</button><button id="coachRxEditCancel" type="button" class="secondary hidden">Annulla modifica</button></div>
             <div id="coachRxMessage" class="auth-message" aria-live="polite"></div>
           </form>
           <div id="coachSessionExercisesList"></div>
@@ -894,6 +926,27 @@
   </div>
 </section>
 
+<section id="athleteProfileOverlay" class="account-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="athleteProfileTitle">
+  <div class="account-card">
+    <h2 id="athleteProfileTitle">Completa il tuo profilo</h2>
+    <p id="athleteProfileIntro" class="small">Prima di accedere alla programmazione inserisci i dati richiesti. Saranno visibili soltanto a te e alla coach collegata.</p>
+    <form id="athleteProfileForm">
+      <div class="profile-grid">
+        <div><label>Nome</label><input id="athleteProfileFirstName" type="text" autocomplete="given-name" required></div>
+        <div><label>Cognome</label><input id="athleteProfileLastName" type="text" autocomplete="family-name" required></div>
+        <div><label>Data di nascita</label><input id="athleteProfileBirthDate" type="date" autocomplete="bday" required></div>
+        <div><label>Peso attuale (kg)</label><input id="athleteProfileWeight" type="number" min="10" max="400" step="0.1" inputmode="decimal" required></div>
+        <div><label>Altezza (cm)</label><input id="athleteProfileHeight" type="number" min="50" max="250" step="0.1" inputmode="decimal" required></div>
+      </div>
+      <div class="form-actions">
+        <button id="athleteProfileSave" type="submit">Salva profilo</button>
+        <button id="athleteProfileCancel" type="button" class="secondary hidden">Annulla</button>
+      </div>
+    </form>
+    <div id="athleteProfileMessage" class="auth-message" aria-live="polite"></div>
+  </div>
+</section>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 (() => {
@@ -927,6 +980,8 @@
   let currentProfile = null;
   let authMode = "signin";
   let recoveryMode = false;
+  let athleteAreaReady = false;
+  let coachRefreshTimer = null;
 
   const TEST_PROTOCOL_VERSION="climbing-performance-v1";
   let athleteTestStep=0;
@@ -948,6 +1003,7 @@
     recoveryMode=true;
     document.getElementById("appShell").classList.add("hidden");
     document.getElementById("coachShell").classList.add("hidden");
+    document.getElementById("athleteProfileOverlay").classList.add("hidden");
     document.getElementById("authGate").classList.remove("hidden");
     document.getElementById("authLoading").classList.add("hidden");
     document.getElementById("authContent").classList.add("hidden");
@@ -990,7 +1046,7 @@
     let profile=null;
     try{
       const {data,error}=await sb.from("profiles")
-        .select("id,full_name,avatar_url,role")
+        .select("id,full_name,avatar_url,role,first_name,last_name,birth_date,weight_kg,height_cm,onboarding_completed_at")
         .eq("id",user.id)
         .single();
       if(error) throw error;
@@ -1004,9 +1060,11 @@
   }
 
   function showLoggedOut(){
-    currentUser=null; currentProfile=null; STORE_KEY=null;
+    stopCoachRefresh();
+    currentUser=null; currentProfile=null; STORE_KEY=null; athleteAreaReady=false;
     document.getElementById("appShell").classList.add("hidden");
     document.getElementById("coachShell").classList.add("hidden");
+    document.getElementById("athleteProfileOverlay").classList.add("hidden");
     document.getElementById("authGate").classList.remove("hidden");
     document.getElementById("authLoading").classList.add("hidden");
     if(!recoveryMode){
@@ -1033,6 +1091,51 @@
     box.classList.toggle("hidden",!(hasLegacy && !hasCurrent));
   }
 
+  function profileOnboardingComplete(profile){
+    return !!profile?.onboarding_completed_at;
+  }
+
+  function stopCoachRefresh(){
+    if(coachRefreshTimer){clearInterval(coachRefreshTimer);coachRefreshTimer=null;}
+  }
+
+  function startCoachRefresh(){
+    stopCoachRefresh();
+    coachRefreshTimer=setInterval(()=>{
+      if(currentProfile?.role==="coach"&&document.visibilityState==="visible")loadCoachDashboard();
+    },30000);
+  }
+
+  async function openAthleteArea(){
+    athleteAreaReady=true;
+    document.getElementById("athleteProfileOverlay").classList.add("hidden");
+    document.getElementById("coachShell").classList.add("hidden");
+    document.getElementById("appShell").classList.remove("hidden");
+    document.getElementById("userDisplay").textContent=currentProfile.full_name||currentUser.email||"Atleta";
+    state=load();
+    renderAll();
+    maybeShowLegacyImport();
+    await Promise.all([loadAthleteCloudPlan(),loadAthleteTestPlans()]);
+  }
+
+  function openAthleteProfileEditor(required=false){
+    if(!currentProfile||currentProfile.role!=="athlete")return;
+    const nameParts=String(currentProfile.full_name||"").trim().split(/\s+/).filter(Boolean);
+    document.getElementById("athleteProfileTitle").textContent=required?"Completa il tuo profilo":"Il mio profilo";
+    document.getElementById("athleteProfileIntro").textContent=required
+      ?"Prima di accedere alla programmazione inserisci i dati richiesti. Saranno visibili soltanto a te e alla coach collegata."
+      :"Aggiorna i tuoi dati. Il peso può essere modificato ogni volta che cambia.";
+    document.getElementById("athleteProfileFirstName").value=currentProfile.first_name||nameParts[0]||"";
+    document.getElementById("athleteProfileLastName").value=currentProfile.last_name||nameParts.slice(1).join(" ")||"";
+    document.getElementById("athleteProfileBirthDate").value=currentProfile.birth_date||"";
+    document.getElementById("athleteProfileWeight").value=currentProfile.weight_kg??"";
+    document.getElementById("athleteProfileHeight").value=currentProfile.height_cm??"";
+    document.getElementById("athleteProfileBirthDate").max=new Date().toISOString().slice(0,10);
+    document.getElementById("athleteProfileCancel").classList.toggle("hidden",required);
+    setCoachMessage("athleteProfileMessage","");
+    document.getElementById("athleteProfileOverlay").classList.remove("hidden");
+  }
+
   async function showLoggedIn(session){
     currentUser=session.user;
     STORE_KEY=userStoreKey(currentUser.id);
@@ -1045,20 +1148,23 @@
     }
     document.getElementById("authGate").classList.add("hidden");
     if(currentProfile.role==="coach"){
+      athleteAreaReady=false;
       document.getElementById("appShell").classList.add("hidden");
       document.getElementById("coachShell").classList.remove("hidden");
       document.getElementById("coachUserDisplay").textContent=currentProfile.full_name||currentUser.email||"Coach";
       coachGo("coachDashboard");
       loadCoachDashboard();
+      startCoachRefresh();
     }else{
+      stopCoachRefresh();
       document.getElementById("coachShell").classList.add("hidden");
-      document.getElementById("appShell").classList.remove("hidden");
-      document.getElementById("userDisplay").textContent=currentProfile.full_name||currentUser.email||"Atleta";
+      document.getElementById("appShell").classList.add("hidden");
       await claimCoachInvitations();
-      state=load();
-      renderAll();
-      maybeShowLegacyImport();
-      await Promise.all([loadAthleteCloudPlan(),loadAthleteTestPlans()]);
+      if(!profileOnboardingComplete(currentProfile)){
+        openAthleteProfileEditor(true);
+        return;
+      }
+      await openAthleteArea();
     }
   }
 
@@ -1089,6 +1195,7 @@
 
   const coachState={athletes:[],invitations:[],programs:[],tests:[],testResults:[],library:[],testLibrary:[],testPlans:[],testPlanItems:[],sessionLogs:[],loggedSessions:[],loggedExercises:[],exerciseLogs:[],selectedAthleteId:null,selectedProgramId:null,selectedWeekId:null,selectedSessionId:null,weeks:[],sessions:[],sessionExercises:[]};
   let coachEditingTestId=null;
+  let coachEditingExerciseId=null;
 
   function escapeHtml(value){
     return String(value??"").replace(/[&<>'"]/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[ch]));
@@ -1138,7 +1245,7 @@
       let athletes=[];
       if(athleteIds.length){
         const {data,error}=await sb.from("profiles")
-          .select("id,full_name,avatar_url,role")
+          .select("id,full_name,avatar_url,role,first_name,last_name,birth_date,weight_kg,height_cm,onboarding_completed_at")
           .in("id",athleteIds)
           .order("full_name",{ascending:true});
         if(error) throw error;
@@ -1160,7 +1267,7 @@
       const testSessionIds=(tests||[]).map(x=>x.id);
       if(testSessionIds.length){
         const {data,error}=await sb.from("test_results")
-          .select("id,test_session_id,metric_key,metric_label,value,unit,side,grip")
+          .select("id,test_session_id,metric_key,metric_label,value,unit,side,grip,setup")
           .in("test_session_id",testSessionIds);
         if(error)throw error;testResults=data||[];
       }
@@ -1194,7 +1301,7 @@
       let exerciseLogs=[];
       if(athleteIds.length){
         const {data,error}=await sb.from("session_logs")
-          .select("id,athlete_id,session_id,status,completed_at,duration_minutes,session_rpe,notes")
+          .select("id,athlete_id,session_id,status,started_at,completed_at,duration_minutes,session_rpe,notes,completion_outcome,autosaved_at")
           .in("athlete_id",athleteIds);
         if(error) throw error;
         sessionLogs=data||[];
@@ -1315,9 +1422,9 @@
       tbox.innerHTML=athleteIds.map(athleteId=>{
         const athlete=coachState.athletes.find(x=>x.id===athleteId),sessions=coachState.tests.filter(x=>x.athlete_id===athleteId).sort((a,b)=>new Date(a.tested_at)-new Date(b.tested_at));
         const sessionMap=new Map(sessions.map(s=>[s.id,s]));
-        const groups=new Map();coachState.testResults.filter(r=>sessionMap.has(r.test_session_id)).forEach(r=>{const row={...r,tested_at:sessionMap.get(r.test_session_id).tested_at};const list=groups.get(r.metric_key)||[];list.push(row);groups.set(r.metric_key,list);});
+        const athleteResults=coachState.testResults.filter(r=>sessionMap.has(r.test_session_id)).map(r=>({...r,tested_at:sessionMap.get(r.test_session_id).tested_at}));
         const sessionHistory=sessions.map(s=>`${dateIt(s.tested_at)}${s.body_weight_kg?` · ${escapeHtml(s.body_weight_kg)} kg`:""}${s.notes?` · ${escapeHtml(s.notes)}`:""}`).join("<br>");
-        return `<div class="coach-test-row"><div class="coach-card-head"><div><h3>${escapeHtml(athlete?.full_name||"Atleta")}</h3><div class="small">${sessions.length} ${sessions.length===1?"rilevazione":"rilevazioni"}</div></div></div><div class="trend-grid">${[...groups.values()].map(renderTestTrendCard).join("")||'<div class="coach-empty">Nessun valore registrato.</div>'}</div><details style="margin-top:10px"><summary class="small">Dettaglio sedute</summary><div class="small trend-history">${sessionHistory}</div></details></div>`;
+        return `<div class="coach-test-row"><div class="coach-card-head"><div><h3>${escapeHtml(athlete?.full_name||"Atleta")}</h3><div class="small">${sessions.length} ${sessions.length===1?"rilevazione":"rilevazioni"}</div></div></div><div class="trend-grid">${renderTestTrendGrid(athleteResults)||'<div class="coach-empty">Nessun valore registrato.</div>'}</div><details style="margin-top:10px"><summary class="small">Dettaglio sedute</summary><div class="small trend-history">${sessionHistory}</div></details></div>`;
       }).join("");
     }
 
@@ -1348,6 +1455,7 @@
     document.getElementById("coachDetailPrograms").textContent=st.activePrograms.length;
     document.getElementById("coachDetailTest").textContent=st.tests[0]?dateIt(st.tests[0].tested_at):"—";
     document.getElementById("coachDetailSessions").textContent=st.sessions.length;
+    document.getElementById("coachDetailProfile").innerHTML=`<div class="profile-grid"><div><span class="small">Data di nascita</span><br><b>${a.birth_date?dateIt(a.birth_date):"—"}</b></div><div><span class="small">Peso attuale</span><br><b>${a.weight_kg!==null&&a.weight_kg!==undefined?`${escapeHtml(a.weight_kg)} kg`:"—"}</b></div><div><span class="small">Altezza</span><br><b>${a.height_cm!==null&&a.height_cm!==undefined?`${escapeHtml(a.height_cm)} cm`:"—"}</b></div><div><span class="small">Profilo</span><br><b>${a.onboarding_completed_at?"completato":"da completare"}</b></div></div>`;
     const p=document.getElementById("coachDetailProgramList");
     p.innerHTML=st.programs.length?st.programs.map(x=>`<div class="coach-program-row"><b>${escapeHtml(x.name)}</b> <span class="pill ${x.status==="active"?"ok":""}">${escapeHtml(coachStatusLabel(x.status))}</span><div class="small">${escapeHtml(x.goal||"Obiettivo non indicato")}</div><div class="builder-item-actions"><button type="button" class="secondary open-detail-program" data-program-id="${escapeHtml(x.id)}">Apri builder</button></div></div>`).join(""):'<div class="coach-empty">Nessun programma cloud.</div>';
     const activity=document.getElementById("coachDetailActivityList");
@@ -1356,9 +1464,12 @@
       const rx=coachState.loggedSessions.find(x=>x.id===log.session_id);
       const exercises=coachState.loggedExercises.filter(x=>x.session_id===log.session_id);
       const doneLogs=coachState.exerciseLogs.filter(x=>x.session_log_id===log.id&&x.completed);
+      const skippedLogs=coachState.exerciseLogs.filter(x=>x.session_log_id===log.id&&!x.completed);
+      const skippedNames=skippedLogs.map(row=>exercises.find(x=>x.id===row.session_exercise_id)?.exercise_name).filter(Boolean);
+      const partial=log.completion_outcome==="partial"||(!log.completion_outcome&&skippedLogs.length>0);
       const adherence=exercises.length?Math.round((doneLogs.length/exercises.length)*100):null;
       const rpe=log.session_rpe===null||log.session_rpe===undefined?"—":escapeHtml(log.session_rpe);
-      return `<div class="coach-card"><div class="coach-card-head"><div><h3>${escapeHtml(rx?.title||"Sessione")}</h3><div class="small">${dateIt(log.completed_at)}</div></div><span class="pill ok">completata</span></div><div class="coach-meta"><span class="pill">RX ${rx?.duration_minutes?`${escapeHtml(rx.duration_minutes)} min`:"—"}</span><span class="pill">DONE ${log.duration_minutes?`${escapeHtml(log.duration_minutes)} min`:"—"}</span><span class="pill">RPE ${rpe}</span><span class="pill">aderenza ${adherence===null?"—":`${adherence}%`}</span></div>${log.notes?`<div class="notice"><b>Nota atleta</b><div class="small">${escapeHtml(log.notes)}</div></div>`:""}${exercises.length?`<div class="small" style="margin-top:8px">Esercizi completati: ${doneLogs.length}/${exercises.length}</div>`:""}</div>`;
+      return `<div class="coach-card"><div class="coach-card-head"><div><h3>${escapeHtml(rx?.title||"Sessione")}</h3><div class="small">${dateIt(log.completed_at)}</div></div><span class="pill ${partial?"warn":"ok"}">${partial?"non completata":"completata"}</span></div><div class="coach-meta"><span class="pill">RX ${rx?.duration_minutes?`${escapeHtml(rx.duration_minutes)} min`:"—"}</span><span class="pill">DONE ${log.duration_minutes?`${escapeHtml(log.duration_minutes)} min`:"—"}</span><span class="pill">RPE ${rpe}</span><span class="pill">aderenza ${adherence===null?"—":`${adherence}%`}</span></div>${partial&&skippedNames.length?`<div class="notice"><b>Esercizi non eseguiti</b><div class="small">${skippedNames.map(escapeHtml).join(" · ")}</div></div>`:""}${log.notes?`<div class="notice"><b>Nota atleta</b><div class="small">${escapeHtml(log.notes)}</div></div>`:""}${exercises.length?`<div class="small" style="margin-top:8px">Esercizi eseguiti: ${doneLogs.length}/${exercises.length}</div>`:""}</div>`;
     }).join(""):'<div class="coach-empty">Nessuna sessione completata nel cloud.</div>';
     const t=document.getElementById("coachDetailTestList");
     t.innerHTML=st.tests.length?st.tests.map(x=>`<div class="coach-test-row"><b>${dateIt(x.tested_at)}</b><div class="small">${x.body_weight_kg?`${escapeHtml(x.body_weight_kg)} kg`:"Peso —"}${x.protocol_version?` · ${escapeHtml(x.protocol_version)}`:""}</div></div>`).join(""):'<div class="coach-empty">Nessun retest cloud.</div>';
@@ -1367,9 +1478,9 @@
 
   function loadTypeLabel(type){
     return ({
-      not_applicable:"non applicabile",bodyweight:"BW",added_load:"carico esterno aggiunto",assistance:"assistenza / scarico",
-      total_load:"carico totale",percent_total_1rm:"% 1RM carico totale",percent_external_1rm:"% 1RM carico esterno",
-      percent_iso_max:"% massimale isometrico",grade:"grado / difficoltà",custom:"altro"
+      not_applicable:"tecnica",bodyweight:"Peso corporeo",added_load:"carico esterno aggiunto",assistance:"assistenza",
+      total_load:"carico totale",percent_total_1rm:"% di 1RM (carico totale)",percent_external_1rm:"% di 1RM (carico esterno)",
+      percent_iso_max:"% del massimale isometrico",grade:"grado / difficoltà",custom:"personalizzato"
     })[type]||type||"—";
   }
   function loadBasisForType(type){
@@ -1486,18 +1597,41 @@
   }
 
   function openCoachSession(sessionId){
+    resetCoachRxEditor();
     coachState.selectedSessionId=sessionId;
     document.getElementById("coachSessionDetail").classList.remove("hidden");
     renderCoachWeekDetail();
     document.getElementById("coachSessionDetail").scrollIntoView({behavior:"smooth",block:"start"});
   }
 
+  function formatLoadPrescription(p={}){
+    const value=String(p.load_value??"").trim(),unit=String(p.unit??"").trim(),type=p.load_type||"not_applicable";
+    const percentValue=value.replace(/\s*%\s*$/,"");
+    if(type==="bodyweight")return "Peso corporeo";
+    if(type==="percent_total_1rm")return percentValue?`${percentValue}% di 1RM (carico totale)`:"% di 1RM (carico totale)";
+    if(type==="percent_external_1rm")return percentValue?`${percentValue}% di 1RM (carico esterno)`:"% di 1RM (carico esterno)";
+    if(type==="percent_iso_max")return percentValue?`${percentValue}% del massimale isometrico`:"% del massimale isometrico";
+    if(type==="added_load")return value?`+${value.replace(/^\+\s*/,"")} ${unit||"kg"}`:"Carico esterno";
+    if(type==="assistance")return value?`${value} ${unit||"kg"} di assistenza`:"Assistenza";
+    if(type==="total_load")return value?`${value} ${unit||"kg"} carico totale`:"Carico totale";
+    if(type==="grade")return value||"Grado da definire";
+    if(type==="custom")return [value,unit&&unit!=="custom"?unit:""].filter(Boolean).join(" ");
+    return "";
+  }
+
+  function formatRest(seconds){
+    if(seconds===null||seconds===undefined||seconds==="")return "";
+    const total=Math.max(0,Number(seconds));if(!Number.isFinite(total))return "";
+    if(total>=60){const min=Math.floor(total/60),sec=total%60;return `rec ${min} min${sec?` ${sec}s`:""}`;}
+    return `rec ${total}s`;
+  }
+
   function rxPreview(e){
     const p=e.prescription||{};
     const dose=[p.sets?`${p.sets} serie`:"",p.dose||""].filter(Boolean).join(" × ");
-    const load=[loadTypeLabel(p.load_type),p.load_value||"",p.unit||""].filter(Boolean).join(" ");
-    const rest=e.rest_seconds!==null&&e.rest_seconds!==undefined?`rec ${e.rest_seconds}s`:"";
-    const rpe=(e.target_rpe_min!==null&&e.target_rpe_min!==undefined)||(e.target_rpe_max!==null&&e.target_rpe_max!==undefined)?`RPE ${e.target_rpe_min??"—"}–${e.target_rpe_max??"—"}`:"";
+    const load=formatLoadPrescription(p),rest=formatRest(e.rest_seconds);
+    const hasMin=e.target_rpe_min!==null&&e.target_rpe_min!==undefined,hasMax=e.target_rpe_max!==null&&e.target_rpe_max!==undefined;
+    const rpe=hasMin||hasMax?`RPE ${hasMin?e.target_rpe_min:e.target_rpe_max}${hasMin&&hasMax&&Number(e.target_rpe_min)!==Number(e.target_rpe_max)?`–${e.target_rpe_max}`:""}`:"";
     return [dose,load,rest,rpe].filter(Boolean).join(" · ")||"Prescrizione non specificata";
   }
 
@@ -1510,7 +1644,7 @@
     const exs=coachState.sessionExercises.filter(e=>e.session_id===session.id).sort((a,b)=>a.exercise_order-b.exercise_order);
     const list=document.getElementById("coachSessionExercisesList");
     if(!exs.length) list.innerHTML='<div class="coach-empty">Nessun esercizio prescritto.</div>';
-    else list.innerHTML=exs.map(e=>`<div class="builder-item"><div class="builder-item-head"><div><h3>${e.exercise_order} · ${escapeHtml(e.exercise_name)}</h3></div><span class="pill">${escapeHtml(loadTypeLabel(e.prescription?.load_type))}</span></div><div class="rx-preview">${escapeHtml(rxPreview(e))}</div>${e.instructions?`<div class="small" style="margin-top:7px">${escapeHtml(e.instructions)}</div>`:""}</div>`).join("");
+    else list.innerHTML=exs.map(e=>`<div class="builder-item"><div class="builder-item-head"><div><h3>${e.exercise_order} · ${escapeHtml(e.exercise_name)}</h3></div><span class="pill">${escapeHtml(loadTypeLabel(e.prescription?.load_type))}</span></div><div class="rx-preview">${escapeHtml(rxPreview(e))}</div>${e.instructions?`<div class="small" style="margin-top:7px">${escapeHtml(e.instructions)}</div>`:""}<div class="builder-item-actions"><button type="button" class="secondary edit-session-exercise" data-exercise-id="${escapeHtml(e.id)}">Modifica</button><button type="button" class="danger delete-session-exercise" data-exercise-id="${escapeHtml(e.id)}">Elimina</button></div></div>`).join("");
   }
 
   function populateRxLibrary(){
@@ -1531,6 +1665,47 @@
     if(notes)athleteTestDraft.notes=notes.value;
     if(date)athleteTestDraft.tested_at=date.value;
     if(setup)athleteTestDraft.setup_mode=setup.value;
+  }
+
+  function normalizedLoadUnit(type,unit=""){
+    if(type==="percent_total_1rm"||type==="percent_external_1rm"||type==="percent_iso_max")return "%";
+    if(type==="added_load"||type==="assistance"||type==="total_load")return "kg";
+    if(type==="bodyweight"||type==="not_applicable")return "";
+    if(type==="grade")return "grade";
+    return unit;
+  }
+
+  function syncRxUnitToLoadType(){
+    const type=document.getElementById("coachRxLoadType").value,unit=document.getElementById("coachRxUnit");
+    unit.value=normalizedLoadUnit(type,unit.value);
+  }
+
+  function resetCoachRxEditor(){
+    coachEditingExerciseId=null;
+    document.getElementById("coachSessionExerciseForm").reset();
+    document.getElementById("coachRxLoadType").value="not_applicable";
+    document.getElementById("coachRxSubmit").textContent="+ Aggiungi esercizio";
+    document.getElementById("coachRxEditCancel").classList.add("hidden");
+  }
+
+  function editCoachSessionExercise(exerciseId){
+    const item=coachState.sessionExercises.find(x=>x.id===exerciseId&&x.session_id===coachState.selectedSessionId);if(!item)return;
+    const p=item.prescription||{};coachEditingExerciseId=item.id;
+    document.getElementById("coachRxLibrary").value=item.exercise_id||"";
+    document.getElementById("coachRxName").value=item.exercise_name||"";
+    document.getElementById("coachRxSets").value=p.sets??"";
+    document.getElementById("coachRxDose").value=p.dose??"";
+    document.getElementById("coachRxRest").value=item.rest_seconds??"";
+    document.getElementById("coachRxLoadType").value=p.load_type||"not_applicable";
+    document.getElementById("coachRxLoadValue").value=p.load_value??"";
+    document.getElementById("coachRxUnit").value=normalizedLoadUnit(p.load_type,p.unit||"");
+    document.getElementById("coachRxRpeMin").value=item.target_rpe_min??"";
+    document.getElementById("coachRxRpeMax").value=item.target_rpe_max??"";
+    document.getElementById("coachRxInstructions").value=item.instructions||"";
+    document.getElementById("coachRxSubmit").textContent="Salva modifiche";
+    document.getElementById("coachRxEditCancel").classList.remove("hidden");
+    setCoachMessage("coachRxMessage",`Modifica di “${item.exercise_name}”.`);
+    document.getElementById("coachSessionExerciseForm").scrollIntoView({behavior:"smooth",block:"start"});
   }
 
   function renderAthleteTest(){
@@ -1582,17 +1757,49 @@
     const x=i=>rows.length===1?left+plotW/2:left+(i/(rows.length-1))*plotW,y=v=>top+((max-v)/(max-min))*plotH;
     const points=values.map((v,i)=>`${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" "),ticks=[max,(max+min)/2,min];
     const yGrid=ticks.map(v=>`<line class="grid" x1="${left}" y1="${y(v)}" x2="${w-right}" y2="${y(v)}"/><text x="${left-5}" y="${y(v)+3}" text-anchor="end">${Number(v.toFixed(1))}</text>`).join("");
-    const xLabels=rows.map((r,i)=>rows.length<=4||i===0||i===rows.length-1?`<text x="${x(i)}" y="${h-8}" text-anchor="${i===0&&rows.length>1?"start":i===rows.length-1&&rows.length>1?"end":"middle"}">${dateIt(r.tested_at)}</text>`:"").join("");
+    const xLabels=rows.map((_r,i)=>rows.length<=4||i===0||i===rows.length-1?`<text x="${x(i)}" y="${h-8}" text-anchor="${i===0&&rows.length>1?"start":i===rows.length-1&&rows.length>1?"end":"middle"}">${i===0?"Test iniziale":`Retest ${i}`}</text>`:"").join("");
     const marks=values.map((v,i)=>`<circle class="point" cx="${x(i)}" cy="${y(v)}" r="5"><title>${dateIt(rows[i].tested_at)}: ${v} ${escapeHtml(last.unit||"")}</title></circle>`).join("");
     const delta=Number(last.value)-Number(first.value),pct=Number(first.value)!==0?(delta/Math.abs(Number(first.value)))*100:null,deltaText=rows.length>1?`${delta>0?"+":""}${Number(delta.toFixed(2))} ${last.unit||""}${pct===null?"":` · ${pct>0?"+":""}${pct.toFixed(1)}%`}`:"Prima rilevazione";
     return `<article class="trend-card"><div class="trend-head"><div><h3>${escapeHtml(last.metric_label)}</h3><div class="small">${escapeHtml(deltaText)}</div></div><div class="trend-value"><b>${escapeHtml(last.value)} ${escapeHtml(last.unit||"")}</b><span class="small">${dateIt(last.tested_at)}</span></div></div><svg class="trend-chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="Andamento di ${escapeHtml(last.metric_label)} da ${escapeHtml(first.value)} a ${escapeHtml(last.value)} ${escapeHtml(last.unit||"")}">${yGrid}${xLabels}${rows.length>1?`<polyline class="line" points="${points}"/>`:""}${marks}</svg><div class="small trend-history">${rows.map(r=>`${dateIt(r.tested_at)}: <b>${escapeHtml(r.value)} ${escapeHtml(r.unit||"")}</b>`).join(" · ")}</div></article>`;
   }
 
+  function sideNeutralLabel(label=""){
+    return label.replace(/\b(mano\s*)?(dx|sx)\b/ig,"").replace(/\b(destr[oa]|sinistr[oa])\b/ig,"").replace(/\s{2,}/g," ").trim().replace(/[·\-–]+$/g,"").trim();
+  }
+
+  function gripLabel(grip=""){
+    return ({open_hand:"Open Hand",half_crimp:"Half Crimp",full_crimp:"Full Crimp"})[grip]||grip.replace(/_/g," ").replace(/\b\w/g,c=>c.toUpperCase());
+  }
+
+  function renderBilateralTrendCard(inputRows){
+    const rows=[...inputRows].filter(r=>["right","left"].includes(r.side)&&Number.isFinite(Number(r.value))&&r.tested_at).sort((a,b)=>new Date(a.tested_at)-new Date(b.tested_at));
+    const rightRows=rows.filter(r=>r.side==="right"),leftRows=rows.filter(r=>r.side==="left");if(!rightRows.length||!leftRows.length)return "";
+    const dates=[...new Set(rows.map(r=>String(r.tested_at).slice(0,10)))].sort(),values=rows.map(r=>Number(r.value)),rawMin=Math.min(...values),rawMax=Math.max(...values),span=rawMax-rawMin,pad=span?span*.18:Math.max(Math.abs(rawMax)*.1,1),min=rawMin-pad,max=rawMax+pad;
+    const w=320,h=160,left=42,right=12,top=12,bottom=34,plotW=w-left-right,plotH=h-top-bottom;
+    const xDate=date=>dates.length===1?left+plotW/2:left+(dates.indexOf(String(date).slice(0,10))/(dates.length-1))*plotW,y=v=>top+((max-v)/(max-min))*plotH;
+    const ticks=[max,(max+min)/2,min],yGrid=ticks.map(v=>`<line class="grid" x1="${left}" y1="${y(v)}" x2="${w-right}" y2="${y(v)}"/><text x="${left-5}" y="${y(v)+3}" text-anchor="end">${Number(v.toFixed(1))}</text>`).join("");
+    const xLabels=dates.map((d,i)=>dates.length<=4||i===0||i===dates.length-1?`<text x="${xDate(d)}" y="${h-8}" text-anchor="${i===0&&dates.length>1?"start":i===dates.length-1&&dates.length>1?"end":"middle"}">${i===0?"Test iniziale":`Retest ${i}`}</text>`:"").join("");
+    const series=(sideRows,sideClass)=>{const points=sideRows.map(r=>`${xDate(r.tested_at).toFixed(1)},${y(Number(r.value)).toFixed(1)}`).join(" ");const marks=sideRows.map(r=>`<circle class="point point-${sideClass}" cx="${xDate(r.tested_at)}" cy="${y(Number(r.value))}" r="5"><title>${dateIt(r.tested_at)}: ${r.value} ${escapeHtml(r.unit||"")}</title></circle>`).join("");return `${sideRows.length>1?`<polyline class="line line-${sideClass}" points="${points}"/>`:""}${marks}`;};
+    const latestRight=rightRows.at(-1),latestLeft=leftRows.at(-1),difference=Math.abs(Number(latestRight.value)-Number(latestLeft.value)),unit=latestRight.unit||latestLeft.unit||"",grip=latestRight.grip||latestLeft.grip||"";
+    const baseLabel=grip?gripLabel(grip):(sideNeutralLabel(latestRight.metric_label)||sideNeutralLabel(latestLeft.metric_label)||"Confronto DX/SX");
+    const history=dates.map(date=>{const dx=rightRows.filter(r=>String(r.tested_at).slice(0,10)===date).at(-1),sx=leftRows.filter(r=>String(r.tested_at).slice(0,10)===date).at(-1);return `${dateIt(date)}: DX <b>${dx?`${escapeHtml(dx.value)} ${escapeHtml(unit)}`:"—"}</b> · SX <b>${sx?`${escapeHtml(sx.value)} ${escapeHtml(unit)}`:"—"}</b>`;}).join("<br>");
+    return `<article class="trend-card"><div class="trend-head"><div><h3>${escapeHtml(baseLabel)}</h3><div class="small">Test e retest sulla stessa timeline</div></div></div><div class="trend-legend"><span><i style="background:var(--purple)"></i>Mano DX</span><span><i style="background:var(--mustard)"></i>Mano SX</span></div><svg class="trend-chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="Confronto Mano DX e Mano SX per ${escapeHtml(baseLabel)}">${yGrid}${xLabels}${series(rightRows,"right")}${series(leftRows,"left")}</svg><div class="coach-meta"><span class="pill">DX: ${escapeHtml(latestRight.value)} ${escapeHtml(unit)}</span><span class="pill">SX: ${escapeHtml(latestLeft.value)} ${escapeHtml(unit)}</span><span class="pill">Differenza assoluta: ${escapeHtml(Number(difference.toFixed(2)))} ${escapeHtml(unit)}</span></div><div class="small">Asimmetria: formula non ancora definita nel progetto; nessuna percentuale viene inventata.</div><div class="small trend-history">${history}</div></article>`;
+  }
+
+  function renderTestTrendGrid(rows){
+    const bilateral=new Map();
+    rows.filter(r=>r.side==="right"||r.side==="left").forEach(r=>{const protocol=r.setup?.protocol_key||String(r.metric_key||"").split("__")[0],key=`${protocol}|${r.grip||"default"}|${r.unit||""}`,list=bilateral.get(key)||[];list.push(r);bilateral.set(key,list);});
+    const pairedIds=new Set(),pairedCards=[];
+    bilateral.forEach(list=>{if(list.some(r=>r.side==="right")&&list.some(r=>r.side==="left")){list.forEach(r=>pairedIds.add(r.id||`${r.test_session_id}|${r.metric_key}`));pairedCards.push(renderBilateralTrendCard(list));}});
+    const singles=new Map();rows.forEach(r=>{const id=r.id||`${r.test_session_id}|${r.metric_key}`;if(pairedIds.has(id))return;const list=singles.get(r.metric_key)||[];list.push(r);singles.set(r.metric_key,list);});
+    return [...pairedCards,...[...singles.values()].map(renderTestTrendCard)].filter(Boolean).join("");
+  }
+
   function renderAthleteTestHistory(){
     const box=document.getElementById("athleteTestHistory");
     if(!athleteTestState.sessions.length){box.innerHTML='<div class="coach-empty">Nessun test completato.</div>';return;}
-    const groups=new Map();athleteTestState.results.forEach(r=>{if(r.setup?.protocol_key==="derived_target")return;const list=groups.get(r.metric_key)||[];list.push(r);groups.set(r.metric_key,list);});
-    box.innerHTML=`<div class="trend-grid">${[...groups.values()].map(renderTestTrendCard).join("")||'<div class="coach-empty">Nessun risultato disponibile.</div>'}</div>`;
+    const rows=athleteTestState.results.filter(r=>r.setup?.protocol_key!=="derived_target");
+    box.innerHTML=`<div class="trend-grid">${renderTestTrendGrid(rows)||'<div class="coach-empty">Nessun risultato disponibile.</div>'}</div>`;
   }
 
   async function loadAthleteTestPlans(){
@@ -1685,7 +1892,7 @@
     let sessionLogs=[];
     if(sessionIds.length){
       const {data,error}=await sb.from("session_logs")
-        .select("id,session_id,athlete_id,status,started_at,completed_at,duration_minutes,session_rpe,notes")
+        .select("id,session_id,athlete_id,status,started_at,completed_at,duration_minutes,session_rpe,notes,completion_outcome,autosaved_at")
         .eq("athlete_id",currentUser.id).in("session_id",sessionIds);
       if(error) throw error;sessionLogs=data||[];
     }
@@ -1734,59 +1941,116 @@
     const sessions=athleteCloud.sessions.filter(s=>s.training_week_id===w.id).sort((a,b)=>a.session_order-b.session_order);
     if(!sessions.length){box.innerHTML='<div class="coach-empty">Nessuna sessione prescritta in questa settimana.</div>';return;}
     box.innerHTML=sessions.map(s=>{
-      const log=athleteSessionLog(s.id);const exs=athleteCloud.exercises.filter(e=>e.session_id===s.id);const status=cloudStatusLabel(log?.status);
+      const log=athleteSessionLog(s.id);const exs=athleteCloud.exercises.filter(e=>e.session_id===s.id);const status=log?.status==="completed"&&log?.completion_outcome==="partial"?"conclusa parzialmente":cloudStatusLabel(log?.status);
       return `<div class="cloud-session-card"><div class="cloud-session-head"><div><h3>Sessione ${s.session_order} · ${escapeHtml(s.title)}</h3><div class="small">${escapeHtml(s.objective||"obiettivo non indicato")}${s.duration_minutes?` · ${s.duration_minutes} min prescritti`:""}</div></div><span class="pill ${log?.status==="completed"?"ok":log?.status==="in_progress"?"warn":""}">${escapeHtml(status)}</span></div><div class="coach-meta"><span class="pill">${exs.length} esercizi</span>${log?.session_rpe!==null&&log?.session_rpe!==undefined?`<span class="pill">RPE ${escapeHtml(log.session_rpe)}</span>`:""}</div><div class="cloud-session-actions"><button type="button" class="secondary athlete-open-session" data-session-id="${escapeHtml(s.id)}">${log?.status==="completed"?"Rivedi log":"Apri sessione"}</button></div></div>`;
     }).join("");
   }
 
+  let athleteAutosaveTimer=null;
+  let athleteCloudSaveChain=Promise.resolve();
+
   function actualInputValue(log,key){return log?.actual&&log.actual[key]!==undefined&&log.actual[key]!==null?log.actual[key]:"";}
+  function athleteSessionDraftKey(sessionId){return `climbing-coach-draft-${currentUser?.id||"guest"}-${sessionId}`;}
+  function readAthleteSessionDraft(sessionId){try{return JSON.parse(localStorage.getItem(athleteSessionDraftKey(sessionId))||"null");}catch(_e){return null;}}
+  function storeAthleteSessionDraft(draft){localStorage.setItem(athleteSessionDraftKey(draft.sessionId),JSON.stringify(draft));}
+  function clearAthleteSessionDraft(sessionId){localStorage.removeItem(athleteSessionDraftKey(sessionId));}
+
+  function inferSessionOutcome(log,exs){
+    if(log?.completion_outcome)return log.completion_outcome;
+    if(log?.status!=="completed")return "";
+    return exs.some(e=>{const row=athleteExerciseLog(e.id);return row&&!row.completed;})?"partial":"completed";
+  }
+
+  function updateSkippedExerciseVisibility(){
+    const outcome=document.querySelector('input[name="athleteCloudOutcome"]:checked')?.value||"";
+    document.getElementById("athleteCloudSkippedWrap").classList.toggle("hidden",outcome!=="partial");
+  }
+
   function renderAthleteCloudSession(){
     const box=document.getElementById("athleteCloudSessionDetail"),s=athleteCloudSession();
     if(!s){box.classList.add("hidden");return;}
     box.classList.remove("hidden");
-    const log=athleteSessionLog(s.id);
+    const log=athleteSessionLog(s.id),draft=readAthleteSessionDraft(s.id);
     document.getElementById("athleteCloudSessionTitle").textContent=`Sessione ${s.session_order} · ${s.title}`;
     document.getElementById("athleteCloudSessionMeta").textContent=`${s.objective||"obiettivo non indicato"}${s.duration_minutes?` · ${s.duration_minutes} min prescritti`:""}`;
     const coachNotes=document.getElementById("athleteCloudCoachNotes");
     if(s.coach_notes){coachNotes.textContent=s.coach_notes;coachNotes.classList.remove("hidden");}else coachNotes.classList.add("hidden");
-    document.getElementById("athleteCloudDuration").value=log?.duration_minutes??"";
-    document.getElementById("athleteCloudSessionRpe").value=log?.session_rpe??"";
-    document.getElementById("athleteCloudSessionNotes").value=log?.notes??"";
-    document.getElementById("athleteCloudSessionStatus").value=cloudStatusLabel(log?.status);
+    document.getElementById("athleteCloudDuration").value=draft?.duration??log?.duration_minutes??"";
+    document.getElementById("athleteCloudSessionRpe").value=draft?.sessionRpe??log?.session_rpe??"";
+    document.getElementById("athleteCloudSessionNotes").value=draft?.notes??log?.notes??"";
     const exs=athleteCloud.exercises.filter(e=>e.session_id===s.id).sort((a,b)=>a.exercise_order-b.exercise_order);
+    const outcome=draft?.outcome??inferSessionOutcome(log,exs),skippedIds=new Set(draft?.skippedIds||exs.filter(e=>{const row=athleteExerciseLog(e.id);return outcome==="partial"&&row&&!row.completed;}).map(e=>e.id));
+    document.querySelectorAll('input[name="athleteCloudOutcome"]').forEach(input=>input.checked=input.value===outcome);
     const exBox=document.getElementById("athleteCloudExercises");
-    if(!exs.length){exBox.innerHTML='<div class="coach-empty">Nessun esercizio prescritto.</div>';return;}
-    exBox.innerHTML=exs.map(e=>{
-      const l=athleteExerciseLog(e.id),p=e.prescription||{};
-      const unit=p.unit||"";
-      return `<div class="cloud-rx-card" data-cloud-exercise-id="${escapeHtml(e.id)}"><div class="cloud-rx-check"><input type="checkbox" class="cloud-ex-done" ${l?.completed?"checked":""}><label><b>${e.exercise_order} · ${escapeHtml(e.exercise_name)}</b></label></div><div class="rx-preview">${escapeHtml(rxPreview(e))}</div>${e.instructions?`<div class="small" style="margin:7px 0">${escapeHtml(e.instructions)}</div>`:""}<div class="grid3"><div><label>Valore reale${unit?` (${escapeHtml(unit)})`:""}</label><input class="cloud-ex-load" type="text" value="${escapeHtml(actualInputValue(l,"load_value"))}" placeholder="carico / intensità"></div><div><label>Dose reale</label><input class="cloud-ex-dose" type="text" value="${escapeHtml(actualInputValue(l,"dose"))}" placeholder="rep / sec / schema"></div><div><label>RPE</label><input class="cloud-ex-rpe" type="number" min="0" max="10" step="0.5" value="${l?.rpe??""}"></div></div><label>Note esercizio</label><textarea class="cloud-ex-notes">${escapeHtml(l?.notes||"")}</textarea></div>`;
-    }).join("");
+    exBox.innerHTML=exs.length?exs.map(e=>{
+      const l=athleteExerciseLog(e.id),p=e.prescription||{},local=draft?.exercises?.[e.id]||null;
+      const unit=(p.load_type||"").startsWith("percent_")?"%":p.unit||"";
+      return `<div class="cloud-rx-card" data-cloud-exercise-id="${escapeHtml(e.id)}"><h4>${e.exercise_order} · ${escapeHtml(e.exercise_name)}</h4><div class="rx-preview">${escapeHtml(rxPreview(e))}</div>${e.instructions?`<div class="small" style="margin:7px 0">${escapeHtml(e.instructions)}</div>`:""}<div class="grid3"><div><label>Valore reale${unit?` (${escapeHtml(unit)})`:""}</label><input class="cloud-ex-load" type="text" value="${escapeHtml(local?.loadValue??actualInputValue(l,"load_value"))}" placeholder="carico / intensità"></div><div><label>Dose reale</label><input class="cloud-ex-dose" type="text" value="${escapeHtml(local?.dose??actualInputValue(l,"dose"))}" placeholder="rep / sec / schema"></div><div><label>RPE</label><input class="cloud-ex-rpe" type="number" min="0" max="10" step="0.5" value="${local?.rpe??l?.rpe??""}"></div></div><label>Note esercizio</label><textarea class="cloud-ex-notes">${escapeHtml(local?.notes??l?.notes??"")}</textarea></div>`;
+    }).join(""):'<div class="coach-empty">Nessun esercizio prescritto.</div>';
+    document.getElementById("athleteCloudSkippedExercises").innerHTML=exs.map(e=>`<label class="skipped-exercise"><input type="checkbox" value="${escapeHtml(e.id)}" ${skippedIds.has(e.id)?"checked":""}> <span>${e.exercise_order} · ${escapeHtml(e.exercise_name)}</span></label>`).join("");
+    updateSkippedExerciseVisibility();
+    const status=document.getElementById("athleteCloudSaveStatus");
+    status.textContent=draft?(navigator.onLine?"Bozza locale da sincronizzare":"Bozza salvata sul dispositivo"):log?"Salvato":"";
+    status.style.color=draft?"var(--warn)":"var(--ok)";
+    if(draft?.pendingFinalize&&navigator.onLine)setTimeout(()=>saveAthleteCloudSession(true),0);
+  }
+
+  function collectAthleteSessionDraft(pendingFinalize=false){
+    const s=athleteCloudSession();if(!s)return null;
+    const exercises={};
+    document.querySelectorAll("#athleteCloudExercises [data-cloud-exercise-id]").forEach(card=>{
+      exercises[card.dataset.cloudExerciseId]={loadValue:card.querySelector(".cloud-ex-load").value.trim(),dose:card.querySelector(".cloud-ex-dose").value.trim(),rpe:card.querySelector(".cloud-ex-rpe").value,notes:card.querySelector(".cloud-ex-notes").value.trim()};
+    });
+    return {sessionId:s.id,duration:document.getElementById("athleteCloudDuration").value,sessionRpe:document.getElementById("athleteCloudSessionRpe").value,notes:document.getElementById("athleteCloudSessionNotes").value.trim(),outcome:document.querySelector('input[name="athleteCloudOutcome"]:checked')?.value||"",skippedIds:[...document.querySelectorAll("#athleteCloudSkippedExercises input:checked")].map(x=>x.value),exercises,pendingFinalize,updatedAt:new Date().toISOString()};
+  }
+
+  async function persistAthleteSessionDraft(draft,markCompleted){
+    if(!navigator.onLine)throw new Error("offline");
+    const s=athleteCloud.sessions.find(x=>x.id===draft.sessionId);if(!s)throw new Error("Sessione non disponibile.");
+    const old=athleteSessionLog(s.id),now=new Date().toISOString();
+    const sessionPayload={session_id:s.id,athlete_id:currentUser.id,status:markCompleted?"completed":(old?.status==="completed"?"completed":"in_progress"),started_at:old?.started_at||now,completed_at:markCompleted?now:(old?.completed_at||null),duration_minutes:draft.duration===""?null:Math.max(0,Number(draft.duration)),session_rpe:draft.sessionRpe===""?null:Number(draft.sessionRpe),notes:draft.notes||null,completion_outcome:draft.outcome||old?.completion_outcome||null,autosaved_at:now};
+    const {data:sl,error:slerr}=await sb.from("session_logs").upsert(sessionPayload,{onConflict:"session_id,athlete_id"}).select("id,session_id,athlete_id,status,started_at,completed_at,duration_minutes,session_rpe,notes,completion_outcome,autosaved_at").single();
+    if(slerr)throw slerr;
+    const skipped=new Set(draft.skippedIds||[]),exercises=athleteCloud.exercises.filter(e=>e.session_id===s.id);
+    const rows=await Promise.all(exercises.map(async ex=>{
+      const local=draft.exercises?.[ex.id]||{},previous=athleteExerciseLog(ex.id),done=markCompleted?(draft.outcome==="completed"||!skipped.has(ex.id)):!!previous?.completed;
+      const payload={session_log_id:sl.id,session_exercise_id:ex.id,athlete_id:currentUser.id,completed:done,actual:{load_value:local.loadValue||null,dose:local.dose||null,load_type:ex.prescription?.load_type||null,unit:ex.prescription?.unit||null},rpe:local.rpe===""?null:Number(local.rpe),notes:local.notes||null,completed_at:done?(previous?.completed_at||now):null};
+      const {data,error}=await sb.from("exercise_logs").upsert(payload,{onConflict:"session_log_id,session_exercise_id"}).select("id,session_log_id,session_exercise_id,athlete_id,completed,actual,rpe,notes,completed_at").single();
+      if(error)throw error;return data;
+    }));
+    athleteCloud.sessionLogs=[...athleteCloud.sessionLogs.filter(x=>x.session_id!==s.id),sl];
+    const ids=new Set(rows.map(x=>x.session_exercise_id));athleteCloud.exerciseLogs=[...athleteCloud.exerciseLogs.filter(x=>!ids.has(x.session_exercise_id)),...rows];
+    clearAthleteSessionDraft(s.id);
+    if(markCompleted){
+      const keepProgram=athleteCloud.selectedProgramId,keepWeek=athleteCloud.selectedWeekId,keepSession=athleteCloud.selectedSessionId;
+      await loadAthleteCloudStructure();athleteCloud.selectedProgramId=keepProgram;athleteCloud.selectedWeekId=keepWeek;athleteCloud.selectedSessionId=keepSession;renderAthleteCloudPlan();
+    }
+  }
+
+  async function saveAthleteCloudSession(markCompleted=false){
+    if(athleteAutosaveTimer){clearTimeout(athleteAutosaveTimer);athleteAutosaveTimer=null;}
+    const draft=collectAthleteSessionDraft(markCompleted);if(!draft)return;
+    const status=document.getElementById("athleteCloudSaveStatus"),completeBtn=document.getElementById("athleteCloudCompleteSession");
+    if(markCompleted&&!draft.outcome){status.textContent="Scegli l'esito dell'allenamento.";status.style.color="#8c2b2b";return;}
+    if(markCompleted&&draft.outcome==="partial"&&!draft.skippedIds.length){status.textContent="Indica almeno un esercizio non eseguito.";status.style.color="#8c2b2b";return;}
+    storeAthleteSessionDraft(draft);status.textContent="Salvataggio…";status.style.color="var(--muted)";if(markCompleted)completeBtn.disabled=true;
+    athleteCloudSaveChain=athleteCloudSaveChain.catch(()=>{}).then(()=>persistAthleteSessionDraft(draft,markCompleted));
+    try{
+      await athleteCloudSaveChain;
+      status.textContent=markCompleted?"Allenamento concluso e sincronizzato con la coach.":"Salvato";status.style.color="var(--ok)";
+    }catch(err){status.textContent=err?.message==="offline"?"Connessione assente · bozza salvata sul dispositivo":"Bozza locale salvata · sincronizzazione da riprovare";status.style.color="var(--warn)";}
+    finally{if(markCompleted)completeBtn.disabled=false;}
+  }
+
+  function scheduleAthleteCloudAutosave(){
+    const draft=collectAthleteSessionDraft(false);if(!draft)return;
+    storeAthleteSessionDraft(draft);
+    const status=document.getElementById("athleteCloudSaveStatus");status.textContent="Salvataggio…";status.style.color="var(--muted)";
+    if(athleteAutosaveTimer)clearTimeout(athleteAutosaveTimer);
+    athleteAutosaveTimer=setTimeout(()=>saveAthleteCloudSession(false),1000);
   }
 
   function openAthleteCloudSession(id){athleteCloud.selectedSessionId=id;renderAthleteCloudSession();document.getElementById("athleteCloudSessionDetail").scrollIntoView({behavior:"smooth",block:"start"});}
-
-  async function saveAthleteCloudSession(markCompleted=false){
-    const s=athleteCloudSession();if(!s)return;
-    const status=document.getElementById("athleteCloudSaveStatus");const saveBtn=document.getElementById("athleteCloudSaveSession"),completeBtn=document.getElementById("athleteCloudCompleteSession");
-    saveBtn.disabled=true;completeBtn.disabled=true;status.textContent="Salvataggio nel cloud…";
-    try{
-      const old=athleteSessionLog(s.id);const now=new Date().toISOString();const duration=document.getElementById("athleteCloudDuration").value;const srpe=document.getElementById("athleteCloudSessionRpe").value;
-      const sessionPayload={session_id:s.id,athlete_id:currentUser.id,status:markCompleted?"completed":(old?.status==="completed"?"completed":"in_progress"),started_at:old?.started_at||now,completed_at:markCompleted?now:(old?.completed_at||null),duration_minutes:duration===""?null:Math.max(0,Number(duration)),session_rpe:srpe===""?null:Number(srpe),notes:document.getElementById("athleteCloudSessionNotes").value.trim()||null};
-      const {data:sl,error:slerr}=await sb.from("session_logs").upsert(sessionPayload,{onConflict:"session_id,athlete_id"}).select("id").single();
-      if(slerr)throw slerr;
-      const cards=[...document.querySelectorAll("#athleteCloudExercises [data-cloud-exercise-id]")];
-      for(const card of cards){
-        const exId=card.dataset.cloudExerciseId;const ex=athleteCloud.exercises.find(x=>x.id===exId);if(!ex)continue;
-        const done=card.querySelector(".cloud-ex-done").checked;const rpe=card.querySelector(".cloud-ex-rpe").value;
-        const payload={session_log_id:sl.id,session_exercise_id:exId,athlete_id:currentUser.id,completed:done,actual:{load_value:card.querySelector(".cloud-ex-load").value.trim()||null,dose:card.querySelector(".cloud-ex-dose").value.trim()||null,load_type:ex.prescription?.load_type||null,unit:ex.prescription?.unit||null},rpe:rpe===""?null:Number(rpe),notes:card.querySelector(".cloud-ex-notes").value.trim()||null,completed_at:done?(athleteExerciseLog(exId)?.completed_at||now):null};
-        const {error}=await sb.from("exercise_logs").upsert(payload,{onConflict:"session_log_id,session_exercise_id"});if(error)throw error;
-      }
-      status.textContent=markCompleted?"Sessione completata e sincronizzata con la coach.":"Progressi salvati nel cloud.";status.style.color="var(--ok)";
-      const keepProgram=athleteCloud.selectedProgramId,keepWeek=athleteCloud.selectedWeekId,keepSession=athleteCloud.selectedSessionId;
-      athleteCloud.selectedProgramId=keepProgram;await loadAthleteCloudStructure();athleteCloud.selectedWeekId=keepWeek;athleteCloud.selectedSessionId=keepSession;renderAthleteCloudPlan();
-    }catch(err){status.textContent=err?.message||"Errore durante il salvataggio.";status.style.color="#8c2b2b";}
-    finally{saveBtn.disabled=false;completeBtn.disabled=false;}
-  }
 
 
   async function handleSession(session){
@@ -2021,8 +2285,13 @@
   });
   document.getElementById("athleteCloudSessions").addEventListener("click",e=>{const b=e.target.closest(".athlete-open-session");if(b)openAthleteCloudSession(b.dataset.sessionId);});
   document.getElementById("athleteCloudCloseSession").addEventListener("click",()=>{athleteCloud.selectedSessionId=null;renderAthleteCloudSession();});
-  document.getElementById("athleteCloudSaveSession").addEventListener("click",()=>saveAthleteCloudSession(false));
   document.getElementById("athleteCloudCompleteSession").addEventListener("click",()=>saveAthleteCloudSession(true));
+  document.getElementById("athleteCloudSessionDetail").addEventListener("input",e=>{if(e.target.matches("input,textarea"))scheduleAthleteCloudAutosave();});
+  document.getElementById("athleteCloudSessionDetail").addEventListener("change",e=>{
+    if(e.target.matches('input[name="athleteCloudOutcome"]'))updateSkippedExerciseVisibility();
+    if(e.target.matches('input[name="athleteCloudOutcome"],#athleteCloudSkippedExercises input'))scheduleAthleteCloudAutosave();
+  });
+  window.addEventListener("online",()=>{const draft=athleteCloud.selectedSessionId?readAthleteSessionDraft(athleteCloud.selectedSessionId):null;if(draft)saveAthleteCloudSession(!!draft.pendingFinalize);});
   document.getElementById("athleteOpenLocalPlan").addEventListener("click",()=>switchAthleteTab("summary"));
   document.getElementById("athleteTestPrev").addEventListener("click",()=>{collectAthleteTestStep();if(athleteTestStep>0){athleteTestStep--;renderAthleteTest();}});
   document.getElementById("athleteTestNext").addEventListener("click",async()=>{collectAthleteTestStep();if(athleteTestStep<athleteTestState.steps.length-1){athleteTestStep++;renderAthleteTest();}else await saveAthleteTest();});
@@ -2082,6 +2351,33 @@
   document.querySelectorAll(".accountSecurityBtn").forEach(btn=>btn.addEventListener("click",openAccountSecurity));
   document.getElementById("accountSecurityClose").addEventListener("click",closeAccountSecurity);
   document.getElementById("accountSecurity").addEventListener("click",e=>{if(e.target.id==="accountSecurity")closeAccountSecurity();});
+  document.getElementById("athleteProfileBtn").addEventListener("click",()=>openAthleteProfileEditor(false));
+  document.getElementById("athleteProfileCancel").addEventListener("click",()=>document.getElementById("athleteProfileOverlay").classList.add("hidden"));
+  document.getElementById("athleteProfileForm").addEventListener("submit",async e=>{
+    e.preventDefault();
+    if(!currentUser||currentProfile?.role!=="athlete")return;
+    const firstName=document.getElementById("athleteProfileFirstName").value.trim();
+    const lastName=document.getElementById("athleteProfileLastName").value.trim();
+    const birthDate=document.getElementById("athleteProfileBirthDate").value;
+    const weight=Number(document.getElementById("athleteProfileWeight").value);
+    const height=Number(document.getElementById("athleteProfileHeight").value);
+    const today=new Date().toISOString().slice(0,10);
+    if(!firstName||!lastName||!/^\d{4}-\d{2}-\d{2}$/.test(birthDate)||birthDate>today){setCoachMessage("athleteProfileMessage","Inserisci nome, cognome e una data di nascita valida.","error");return;}
+    if(!(weight>=10&&weight<=400)){setCoachMessage("athleteProfileMessage","Inserisci un peso valido tra 10 e 400 kg.","error");return;}
+    if(!(height>=50&&height<=250)){setCoachMessage("athleteProfileMessage","Inserisci un'altezza valida tra 50 e 250 cm.","error");return;}
+    const btn=document.getElementById("athleteProfileSave");btn.disabled=true;setCoachMessage("athleteProfileMessage","Salvataggio…");
+    try{
+      const payload={first_name:firstName,last_name:lastName,full_name:`${firstName} ${lastName}`,birth_date:birthDate,weight_kg:weight,height_cm:height,onboarding_completed_at:currentProfile.onboarding_completed_at||new Date().toISOString()};
+      const {data,error}=await sb.from("profiles").update(payload).eq("id",currentUser.id).select("id,full_name,avatar_url,role,first_name,last_name,birth_date,weight_kg,height_cm,onboarding_completed_at").single();
+      if(error)throw error;
+      currentProfile=data;localStorage.setItem(profileCacheKey(currentUser.id),JSON.stringify(data));
+      document.getElementById("userDisplay").textContent=data.full_name;
+      setCoachMessage("athleteProfileMessage","Profilo salvato.","ok");
+      if(!athleteAreaReady)await openAthleteArea();
+      else setTimeout(()=>document.getElementById("athleteProfileOverlay").classList.add("hidden"),350);
+    }catch(err){setCoachMessage("athleteProfileMessage",err?.message||"Non è stato possibile salvare il profilo.","error");}
+    finally{btn.disabled=false;}
+  });
   document.getElementById("accountResetPassword").addEventListener("click",async()=>{
     const email=currentUser?.email;
     if(!email){setAccountSecurityMessage("Email dell'account non disponibile.","error");return;}
@@ -2254,6 +2550,19 @@
   document.getElementById("coachSessionsList").addEventListener("click",e=>{
     const b=e.target.closest(".open-session"); if(b) openCoachSession(b.dataset.sessionId);
   });
+  document.getElementById("coachSessionExercisesList").addEventListener("click",async e=>{
+    const edit=e.target.closest(".edit-session-exercise");if(edit){editCoachSessionExercise(edit.dataset.exerciseId);return;}
+    const remove=e.target.closest(".delete-session-exercise");if(!remove)return;
+    const item=coachState.sessionExercises.find(x=>x.id===remove.dataset.exerciseId);if(!item)return;
+    if(coachState.exerciseLogs.some(x=>x.session_exercise_id===item.id)){alert("Questo esercizio ha già uno storico atleta e non può essere eliminato. Puoi comunque modificarne le indicazioni.");return;}
+    if(!confirm(`Eliminare “${item.exercise_name}” da questa sessione?`))return;
+    remove.disabled=true;
+    try{
+      const {error}=await sb.from("session_exercises").delete().eq("id",item.id);if(error)throw error;
+      if(coachEditingExerciseId===item.id)resetCoachRxEditor();
+      const keepSession=coachState.selectedSessionId,keepWeek=coachState.selectedWeekId;await loadCoachProgramStructure();coachState.selectedWeekId=keepWeek;coachState.selectedSessionId=keepSession;renderCoachProgramBuilder();
+    }catch(err){alert(err?.message||"Non è stato possibile eliminare l'esercizio.");remove.disabled=false;}
+  });
   document.getElementById("coachCloseWeek").addEventListener("click",()=>{
     coachState.selectedWeekId=null;coachState.selectedSessionId=null;
     document.getElementById("coachWeekDetail").classList.add("hidden");
@@ -2261,7 +2570,7 @@
     renderCoachProgramBuilder();
   });
   document.getElementById("coachCloseSession").addEventListener("click",()=>{
-    coachState.selectedSessionId=null;document.getElementById("coachSessionDetail").classList.add("hidden");renderCoachWeekDetail();
+    resetCoachRxEditor();coachState.selectedSessionId=null;document.getElementById("coachSessionDetail").classList.add("hidden");renderCoachWeekDetail();
   });
   document.getElementById("coachRxLibrary").addEventListener("change",()=>{
     const id=document.getElementById("coachRxLibrary").value;
@@ -2276,6 +2585,8 @@
     if(p.load_value!==undefined&&p.load_value!==null) document.getElementById("coachRxLoadValue").value=p.load_value;
     if(p.unit) document.getElementById("coachRxUnit").value=p.unit;
   });
+  document.getElementById("coachRxLoadType").addEventListener("change",syncRxUnitToLoadType);
+  document.getElementById("coachRxEditCancel").addEventListener("click",()=>{resetCoachRxEditor();setCoachMessage("coachRxMessage","");});
 
   document.getElementById("coachBackAthletes").addEventListener("click",()=>{
     coachState.selectedAthleteId=null;
@@ -2292,27 +2603,48 @@
     if(coachState.selectedAthleteId)document.getElementById("coachTestPlanAthlete").value=coachState.selectedAthleteId;
     document.getElementById("coachTestPlanTitle").focus();
   });
+  document.getElementById("coachRemoveAthlete").addEventListener("click",async()=>{
+    const athleteId=coachState.selectedAthleteId;
+    const athlete=coachState.athletes.find(x=>x.id===athleteId);
+    if(!athleteId||!athlete)return;
+    if(!confirm("Vuoi rimuovere questo atleta dalla tua lista?\nProgrammi, test e storico resteranno conservati."))return;
+    const btn=document.getElementById("coachRemoveAthlete");btn.disabled=true;
+    try{
+      const {error}=await sb.from("coach_athletes").update({status:"inactive"}).eq("coach_id",currentUser.id).eq("athlete_id",athleteId);
+      if(error)throw error;
+      coachState.selectedAthleteId=null;
+      document.getElementById("coachAthleteDetail").classList.add("hidden");
+      document.getElementById("coachAthleteListView").classList.remove("hidden");
+      await loadCoachDashboard();
+      alert(`${athlete.full_name||"L'atleta"} è stato rimosso dalla lista attiva. Lo storico non è stato cancellato.`);
+    }catch(err){alert(err?.message||"Non è stato possibile rimuovere l'atleta.");}
+    finally{btn.disabled=false;}
+  });
 
   function metricKeyFromLabel(label,index){
     const base=label.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"");
     return base||`metric_${index+1}`;
   }
 
-  function addCoachTestMetricRow(label="",unit=""){
+  function addCoachTestMetricRow(label="",unit="",side="",grip=""){
     const row=document.createElement("div");row.className="test-metric-editor-row";
-    const labelBox=document.createElement("div"),unitBox=document.createElement("div");
+    const labelBox=document.createElement("div"),unitBox=document.createElement("div"),sideBox=document.createElement("div"),gripBox=document.createElement("div");
     const labelCaption=document.createElement("label");labelCaption.textContent="Nome risultato";
     const labelInput=document.createElement("input");labelInput.type="text";labelInput.className="test-metric-label";labelInput.placeholder="es. Forza massima";labelInput.value=label;
     const unitCaption=document.createElement("label");unitCaption.textContent="Unità di misura";
     const unitInput=document.createElement("input");unitInput.type="text";unitInput.className="test-metric-unit";unitInput.placeholder="es. kg, sec, W";unitInput.value=unit;
+    const sideCaption=document.createElement("label");sideCaption.textContent="Lato";
+    const sideInput=document.createElement("select");sideInput.className="test-metric-side";sideInput.innerHTML='<option value="">Non laterale</option><option value="right">Mano DX</option><option value="left">Mano SX</option><option value="bilateral">Bilaterale unico</option>';sideInput.value=side||"";
+    const gripCaption=document.createElement("label");gripCaption.textContent="Grip / variante";
+    const gripInput=document.createElement("input");gripInput.type="text";gripInput.className="test-metric-grip";gripInput.placeholder="es. half_crimp";gripInput.value=grip||"";
     const remove=document.createElement("button");remove.type="button";remove.className="secondary small-btn remove-test-metric";remove.textContent="Rimuovi riga";
-    labelBox.append(labelCaption,labelInput);unitBox.append(unitCaption,unitInput);row.append(labelBox,unitBox,remove);
+    labelBox.append(labelCaption,labelInput);unitBox.append(unitCaption,unitInput);sideBox.append(sideCaption,sideInput);gripBox.append(gripCaption,gripInput);row.append(labelBox,unitBox,sideBox,gripBox,remove);
     document.getElementById("coachTestMetricsRows").appendChild(row);
   }
 
   function resetCoachTestMetricRows(metrics=[]){
     const box=document.getElementById("coachTestMetricsRows");box.innerHTML="";
-    (metrics.length?metrics:[{label:"",unit:""}]).forEach(x=>addCoachTestMetricRow(x.label||x.key||"",x.unit||""));
+    (metrics.length?metrics:[{label:"",unit:"",side:"",grip:""}]).forEach(x=>addCoachTestMetricRow(x.label||x.key||"",x.unit||"",x.side||"",x.grip||""));
   }
 
   function resetCoachTestEditor(){
@@ -2344,7 +2676,7 @@
     e.preventDefault();
     const name=document.getElementById("coachTestName").value.trim();
     const videoFile=document.getElementById("coachTestVideoFile").files?.[0]||null;
-    const metricRows=[...document.querySelectorAll("#coachTestMetricsRows .test-metric-editor-row")].map(row=>({label:row.querySelector(".test-metric-label").value.trim(),unit:row.querySelector(".test-metric-unit").value.trim()})).filter(x=>x.label);
+    const metricRows=[...document.querySelectorAll("#coachTestMetricsRows .test-metric-editor-row")].map(row=>({label:row.querySelector(".test-metric-label").value.trim(),unit:row.querySelector(".test-metric-unit").value.trim(),side:row.querySelector(".test-metric-side").value||null,grip:row.querySelector(".test-metric-grip").value.trim()||null})).filter(x=>x.label);
     if(!name||!metricRows.length){setCoachMessage("coachTestLibraryMessage","Inserisci nome e almeno un risultato da raccogliere.","error");return;}
     const mimeByExtension={mp4:"video/mp4",webm:"video/webm",mov:"video/quicktime"};
     const extension=videoFile?.name.split(".").pop()?.toLowerCase()||"";
@@ -2354,7 +2686,7 @@
     if(videoFile&&videoFile.size>200*1024*1024){setCoachMessage("coachTestLibraryMessage","Il video supera il limite di 200 MB.","error");return;}
     const existingTest=coachEditingTestId?coachState.testLibrary.find(x=>x.id===coachEditingTestId):null;
     const oldMetrics=existingTest?.metric_definitions||[];
-    const metrics=metricRows.map(({label,unit},index)=>{const old=oldMetrics.find(x=>(x.label||"").trim().toLowerCase()===label.toLowerCase())||oldMetrics[index];return {key:old?.key||metricKeyFromLabel(label,index),label,unit:unit||"valore"};});
+    const metrics=metricRows.map(({label,unit,side,grip},index)=>{const old=oldMetrics.find(x=>(x.label||"").trim().toLowerCase()===label.toLowerCase())||oldMetrics[index];return {key:old?.key||metricKeyFromLabel(label,index),label,unit:unit||"valore",...(side?{side}:{}),...(grip?{grip}:{})};});
     const btn=document.getElementById("coachTestLibrarySubmit");btn.disabled=true;setCoachMessage("coachTestLibraryMessage","Salvataggio…");
     let createdTestId=null,uploadedVideoPath=null,videoUploaded=false;
     try{
@@ -2382,7 +2714,7 @@
 
   document.getElementById("coachTestEditCancel").addEventListener("click",()=>{resetCoachTestEditor();setCoachMessage("coachTestLibraryMessage","");});
   document.getElementById("coachAddTestMetric").addEventListener("click",()=>addCoachTestMetricRow());
-  document.getElementById("coachTestMetricsRows").addEventListener("click",e=>{const b=e.target.closest(".remove-test-metric");if(!b)return;const rows=document.querySelectorAll("#coachTestMetricsRows .test-metric-editor-row");if(rows.length===1){rows[0].querySelector(".test-metric-label").value="";rows[0].querySelector(".test-metric-unit").value="";}else b.closest(".test-metric-editor-row").remove();});
+  document.getElementById("coachTestMetricsRows").addEventListener("click",e=>{const b=e.target.closest(".remove-test-metric");if(!b)return;const rows=document.querySelectorAll("#coachTestMetricsRows .test-metric-editor-row");if(rows.length===1){rows[0].querySelector(".test-metric-label").value="";rows[0].querySelector(".test-metric-unit").value="";rows[0].querySelector(".test-metric-side").value="";rows[0].querySelector(".test-metric-grip").value="";}else b.closest(".test-metric-editor-row").remove();});
   document.getElementById("coachTestLibraryList").addEventListener("click",async e=>{
     const edit=e.target.closest(".edit-library-test");if(edit){editCoachLibraryTest(edit.dataset.testId);return;}
     const remove=e.target.closest(".archive-library-test");if(!remove)return;
@@ -2456,13 +2788,19 @@
     if(rpeMin!==""&&rpeMax!==""&&Number(rpeMin)>Number(rpeMax)){setCoachMessage("coachRxMessage","RPE minimo non può superare RPE massimo.","error");return;}
     const loadType=document.getElementById("coachRxLoadType").value;
     const libraryId=document.getElementById("coachRxLibrary").value||null;
+    const editing=coachEditingExerciseId?coachState.sessionExercises.find(x=>x.id===coachEditingExerciseId&&x.session_id===session.id):null;
     const btn=document.getElementById("coachRxSubmit");btn.disabled=true;setCoachMessage("coachRxMessage","Salvataggio…");
     try{
-      const prescription={sets:sets>0?sets:null,dose:document.getElementById("coachRxDose").value.trim()||null,load_type:loadType,load_value:document.getElementById("coachRxLoadValue").value.trim()||null,unit:document.getElementById("coachRxUnit").value||null};
+      const rawLoadValue=document.getElementById("coachRxLoadValue").value.trim();
+      const loadValue=loadType==="bodyweight"||loadType==="not_applicable"?null:(rawLoadValue||null);
+      const unit=normalizedLoadUnit(loadType,document.getElementById("coachRxUnit").value||"")||null;
+      const prescription={sets:sets>0?sets:null,dose:document.getElementById("coachRxDose").value.trim()||null,load_type:loadType,load_value:loadValue,unit};
       const calculation_context={load_basis:loadBasisForType(loadType),load_type:loadType,distinguish_total_vs_external:true};
-      const payload={session_id:session.id,exercise_id:libraryId,exercise_order:nextOrder(exs,"exercise_order"),exercise_name:name,prescription,calculation_context,target_rpe_min:rpeMin===""?null:Number(rpeMin),target_rpe_max:rpeMax===""?null:Number(rpeMax),rest_seconds:document.getElementById("coachRxRest").value===""?null:Math.max(0,rest),instructions:document.getElementById("coachRxInstructions").value.trim()||null};
-      const {error}=await sb.from("session_exercises").insert(payload);if(error)throw error;
-      document.getElementById("coachSessionExerciseForm").reset();document.getElementById("coachRxLoadType").value="not_applicable";setCoachMessage("coachRxMessage","Esercizio aggiunto alla sessione.","ok");
+      const payload={session_id:session.id,exercise_id:libraryId,exercise_order:editing?.exercise_order??nextOrder(exs,"exercise_order"),exercise_name:name,prescription,calculation_context,target_rpe_min:rpeMin===""?null:Number(rpeMin),target_rpe_max:rpeMax===""?null:Number(rpeMax),rest_seconds:document.getElementById("coachRxRest").value===""?null:Math.max(0,rest),instructions:document.getElementById("coachRxInstructions").value.trim()||null};
+      const query=editing?sb.from("session_exercises").update(payload).eq("id",editing.id):sb.from("session_exercises").insert(payload);
+      const {error}=await query;if(error)throw error;
+      const success=editing?"Esercizio aggiornato senza duplicarlo.":"Esercizio aggiunto alla sessione.";
+      resetCoachRxEditor();setCoachMessage("coachRxMessage",success,"ok");
       const keepSession=session.id,keepWeek=session.training_week_id;await loadCoachProgramStructure();coachState.selectedWeekId=keepWeek;coachState.selectedSessionId=keepSession;renderCoachProgramBuilder();
     }catch(err){setCoachMessage("coachRxMessage",err?.message||"Errore salvataggio esercizio.","error");}
     finally{btn.disabled=false;}

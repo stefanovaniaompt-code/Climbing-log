@@ -1,10 +1,12 @@
-const CACHE = "monica-erbesato-v2-11-library-delete-metric-fields";
+const CACHE = "climbing-coach-v2-12-onboarding-autosave-pwa";
 const APP_ASSETS = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
+  "./icon-180.png",
   "./icon-192.png",
-  "./icon-512.png"
+  "./icon-512.png",
+  "./icon-maskable-512.png"
 ];
 
 self.addEventListener("install", event => {
