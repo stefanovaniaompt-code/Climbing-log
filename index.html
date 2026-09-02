@@ -134,6 +134,40 @@
     .builder-counts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
     @media(max-width:620px){.builder-counts{grid-template-columns:1fr}}
     .small-btn{min-height:36px;padding:7px 10px}
+    .program-view-switch{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+    .program-view-hidden{display:none!important}
+    .program-view-switch button[aria-pressed="true"]{background:var(--purple);color:#fff;border-color:var(--purple)}
+    .coach-calendar-toolbar{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .coach-calendar-week-actions,.coach-calendar-detail-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+    .coach-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px;margin-top:12px}
+    .coach-calendar-day{min-width:0;min-height:168px;padding:8px;background:#fff;border:1px solid var(--line);border-radius:12px 6px 12px 6px}
+    .coach-calendar-day.today{border-color:var(--mustard);box-shadow:inset 0 3px 0 var(--mustard)}
+    .coach-calendar-day-head{display:flex;align-items:center;justify-content:space-between;gap:5px;margin-bottom:8px}
+    .coach-calendar-day-name{font-size:11px;color:var(--muted);font-weight:800;text-transform:uppercase}
+    .coach-calendar-day-date{font-size:12px;color:var(--purple);font-weight:800}
+    .coach-calendar-add-day{min-height:28px;padding:3px 7px;border-radius:8px;font-size:12px}
+    .coach-calendar-session{display:block;width:100%;min-height:58px;padding:8px;margin-top:6px;text-align:left;color:var(--purple);background:var(--lav);border:0;border-left:4px solid var(--purple2);border-radius:7px 12px 7px 12px}
+    .coach-calendar-session:first-of-type{margin-top:0}
+    .coach-calendar-session.selected{box-shadow:0 0 0 2px var(--purple)}
+    .coach-calendar-session.recovery{border-left-color:#7f9b61;background:#edf4e8;color:#365125}
+    .coach-calendar-session.completed{border-left-color:var(--ok);background:#e6f4ec;color:#155c3b}
+    .coach-calendar-test{padding:8px;margin-top:6px;background:#fff7dd;border-left:4px solid var(--mustard);border-radius:7px 12px 7px 12px;color:#5e4709}
+    .coach-calendar-session-title{display:block;font-size:12px;font-weight:800;overflow-wrap:anywhere}
+    .coach-calendar-session-meta{display:block;margin-top:4px;font-size:10px;line-height:1.25;color:inherit;opacity:.78}
+    .coach-calendar-rest{display:grid;place-items:center;min-height:84px;color:var(--muted);font-size:11px}
+    .coach-calendar-detail{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;margin-top:12px;padding:12px;background:#fff;border:1px solid rgba(91,44,131,.13);border-radius:10px 20px 10px 20px}
+    .coach-calendar-detail h3{margin:2px 0 4px;color:var(--purple);font-size:17px}
+    .coach-calendar-move{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+    .coach-calendar-move>div{min-width:180px;flex:1}
+    @media(max-width:780px){.coach-calendar-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:520px){
+      .coach-calendar-grid{grid-template-columns:1fr}
+      .coach-calendar-day{min-height:auto;display:grid;grid-template-columns:76px minmax(0,1fr);gap:8px}
+      .coach-calendar-day-head{display:block;margin:0}
+      .coach-calendar-add-day{margin-top:6px}
+      .coach-calendar-rest{min-height:44px;place-items:center start}
+      .coach-calendar-detail{grid-template-columns:1fr}
+    }
     .coach-library-row .coach-card-head>div:first-child{min-width:0}
     .coach-library-row .builder-item-actions{flex:0 0 auto;flex-wrap:nowrap;margin-top:0;gap:5px}
     .coach-library-row .builder-item-actions .small-btn{min-height:30px;padding:5px 8px;font-size:11px;white-space:nowrap;border-radius:9px}
@@ -144,6 +178,7 @@
     @media(max-width:620px){.athlete-cloud-summary{grid-template-columns:1fr}}
     .cloud-session-card{background:white;border:1px solid var(--line);border-radius:14px;padding:13px;margin:10px 0}
     .cloud-session-card h3{margin:0 0 4px;color:var(--purple);font-size:16px}
+    .cloud-session-card.today{box-shadow:0 0 0 3px rgba(214,162,29,.45),0 12px 28px rgba(53,19,79,.18)}
     .cloud-session-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
     .cloud-session-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
     .cloud-rx-card{background:#fbfafc;border:1px solid var(--line);border-radius:12px;padding:0;margin:10px 0;overflow:hidden}
@@ -775,16 +810,47 @@
             <div class="metric"><span class="small">Esercizi prescritti</span><b id="coachBuilderExerciseCount">0</b></div>
           </div>
           <div class="cloud-note">Il builder salva nel cloud. Le modifiche diventano visibili all'atleta quando il programma viene pubblicato.</div>
+          <div class="program-view-switch" role="group" aria-label="Visualizzazione programmazione">
+            <button id="coachProgramStructureView" type="button" class="secondary small-btn" aria-pressed="false">Struttura</button>
+            <button id="coachProgramCalendarView" type="button" class="secondary small-btn" aria-pressed="true">Calendario</button>
+          </div>
         </div>
 
-        <div class="builder-subpanel">
+        <div id="coachProgramCalendar" class="builder-subpanel hidden">
+          <div class="coach-calendar-toolbar">
+            <div><div class="coach-kicker">Calendario programma</div><h2 id="coachCalendarWeekTitle">—</h2><div id="coachCalendarWeekMeta" class="small">—</div></div>
+            <div class="coach-calendar-week-actions">
+              <button id="coachCalendarPrevWeek" type="button" class="secondary small-btn" aria-label="Settimana precedente">←</button>
+              <button id="coachCalendarNextWeek" type="button" class="secondary small-btn" aria-label="Settimana successiva">→</button>
+              <button id="coachCalendarCopyWeek" type="button" class="secondary small-btn">Copia settimana</button>
+              <button id="coachCalendarAddSession" type="button" class="small-btn">+ Seduta</button>
+            </div>
+          </div>
+          <div id="coachCalendarGrid" class="coach-calendar-grid"></div>
+          <div id="coachCalendarSessionDetail" class="coach-calendar-detail hidden">
+            <div><div id="coachCalendarSessionKicker" class="coach-kicker">Seduta selezionata</div><h3 id="coachCalendarSessionTitle">—</h3><div id="coachCalendarSessionMeta" class="small">—</div></div>
+            <div class="coach-calendar-detail-actions">
+              <button id="coachCalendarMoveSession" type="button" class="secondary small-btn">Sposta</button>
+              <button id="coachCalendarDuplicateSession" type="button" class="secondary small-btn">Duplica</button>
+              <button id="coachCalendarOpenSession" type="button" class="small-btn">Apri seduta</button>
+            </div>
+            <div id="coachCalendarMovePanel" class="coach-calendar-move hidden" style="grid-column:1/-1">
+              <div><label>Nuovo giorno</label><select id="coachCalendarMoveDay"><option value="1">Lunedì</option><option value="2">Martedì</option><option value="3">Mercoledì</option><option value="4">Giovedì</option><option value="5">Venerdì</option><option value="6">Sabato</option><option value="7">Domenica</option></select></div>
+              <button id="coachCalendarConfirmMove" type="button" class="small-btn">Conferma spostamento</button>
+              <button id="coachCalendarCancelMove" type="button" class="secondary small-btn">Annulla</button>
+            </div>
+          </div>
+          <div id="coachCalendarMessage" class="auth-message" aria-live="polite"></div>
+        </div>
+
+        <div class="builder-subpanel coach-structure-view">
           <div class="coach-section-title"><h2>1 · Settimane</h2><span class="pill">programma</span></div>
           <form id="coachWeekForm" class="coach-form">
             <div class="builder-form-grid">
               <div><label>Numero settimana</label><input id="coachWeekNumber" type="number" min="1" step="1" required></div>
               <div><label>Blocco</label><input id="coachWeekBlock" type="text" placeholder="es. CARICO"></div>
               <div><label>Fase</label><input id="coachWeekPhase" type="text" placeholder="es. Forza / Capacity"></div>
-              <div><label>Data inizio</label><input id="coachWeekStart" type="date"></div>
+              <div><label>Inizio settimana (lunedì)</label><input id="coachWeekStart" type="date"></div>
               <div><label>Stato</label><select id="coachWeekStatus"><option value="planned">Pianificata</option><option value="current">Corrente</option><option value="completed">Completata</option><option value="skipped">Saltata</option></select></div>
             </div>
             <label>Note coach settimana</label><textarea id="coachWeekNotes" placeholder="Focus, gestione carico, criteri di progressione/regressione..."></textarea>
@@ -794,7 +860,7 @@
           <div id="coachWeeksList"></div>
         </div>
 
-        <div id="coachWeekDetail" class="builder-subpanel hidden">
+        <div id="coachWeekDetail" class="builder-subpanel coach-structure-view hidden">
           <div class="builder-toolbar">
             <div><div class="coach-kicker">Settimana selezionata</div><h2 id="coachWeekDetailTitle">—</h2><div id="coachWeekDetailMeta" class="small">—</div></div>
             <button id="coachCloseWeek" type="button" class="secondary small-btn">Chiudi</button>
@@ -802,6 +868,7 @@
           <h3 style="margin-top:14px">2 · Sessioni</h3>
           <form id="coachSessionForm" class="coach-form">
             <div class="builder-form-grid">
+              <div><label>Giorno</label><select id="coachSessionDay"><option value="1">Lunedì</option><option value="2">Martedì</option><option value="3">Mercoledì</option><option value="4">Giovedì</option><option value="5">Venerdì</option><option value="6">Sabato</option><option value="7">Domenica</option></select></div>
               <div><label>Titolo sessione</label><input id="coachSessionName" type="text" required placeholder="es. Forza dita + boulder"></div>
               <div><label>Obiettivo fisiologico</label><input id="coachSessionObjective" type="text" placeholder="es. max strength"></div>
               <div><label>Durata (min)</label><input id="coachSessionDuration" type="number" min="1" step="1" placeholder="90"></div>
@@ -813,7 +880,7 @@
           <div id="coachSessionsList"></div>
         </div>
 
-        <div id="coachSessionDetail" class="builder-subpanel hidden">
+        <div id="coachSessionDetail" class="builder-subpanel coach-structure-view hidden">
           <div class="builder-toolbar">
             <div><div class="coach-kicker">Sessione selezionata</div><h2 id="coachSessionDetailTitle">—</h2><div id="coachSessionDetailMeta" class="small">—</div></div>
             <button id="coachCloseSession" type="button" class="secondary small-btn">Chiudi</button>
@@ -1207,6 +1274,7 @@
 
 
   const coachState={athletes:[],invitations:[],programs:[],tests:[],testResults:[],library:[],testLibrary:[],testPlans:[],testPlanItems:[],sessionLogs:[],loggedSessions:[],loggedExercises:[],exerciseLogs:[],selectedAthleteId:null,selectedProgramId:null,selectedWeekId:null,selectedSessionId:null,weeks:[],sessions:[],sessionExercises:[]};
+  let coachProgramView="calendar";
   let coachEditingTestId=null;
   let coachEditingExerciseId=null;
 
@@ -1504,6 +1572,108 @@
   function selectedWeek(){ return coachState.weeks.find(w=>w.id===coachState.selectedWeekId)||null; }
   function selectedSession(){ return coachState.sessions.find(x=>x.id===coachState.selectedSessionId)||null; }
   function nextOrder(items, key){ return items.length?Math.max(...items.map(x=>Number(x[key])||0))+1:1; }
+  const programWeekdays=["Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato","Domenica"];
+  function scheduledDayNumber(session){return Math.min(7,Math.max(1,Number(session?.scheduled_day)||Number(session?.session_order)||1));}
+  function scheduledDayLabel(value){return programWeekdays[Math.min(7,Math.max(1,Number(value)||1))-1];}
+  function addDaysIso(iso,days){if(!iso)return null;const date=new Date(`${iso}T12:00:00`);date.setDate(date.getDate()+days);return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;}
+  function shortCalendarDate(iso){if(!iso)return "";return new Intl.DateTimeFormat("it-IT",{day:"numeric",month:"short"}).format(new Date(`${iso}T12:00:00`));}
+  function defaultCoachCalendarWeek(){return coachState.weeks.find(w=>w.status==="current")||coachState.weeks.find(w=>w.status==="planned")||coachState.weeks[0]||null;}
+
+  function setCoachProgramView(view){
+    coachProgramView=view==="structure"?"structure":"calendar";
+    if(coachProgramView==="calendar"&&!selectedWeek())coachState.selectedWeekId=defaultCoachCalendarWeek()?.id||null;
+    document.querySelectorAll("#coachProgramBuilder .coach-structure-view").forEach(el=>el.classList.toggle("program-view-hidden",coachProgramView!=="structure"));
+    document.getElementById("coachProgramCalendar").classList.toggle("hidden",coachProgramView!=="calendar");
+    document.getElementById("coachProgramStructureView").setAttribute("aria-pressed",String(coachProgramView==="structure"));
+    document.getElementById("coachProgramCalendarView").setAttribute("aria-pressed",String(coachProgramView==="calendar"));
+    if(coachProgramView==="calendar")renderCoachCalendar();
+  }
+
+  function renderCoachCalendar(){
+    const w=selectedWeek(),grid=document.getElementById("coachCalendarGrid"),detail=document.getElementById("coachCalendarSessionDetail");
+    const weeks=[...coachState.weeks].sort((a,b)=>a.week_number-b.week_number),index=weeks.findIndex(x=>x.id===w?.id);
+    document.getElementById("coachCalendarPrevWeek").disabled=index<=0;
+    document.getElementById("coachCalendarNextWeek").disabled=index<0||index>=weeks.length-1;
+    document.getElementById("coachCalendarCopyWeek").disabled=!w;
+    document.getElementById("coachCalendarAddSession").disabled=!w;
+    if(!w){
+      document.getElementById("coachCalendarWeekTitle").textContent="Nessuna settimana";
+      document.getElementById("coachCalendarWeekMeta").textContent="Passa a Struttura per creare la prima settimana del programma.";
+      grid.innerHTML='<div class="coach-empty" style="grid-column:1/-1">Il calendario apparirà dopo la creazione della prima settimana.</div>';
+      detail.classList.add("hidden");return;
+    }
+    document.getElementById("coachCalendarWeekTitle").textContent=`Settimana ${w.week_number}${w.block_name?` · ${w.block_name}`:""}`;
+    document.getElementById("coachCalendarWeekMeta").textContent=`${w.phase||"fase non indicata"}${w.start_date?` · ${dateIt(w.start_date)} → ${dateIt(addDaysIso(w.start_date,6))}`:" · date non impostate"}`;
+    const program=selectedProgram(),today=new Date(),todayIso=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
+    grid.innerHTML=programWeekdays.map((dayName,dayIndex)=>{
+      const day=dayIndex+1,dateIso=addDaysIso(w.start_date,dayIndex);
+      const sessions=coachState.sessions.filter(x=>x.training_week_id===w.id&&scheduledDayNumber(x)===day).sort((a,b)=>a.session_order-b.session_order);
+      const testPlans=(coachState.testPlans||[]).filter(x=>x.athlete_id===program?.athlete_id&&dateIso&&x.scheduled_date===dateIso);
+      const sessionHtml=sessions.map(session=>{
+        const exCount=coachState.sessionExercises.filter(e=>e.session_id===session.id).length,log=coachState.sessionLogs.find(x=>x.session_id===session.id);
+        const recovery=/mobil|recuper|recovery|scarico/i.test(`${session.title} ${session.objective||""}`),classes=["coach-calendar-session",coachState.selectedSessionId===session.id?"selected":"",recovery?"recovery":"",log?.status==="completed"?"completed":""].filter(Boolean).join(" ");
+        const status=log?.status==="completed"?" · completata":"";
+        return `<button type="button" class="${classes}" data-calendar-session-id="${escapeHtml(session.id)}"><span class="coach-calendar-session-title">${escapeHtml(session.title)}</span><span class="coach-calendar-session-meta">${exCount} esercizi${session.duration_minutes?` · ${session.duration_minutes} min`:""}${status}</span></button>`;
+      }).join("");
+      const testsHtml=testPlans.map(test=>`<div class="coach-calendar-test"><span class="coach-calendar-session-title">Test · ${escapeHtml(test.title)}</span><span class="coach-calendar-session-meta">${test.status==="published"?"pubblicato":"bozza"}</span></div>`).join("");
+      const content=sessionHtml+testsHtml||'<div class="coach-calendar-rest">Riposo</div>';
+      return `<section class="coach-calendar-day ${dateIso===todayIso?"today":""}"><div class="coach-calendar-day-head"><div><div class="coach-calendar-day-name">${dayName}</div><div class="coach-calendar-day-date">${dateIso?escapeHtml(shortCalendarDate(dateIso)):"giorno "+day}</div></div><button type="button" class="secondary coach-calendar-add-day" data-calendar-add-day="${day}" aria-label="Aggiungi seduta ${dayName}">+</button></div><div>${content}</div></section>`;
+    }).join("");
+    const session=selectedSession();
+    if(!session||session.training_week_id!==w.id){detail.classList.add("hidden");return;}
+    detail.classList.remove("hidden");
+    const exCount=coachState.sessionExercises.filter(e=>e.session_id===session.id).length;
+    document.getElementById("coachCalendarSessionKicker").textContent=`${scheduledDayLabel(session.scheduled_day)} · Sessione ${session.session_order}`;
+    document.getElementById("coachCalendarSessionTitle").textContent=session.title;
+    document.getElementById("coachCalendarSessionMeta").textContent=`${session.objective||"obiettivo non indicato"}${session.duration_minutes?` · ${session.duration_minutes} min`:""} · ${exCount} esercizi${session.coach_notes?` · ${session.coach_notes}`:""}`;
+    document.getElementById("coachCalendarMoveDay").value=String(scheduledDayNumber(session));
+    document.getElementById("coachCalendarMovePanel").classList.add("hidden");
+  }
+
+  function stepCoachCalendarWeek(delta){
+    const weeks=[...coachState.weeks].sort((a,b)=>a.week_number-b.week_number),index=weeks.findIndex(x=>x.id===coachState.selectedWeekId),target=weeks[index+delta];if(!target)return;
+    coachState.selectedWeekId=target.id;coachState.selectedSessionId=null;renderCoachProgramBuilder();
+  }
+
+  function prepareCoachSessionForDay(day=1){
+    const w=selectedWeek();if(!w)return;
+    coachProgramView="structure";openCoachWeek(w.id);
+    document.getElementById("coachSessionDay").value=String(Math.min(7,Math.max(1,Number(day)||1)));
+    document.getElementById("coachSessionName").focus();
+    document.getElementById("coachSessionForm").scrollIntoView({behavior:"smooth",block:"start"});
+  }
+
+  async function createSessionCopy(source,targetWeekId,sessionOrder,title=source.title,scheduledDay=scheduledDayNumber(source)){
+    const payload={training_week_id:targetWeekId,session_order:sessionOrder,scheduled_day:scheduledDay,title,objective:source.objective||null,duration_minutes:source.duration_minutes||null,coach_notes:source.coach_notes||null};
+    const {data:created,error}=await sb.from("sessions").insert(payload).select("id").single();if(error)throw error;
+    try{
+      const exercises=coachState.sessionExercises.filter(e=>e.session_id===source.id).sort((a,b)=>a.exercise_order-b.exercise_order).map(e=>({session_id:created.id,exercise_id:e.exercise_id||null,exercise_order:e.exercise_order,exercise_name:e.exercise_name,prescription:e.prescription||{},calculation_context:e.calculation_context||{},target_rpe_min:e.target_rpe_min,target_rpe_max:e.target_rpe_max,rest_seconds:e.rest_seconds,instructions:e.instructions||null}));
+      if(exercises.length){const {error:exerciseError}=await sb.from("session_exercises").insert(exercises);if(exerciseError)throw exerciseError;}
+      return created;
+    }catch(err){await sb.from("sessions").delete().eq("id",created.id);throw err;}
+  }
+
+  async function duplicateCoachCalendarSession(){
+    const source=selectedSession(),w=selectedWeek();if(!source||!w)return;
+    setCoachMessage("coachCalendarMessage","Duplicazione seduta…");
+    try{
+      const local=coachState.sessions.filter(x=>x.training_week_id===w.id),created=await createSessionCopy(source,w.id,nextOrder(local,"session_order"),`${source.title} · copia`);
+      await loadCoachProgramStructure();coachState.selectedWeekId=w.id;coachState.selectedSessionId=created.id;renderCoachProgramBuilder();setCoachMessage("coachCalendarMessage","Seduta duplicata nello stesso giorno.","ok");
+    }catch(err){setCoachMessage("coachCalendarMessage",err?.message||"Non è stato possibile duplicare la seduta.","error");}
+  }
+
+  async function copyCoachCalendarWeek(){
+    const source=selectedWeek(),program=selectedProgram();if(!source||!program)return;
+    setCoachMessage("coachCalendarMessage","Copia della settimana…");
+    let createdWeekId=null;
+    try{
+      const payload={program_id:program.id,week_number:nextOrder(coachState.weeks,"week_number"),block_name:source.block_name||null,phase:source.phase||null,start_date:addDaysIso(source.start_date,7),status:"planned",notes:source.notes||null};
+      const {data:created,error}=await sb.from("training_weeks").insert(payload).select("id").single();if(error)throw error;createdWeekId=created.id;
+      const sessions=coachState.sessions.filter(x=>x.training_week_id===source.id).sort((a,b)=>a.session_order-b.session_order);
+      for(const session of sessions)await createSessionCopy(session,created.id,session.session_order);
+      await loadCoachProgramStructure();coachState.selectedWeekId=created.id;coachState.selectedSessionId=null;renderCoachProgramBuilder();setCoachMessage("coachCalendarMessage",`Settimana ${payload.week_number} creata e pronta da modificare.`,"ok");
+    }catch(err){if(createdWeekId)await sb.from("training_weeks").delete().eq("id",createdWeekId);setCoachMessage("coachCalendarMessage",err?.message||"Non è stato possibile copiare la settimana.","error");}
+  }
 
   function closeCoachProgramBuilder(clear=true){
     const list=document.getElementById("coachProgramsListView"), builder=document.getElementById("coachProgramBuilder");
@@ -1520,6 +1690,7 @@
   async function openCoachProgram(programId){
     coachState.selectedProgramId=programId;
     coachState.selectedWeekId=null;coachState.selectedSessionId=null;
+    coachProgramView="calendar";
     coachGo("coachPrograms");
     document.getElementById("coachProgramsListView").classList.add("hidden");
     document.getElementById("coachProgramBuilder").classList.remove("hidden");
@@ -1540,8 +1711,8 @@
       let sessions=[];
       if(weekIds.length){
         const {data,error}=await sb.from("sessions")
-          .select("id,training_week_id,session_order,title,objective,duration_minutes,coach_notes,created_at,updated_at")
-          .in("training_week_id",weekIds).order("session_order",{ascending:true});
+          .select("id,training_week_id,session_order,scheduled_day,title,objective,duration_minutes,coach_notes,created_at,updated_at")
+          .in("training_week_id",weekIds).order("scheduled_day",{ascending:true}).order("session_order",{ascending:true});
         if(error) throw error; sessions=data||[];
       }
       const sessionIds=sessions.map(x=>x.id);
@@ -1583,6 +1754,7 @@
     }).join("");
     renderCoachWeekDetail();
     populateRxLibrary();
+    setCoachProgramView(coachProgramView);
   }
 
   function openCoachWeek(weekId){
@@ -1599,12 +1771,12 @@
     box.classList.remove("hidden");
     document.getElementById("coachWeekDetailTitle").textContent=`Settimana ${w.week_number}${w.block_name?` · ${w.block_name}`:""}`;
     document.getElementById("coachWeekDetailMeta").textContent=`${w.phase||"fase non indicata"} · ${w.status}${w.start_date?` · ${dateIt(w.start_date)}`:""}`;
-    const ss=coachState.sessions.filter(x=>x.training_week_id===w.id).sort((a,b)=>a.session_order-b.session_order);
+    const ss=coachState.sessions.filter(x=>x.training_week_id===w.id).sort((a,b)=>scheduledDayNumber(a)-scheduledDayNumber(b)||a.session_order-b.session_order);
     const boxList=document.getElementById("coachSessionsList");
     if(!ss.length) boxList.innerHTML='<div class="coach-empty">Nessuna sessione in questa settimana.</div>';
     else boxList.innerHTML=ss.map(x=>{
       const exs=coachState.sessionExercises.filter(e=>e.session_id===x.id);
-      return `<div class="builder-item ${coachState.selectedSessionId===x.id?"active":""}"><div class="builder-item-head"><div><h3>Sessione ${x.session_order} · ${escapeHtml(x.title)}</h3><div class="small">${escapeHtml(x.objective||"obiettivo non indicato")}${x.duration_minutes?` · ${x.duration_minutes} min`:""}</div></div><span class="pill">${exs.length} esercizi</span></div>${x.coach_notes?`<div class="small">${escapeHtml(x.coach_notes)}</div>`:""}<div class="builder-item-actions"><button type="button" class="secondary open-session" data-session-id="${escapeHtml(x.id)}">Apri sessione</button></div></div>`;
+      return `<div class="builder-item ${coachState.selectedSessionId===x.id?"active":""}"><div class="builder-item-head"><div><h3>${escapeHtml(scheduledDayLabel(x.scheduled_day))} · ${escapeHtml(x.title)}</h3><div class="small">Sessione ${x.session_order} · ${escapeHtml(x.objective||"obiettivo non indicato")}${x.duration_minutes?` · ${x.duration_minutes} min`:""}</div></div><span class="pill">${exs.length} esercizi</span></div>${x.coach_notes?`<div class="small">${escapeHtml(x.coach_notes)}</div>`:""}<div class="builder-item-actions"><button type="button" class="secondary open-session" data-session-id="${escapeHtml(x.id)}">Apri sessione</button></div></div>`;
     }).join("");
     renderCoachSessionDetail();
   }
@@ -1652,7 +1824,7 @@
     const box=document.getElementById("coachSessionDetail"), session=selectedSession();
     if(!session){box.classList.add("hidden");return;}
     box.classList.remove("hidden");
-    document.getElementById("coachSessionDetailTitle").textContent=`Sessione ${session.session_order} · ${session.title}`;
+    document.getElementById("coachSessionDetailTitle").textContent=`${scheduledDayLabel(session.scheduled_day)} · ${session.title}`;
     document.getElementById("coachSessionDetailMeta").textContent=`${session.objective||"obiettivo non indicato"}${session.duration_minutes?` · ${session.duration_minutes} min`:""}`;
     const exs=coachState.sessionExercises.filter(e=>e.session_id===session.id).sort((a,b)=>a.exercise_order-b.exercise_order);
     const list=document.getElementById("coachSessionExercisesList");
@@ -1888,8 +2060,8 @@
     let sessions=[];
     if(weekIds.length){
       const {data,error}=await sb.from("sessions")
-        .select("id,training_week_id,session_order,title,objective,duration_minutes,coach_notes")
-        .in("training_week_id",weekIds).order("session_order",{ascending:true});
+        .select("id,training_week_id,session_order,scheduled_day,title,objective,duration_minutes,coach_notes")
+        .in("training_week_id",weekIds).order("scheduled_day",{ascending:true}).order("session_order",{ascending:true});
       if(error) throw error;sessions=data||[];
     }
     athleteCloud.sessions=sessions;
@@ -1951,11 +2123,13 @@
     if(!w){meta.textContent="Nessuna settimana disponibile";notes.classList.add("hidden");box.innerHTML='<div class="coach-empty">La coach non ha ancora inserito settimane.</div>';return;}
     meta.textContent=`Settimana ${w.week_number}${w.block_name?` · ${w.block_name}`:""} · ${w.phase||"fase non indicata"}${w.start_date?` · dal ${dateIt(w.start_date)}`:""}`;
     if(w.notes){notes.textContent=w.notes;notes.classList.remove("hidden");}else notes.classList.add("hidden");
-    const sessions=athleteCloud.sessions.filter(s=>s.training_week_id===w.id).sort((a,b)=>a.session_order-b.session_order);
+    const sessions=athleteCloud.sessions.filter(s=>s.training_week_id===w.id).sort((a,b)=>scheduledDayNumber(a)-scheduledDayNumber(b)||a.session_order-b.session_order);
+    const today=new Date(),todayIso=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
     if(!sessions.length){box.innerHTML='<div class="coach-empty">Nessuna sessione prescritta in questa settimana.</div>';return;}
     box.innerHTML=sessions.map(s=>{
       const log=athleteSessionLog(s.id);const exs=athleteCloud.exercises.filter(e=>e.session_id===s.id);const status=log?.status==="completed"&&log?.completion_outcome==="partial"?"conclusa parzialmente":cloudStatusLabel(log?.status);
-      return `<div class="cloud-session-card"><div class="cloud-session-head"><div><h3>Sessione ${s.session_order} · ${escapeHtml(s.title)}</h3><div class="small">${escapeHtml(s.objective||"obiettivo non indicato")}${s.duration_minutes?` · ${s.duration_minutes} min prescritti`:""}</div></div><span class="pill ${log?.status==="completed"?"ok":log?.status==="in_progress"?"warn":""}">${escapeHtml(status)}</span></div><div class="coach-meta"><span class="pill">${exs.length} esercizi</span>${log?.session_rpe!==null&&log?.session_rpe!==undefined?`<span class="pill">RPE ${escapeHtml(log.session_rpe)}</span>`:""}</div><div class="cloud-session-actions"><button type="button" class="secondary athlete-open-session" data-session-id="${escapeHtml(s.id)}">${log?.status==="completed"?"Rivedi log":"Apri sessione"}</button></div></div>`;
+      const isToday=addDaysIso(w.start_date,scheduledDayNumber(s)-1)===todayIso;
+      return `<div class="cloud-session-card ${isToday?"today":""}"><div class="cloud-session-head"><div><h3>${isToday?"Oggi":escapeHtml(scheduledDayLabel(s.scheduled_day))} · ${escapeHtml(s.title)}</h3><div class="small">Sessione ${s.session_order} · ${escapeHtml(s.objective||"obiettivo non indicato")}${s.duration_minutes?` · ${s.duration_minutes} min prescritti`:""}</div></div><span class="pill ${log?.status==="completed"?"ok":log?.status==="in_progress"?"warn":""}">${escapeHtml(status)}</span></div><div class="coach-meta"><span class="pill">${exs.length} esercizi</span>${isToday?'<span class="pill">allenamento di oggi</span>':""}${log?.session_rpe!==null&&log?.session_rpe!==undefined?`<span class="pill">RPE ${escapeHtml(log.session_rpe)}</span>`:""}</div><div class="cloud-session-actions"><button type="button" class="secondary athlete-open-session" data-session-id="${escapeHtml(s.id)}">${log?.status==="completed"?"Rivedi log":isToday?"Inizia":"Apri sessione"}</button></div></div>`;
     }).join("");
   }
 
@@ -1984,7 +2158,7 @@
     if(!s){box.classList.add("hidden");return;}
     box.classList.remove("hidden");
     const log=athleteSessionLog(s.id),draft=readAthleteSessionDraft(s.id);
-    document.getElementById("athleteCloudSessionTitle").textContent=`Sessione ${s.session_order} · ${s.title}`;
+    document.getElementById("athleteCloudSessionTitle").textContent=`${scheduledDayLabel(s.scheduled_day)} · ${s.title}`;
     document.getElementById("athleteCloudSessionMeta").textContent=`${s.objective||"obiettivo non indicato"}${s.duration_minutes?` · ${s.duration_minutes} min prescritti`:""}`;
     const coachNotes=document.getElementById("athleteCloudCoachNotes");
     if(s.coach_notes){coachNotes.textContent=s.coach_notes;coachNotes.classList.remove("hidden");}else coachNotes.classList.add("hidden");
@@ -2574,6 +2748,28 @@
   document.getElementById("coachSessionsList").addEventListener("click",e=>{
     const b=e.target.closest(".open-session"); if(b) openCoachSession(b.dataset.sessionId);
   });
+  document.getElementById("coachProgramStructureView").addEventListener("click",()=>setCoachProgramView("structure"));
+  document.getElementById("coachProgramCalendarView").addEventListener("click",()=>setCoachProgramView("calendar"));
+  document.getElementById("coachCalendarPrevWeek").addEventListener("click",()=>stepCoachCalendarWeek(-1));
+  document.getElementById("coachCalendarNextWeek").addEventListener("click",()=>stepCoachCalendarWeek(1));
+  document.getElementById("coachCalendarAddSession").addEventListener("click",()=>prepareCoachSessionForDay(1));
+  document.getElementById("coachCalendarCopyWeek").addEventListener("click",async e=>{e.currentTarget.disabled=true;try{await copyCoachCalendarWeek();}finally{e.currentTarget.disabled=false;}});
+  document.getElementById("coachCalendarGrid").addEventListener("click",e=>{
+    const add=e.target.closest("[data-calendar-add-day]");if(add){prepareCoachSessionForDay(add.dataset.calendarAddDay);return;}
+    const session=e.target.closest("[data-calendar-session-id]");if(!session)return;
+    coachState.selectedSessionId=session.dataset.calendarSessionId;renderCoachCalendar();
+  });
+  document.getElementById("coachCalendarMoveSession").addEventListener("click",()=>document.getElementById("coachCalendarMovePanel").classList.remove("hidden"));
+  document.getElementById("coachCalendarCancelMove").addEventListener("click",()=>document.getElementById("coachCalendarMovePanel").classList.add("hidden"));
+  document.getElementById("coachCalendarConfirmMove").addEventListener("click",async e=>{
+    const session=selectedSession();if(!session)return;const day=Number(document.getElementById("coachCalendarMoveDay").value);if(!(day>=1&&day<=7))return;
+    e.currentTarget.disabled=true;setCoachMessage("coachCalendarMessage","Spostamento seduta…");
+    try{const {error}=await sb.from("sessions").update({scheduled_day:day}).eq("id",session.id);if(error)throw error;session.scheduled_day=day;renderCoachCalendar();setCoachMessage("coachCalendarMessage",`Seduta spostata a ${scheduledDayLabel(day)}.`,"ok");}
+    catch(err){setCoachMessage("coachCalendarMessage",err?.message||"Non è stato possibile spostare la seduta.","error");}
+    finally{e.currentTarget.disabled=false;}
+  });
+  document.getElementById("coachCalendarDuplicateSession").addEventListener("click",async e=>{e.currentTarget.disabled=true;try{await duplicateCoachCalendarSession();}finally{e.currentTarget.disabled=false;}});
+  document.getElementById("coachCalendarOpenSession").addEventListener("click",()=>{const session=selectedSession();if(!session)return;setCoachProgramView("structure");openCoachSession(session.id);});
   document.getElementById("coachSessionExercisesList").addEventListener("click",async e=>{
     const edit=e.target.closest(".edit-session-exercise");if(edit){editCoachSessionExercise(edit.dataset.exerciseId);return;}
     const remove=e.target.closest(".delete-session-exercise");if(!remove)return;
@@ -2792,7 +2988,7 @@
     const btn=document.getElementById("coachSessionSubmit");btn.disabled=true;setCoachMessage("coachSessionMessage","Salvataggio…");
     try{
       const dur=Number(document.getElementById("coachSessionDuration").value);
-      const payload={training_week_id:w.id,session_order:nextOrder(localSessions,"session_order"),title,objective:document.getElementById("coachSessionObjective").value.trim()||null,duration_minutes:dur>0?dur:null,coach_notes:document.getElementById("coachSessionNotes").value.trim()||null};
+      const payload={training_week_id:w.id,session_order:nextOrder(localSessions,"session_order"),scheduled_day:Number(document.getElementById("coachSessionDay").value)||1,title,objective:document.getElementById("coachSessionObjective").value.trim()||null,duration_minutes:dur>0?dur:null,coach_notes:document.getElementById("coachSessionNotes").value.trim()||null};
       const {data,error}=await sb.from("sessions").insert(payload).select("id").single();if(error)throw error;
       document.getElementById("coachSessionForm").reset();setCoachMessage("coachSessionMessage","Sessione aggiunta.","ok");
       await loadCoachProgramStructure();coachState.selectedWeekId=w.id;if(data?.id) openCoachSession(data.id);

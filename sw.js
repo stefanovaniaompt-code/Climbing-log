@@ -1,4 +1,4 @@
-const CACHE = "climbing-coach-v2-13-compact-library-exercise-details";
+const CACHE = "climbing-coach-v2-14-program-calendar";
 const APP_ASSETS = [
   "./",
   "./index.html",
