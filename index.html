@@ -646,6 +646,7 @@
             <button id="coachBackPrograms" type="button" class="secondary">← Programmi</button>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <span id="coachBuilderStatus" class="pill">—</span>
+              <button id="coachDeleteProgram" type="button" class="danger small-btn">Elimina bozza</button>
               <button id="coachPublishProgram" type="button" class="small-btn">Pubblica all'atleta</button>
             </div>
           </div>
@@ -768,13 +769,14 @@
               <h4>Timer isometria</h4>
               <div class="small">La preparazione iniziale è sempre di 5 secondi e viene eseguita soltanto prima della prima serie.</div>
               <div class="builder-form-grid">
+                <div><label>Esecuzione</label><select id="coachRxTimerExecution"><option value="bilateral">Due mani insieme</option><option value="single_hand">Una mano alla volta</option></select></div>
                 <div><label>Lavoro (sec)</label><input id="coachRxTimerWork" type="number" min="1" step="1" placeholder="10"></div>
                 <div><label>Riposo tra ripetizioni (sec)</label><input id="coachRxTimerIntervalRest" type="number" min="0" step="1" value="0"></div>
                 <div><label>Ripetizioni per serie</label><input id="coachRxTimerRepetitions" type="number" min="1" step="1" value="1"></div>
                 <div><label>Numero di serie</label><input id="coachRxTimerSets" type="number" min="1" step="1" placeholder="6"></div>
                 <div><label>Riposo tra le serie (sec)</label><input id="coachRxTimerSetRest" type="number" min="0" step="1" placeholder="120"></div>
               </div>
-              <div class="isometric-config-note">Sequenza: 5 s preparazione → lavoro ↔ riposo tra ripetizioni → recupero tra le serie.</div>
+              <div class="isometric-config-note">Due mani: preparazione → lavoro → recupero. Una mano: preparazione → mano 1 → 10 s cambio mano → mano 2 → recupero tra le serie.</div>
             </div>
             <div class="load-warning"><b>Carico:</b> scegli sempre se il numero rappresenta BW, carico esterno aggiunto, assistenza oppure carico totale. Le percentuali del massimale vengono salvate con la loro base di calcolo per evitare ambiguità.</div>
             <label>Indicazioni tecniche / esecuzione</label><textarea id="coachRxInstructions" placeholder="Setup, tacca, presa, velocità, criteri tecnici, stop criteria..."></textarea>
@@ -853,13 +855,14 @@
             <h4>Impostazioni timer predefinite</h4>
             <div class="small">Quando Monica richiama questo esercizio, la seduta eredita questi valori e può comunque modificarli.</div>
             <div class="builder-form-grid">
+              <div><label>Esecuzione</label><select id="coachExerciseTimerExecution"><option value="bilateral">Due mani insieme</option><option value="single_hand">Una mano alla volta</option></select></div>
               <div><label>Lavoro (sec)</label><input id="coachExerciseTimerWork" type="number" min="1" step="1" placeholder="10"></div>
               <div><label>Riposo tra ripetizioni (sec)</label><input id="coachExerciseTimerIntervalRest" type="number" min="0" step="1" value="0"></div>
               <div><label>Ripetizioni per serie</label><input id="coachExerciseTimerRepetitions" type="number" min="1" step="1" value="1"></div>
               <div><label>Numero di serie</label><input id="coachExerciseTimerSets" type="number" min="1" step="1" placeholder="6"></div>
               <div><label>Riposo tra le serie (sec)</label><input id="coachExerciseTimerSetRest" type="number" min="0" step="1" placeholder="120"></div>
             </div>
-            <div class="isometric-config-note">Preparazione automatica: 5 secondi prima della prima serie.</div>
+            <div class="isometric-config-note">Preparazione automatica: 5 secondi. In modalità “una mano alla volta” il cambio mano dura 10 secondi.</div>
           </div>
           <div class="form-actions"><button id="coachLibrarySubmit" type="submit">Salva esercizio</button></div>
           <div id="coachLibraryMessage" class="auth-message" aria-live="polite"></div>
@@ -1359,7 +1362,7 @@
     if(!coachState.programs.length) pbox.innerHTML='<div class="coach-empty">Nessun programma cloud creato.</div>';
     else pbox.innerHTML=coachState.programs.map(p=>{
       const a=coachState.athletes.find(x=>x.id===p.athlete_id);
-      return `<div class="coach-program-row"><div class="coach-card-head"><div><b>${escapeHtml(p.name)}</b><div class="small">${escapeHtml(a?.full_name||"Atleta")} · ${escapeHtml(p.goal||"obiettivo non indicato")}</div></div><span class="pill ${p.status==="active"?"ok":""}">${escapeHtml(coachStatusLabel(p.status))}</span></div><div class="small">${p.start_date?dateIt(p.start_date):"inizio —"} → ${p.end_date?dateIt(p.end_date):"fine —"}</div><div class="builder-item-actions"><button type="button" class="secondary open-program" data-program-id="${escapeHtml(p.id)}">Apri builder</button></div></div>`;
+      return `<div class="coach-program-row"><div class="coach-card-head"><div><b>${escapeHtml(p.name)}</b><div class="small">${escapeHtml(a?.full_name||"Atleta")} · ${escapeHtml(p.goal||"obiettivo non indicato")}</div></div><span class="pill ${p.status==="active"?"ok":""}">${escapeHtml(coachStatusLabel(p.status))}</span></div><div class="small">${p.start_date?dateIt(p.start_date):"inizio —"} → ${p.end_date?dateIt(p.end_date):"fine —"}</div><div class="builder-item-actions"><button type="button" class="secondary open-program" data-program-id="${escapeHtml(p.id)}">Apri builder</button>${p.status==="draft"?`<button type="button" class="danger delete-draft-program" data-program-id="${escapeHtml(p.id)}">Elimina bozza</button>`:""}</div></div>`;
     }).join("");
 
     const tbox=document.getElementById("coachRetestsList");
@@ -1606,6 +1609,7 @@
     const status=document.getElementById("coachBuilderStatus");status.textContent=coachStatusLabel(p.status);status.className="pill "+(p.status==="active"?"ok":"");
     const publish=document.getElementById("coachPublishProgram");
     publish.classList.toggle("hidden",p.status!=="draft");
+    document.getElementById("coachDeleteProgram").classList.toggle("hidden",p.status!=="draft");
     document.getElementById("coachBuilderWeekCount").textContent=coachState.weeks.length;
     document.getElementById("coachBuilderSessionCount").textContent=coachState.sessions.length;
     document.getElementById("coachBuilderExerciseCount").textContent=coachState.sessionExercises.length;
@@ -1730,13 +1734,14 @@
     const t=source&&source.timer?source.timer:source;if(!t||t.type!=="isometric")return null;
     const rawWork=Number(t.work_seconds);if(!(rawWork>0))return null;
     const prescribedSets=source&&source.timer?Number(source.sets):0;
-    const work=Math.max(1,rawWork),repetitions=Math.max(1,Number(t.repetitions)||1),sets=Math.max(1,prescribedSets||Number(t.sets)||1);
-    return {type:"isometric",preparation_seconds:5,work_seconds:work,interval_rest_seconds:Math.max(0,Number(t.interval_rest_seconds)||0),repetitions,sets,set_rest_seconds:Math.max(0,Number(t.set_rest_seconds)||0)};
+    const work=Math.max(1,rawWork),repetitions=Math.max(1,Number(t.repetitions)||1),sets=Math.max(1,prescribedSets||Number(t.sets)||1),execution_mode=t.execution_mode==="single_hand"?"single_hand":"bilateral";
+    return {type:"isometric",execution_mode,preparation_seconds:5,hand_change_seconds:execution_mode==="single_hand"?10:0,work_seconds:work,interval_rest_seconds:Math.max(0,Number(t.interval_rest_seconds)||0),repetitions,sets,set_rest_seconds:Math.max(0,Number(t.set_rest_seconds)||0)};
   }
 
   function isometricTimerSummary(timer){
     const t=normalizedIsometricTimer(timer);if(!t)return "";
-    return t.sets+" serie · "+t.repetitions+" rip./serie × "+t.work_seconds+"s"+(t.interval_rest_seconds?" / "+t.interval_rest_seconds+"s":"")+" · rec. serie "+t.set_rest_seconds+"s";
+    const work=t.execution_mode==="single_hand"?`mano 1 + mano 2 × ${t.work_seconds}s · cambio 10s`:`${t.repetitions} rip./serie × ${t.work_seconds}s${t.interval_rest_seconds?` / ${t.interval_rest_seconds}s`:""}`;
+    return t.sets+" serie · "+work+" · rec. serie "+t.set_rest_seconds+"s";
   }
 
   function isometricDose(timer){
@@ -1752,11 +1757,12 @@
 
   function readCoachRxTimer(){
     if(document.getElementById("coachRxExerciseType").value!=="isometric")return null;
-    return normalizedIsometricTimer({type:"isometric",work_seconds:document.getElementById("coachRxTimerWork").value,interval_rest_seconds:document.getElementById("coachRxTimerIntervalRest").value,repetitions:document.getElementById("coachRxTimerRepetitions").value,sets:document.getElementById("coachRxTimerSets").value,set_rest_seconds:document.getElementById("coachRxTimerSetRest").value});
+    return normalizedIsometricTimer({type:"isometric",execution_mode:document.getElementById("coachRxTimerExecution").value,work_seconds:document.getElementById("coachRxTimerWork").value,interval_rest_seconds:document.getElementById("coachRxTimerIntervalRest").value,repetitions:document.getElementById("coachRxTimerRepetitions").value,sets:document.getElementById("coachRxTimerSets").value,set_rest_seconds:document.getElementById("coachRxTimerSetRest").value});
   }
 
   function fillCoachRxTimer(timer){
     const t=normalizedIsometricTimer(timer);document.getElementById("coachRxExerciseType").value=t?"isometric":"standard";
+    document.getElementById("coachRxTimerExecution").value=t?.execution_mode||"bilateral";
     document.getElementById("coachRxTimerWork").value=t?.work_seconds??"";
     document.getElementById("coachRxTimerIntervalRest").value=t?.interval_rest_seconds??0;
     document.getElementById("coachRxTimerRepetitions").value=t?.repetitions??1;
@@ -1772,7 +1778,7 @@
 
   function readCoachLibraryTimer(){
     if(document.getElementById("coachExerciseType").value!=="isometric")return null;
-    return normalizedIsometricTimer({type:"isometric",work_seconds:document.getElementById("coachExerciseTimerWork").value,interval_rest_seconds:document.getElementById("coachExerciseTimerIntervalRest").value,repetitions:document.getElementById("coachExerciseTimerRepetitions").value,sets:document.getElementById("coachExerciseTimerSets").value,set_rest_seconds:document.getElementById("coachExerciseTimerSetRest").value});
+    return normalizedIsometricTimer({type:"isometric",execution_mode:document.getElementById("coachExerciseTimerExecution").value,work_seconds:document.getElementById("coachExerciseTimerWork").value,interval_rest_seconds:document.getElementById("coachExerciseTimerIntervalRest").value,repetitions:document.getElementById("coachExerciseTimerRepetitions").value,sets:document.getElementById("coachExerciseTimerSets").value,set_rest_seconds:document.getElementById("coachExerciseTimerSetRest").value});
   }
 
   let isoTimerState=null,isoTimerInterval=null,isoTimerDeadline=0,isoTimerAudio=null,screenWakeLock=null;
@@ -1794,18 +1800,20 @@
   function allowScreenSleep(reason){screenWakeReasons.delete(reason);syncScreenWakeLock();}
   function allowAllScreenSleep(){screenWakeReasons.clear();syncScreenWakeLock();}
   function isoTimerClock(value){const total=Math.max(0,Math.ceil(Number(value)||0)),minutes=Math.floor(total/60),seconds=total%60;return String(minutes).padStart(2,"0")+":"+String(seconds).padStart(2,"0");}
-  function isoTimerDuration(){if(!isoTimerState)return 0;const t=isoTimerState.timer;return ({preparation:t.preparation_seconds,work:t.work_seconds,intervalRest:t.interval_rest_seconds,setRest:t.set_rest_seconds})[isoTimerState.phase]||0;}
+  function isoTimerDuration(){if(!isoTimerState)return 0;const t=isoTimerState.timer;return ({preparation:t.preparation_seconds,work:t.work_seconds,handRest:t.hand_change_seconds,intervalRest:t.interval_rest_seconds,setRest:t.set_rest_seconds})[isoTimerState.phase]||0;}
   function isoTimerSignal(frequency=760){
     try{const AudioContext=window.AudioContext||window.webkitAudioContext;if(!AudioContext)return;if(!isoTimerAudio)isoTimerAudio=new AudioContext();isoTimerAudio.resume();const oscillator=isoTimerAudio.createOscillator(),gain=isoTimerAudio.createGain();oscillator.type="square";oscillator.frequency.value=frequency;gain.gain.setValueAtTime(.0001,isoTimerAudio.currentTime);gain.gain.exponentialRampToValueAtTime(.65,isoTimerAudio.currentTime+.02);gain.gain.exponentialRampToValueAtTime(.0001,isoTimerAudio.currentTime+.38);oscillator.connect(gain).connect(isoTimerAudio.destination);oscillator.start();oscillator.stop(isoTimerAudio.currentTime+.4);}catch(_err){}
     if(navigator.vibrate)navigator.vibrate(140);
   }
   function renderIsoTimer(){
     if(!isoTimerState)return;const t=isoTimerState.timer,total=isoTimerDuration(),remaining=Math.max(0,isoTimerState.remaining),progress=total?Math.min(360,Math.max(0,(total-remaining)/total*360)):360;
-    const labels={preparation:"PREPARAZIONE",work:"LAVORO",intervalRest:"RIPOSO",setRest:"RECUPERO TRA LE SERIE",complete:"COMPLETATO"};
-    const statuses={preparation:"Preparati: il lavoro inizia dopo il conto alla rovescia.",work:"Mantieni la posizione fino al segnale.",intervalRest:"Rilascia e preparati alla prossima ripetizione.",setRest:"Recupera prima della prossima serie.",complete:"Timer completato."};
-    const phase=document.getElementById("isoTimerPhase");phase.textContent=labels[isoTimerState.phase]||"";phase.classList.toggle("rest",isoTimerState.phase==="intervalRest"||isoTimerState.phase==="setRest");
+    const single=t.execution_mode==="single_hand",workLabel=single?`MANO ${isoTimerState.hand}`:"LAVORO";
+    const labels={preparation:"PREPARAZIONE",work:workLabel,handRest:"CAMBIO MANO",intervalRest:"RIPOSO",setRest:"RECUPERO TRA LE SERIE",complete:"COMPLETATO"};
+    const statuses={preparation:"Preparati: il lavoro inizia dopo il conto alla rovescia.",work:single?`Mantieni con la mano ${isoTimerState.hand} fino al segnale.`:"Mantieni la posizione fino al segnale.",handRest:"Rilascia e preparati con la seconda mano.",intervalRest:"Rilascia e preparati alla prossima ripetizione.",setRest:"Recupera prima della prossima serie.",complete:"Timer completato."};
+    const phase=document.getElementById("isoTimerPhase");phase.textContent=labels[isoTimerState.phase]||"";phase.classList.toggle("rest",isoTimerState.phase==="handRest"||isoTimerState.phase==="intervalRest"||isoTimerState.phase==="setRest");
     document.getElementById("isoTimerCount").textContent=isoTimerState.phase==="complete"?"✓":isoTimerClock(remaining);
-    document.getElementById("isoTimerPosition").textContent="Serie "+isoTimerState.set+" di "+t.sets+" · Ripetizione "+isoTimerState.repetition+" di "+t.repetitions;
+    const position=["Serie "+isoTimerState.set+" di "+t.sets];if(t.repetitions>1)position.push("Ripetizione "+isoTimerState.repetition+" di "+t.repetitions);if(single)position.push(isoTimerState.phase==="handRest"?"prossima: mano 2":"Mano "+isoTimerState.hand+" di 2");
+    document.getElementById("isoTimerPosition").textContent=position.join(" · ");
     document.getElementById("isoTimerRing").style.setProperty("--iso-progress",progress+"deg");
     document.getElementById("isoTimerStatus").textContent=statuses[isoTimerState.phase]||"";
     document.getElementById("isoTimerPause").textContent=isoTimerState.running?"Ⅱ Pausa":"▶ Riprendi";
@@ -1815,24 +1823,29 @@
     const s=isoTimerState;if(!s)return;const t=s.timer;isoTimerSignal(s.phase==="work"?520:780);
     if(s.phase==="preparation")s.phase="work";
     else if(s.phase==="work"){
-      if(s.repetition<t.repetitions){if(t.interval_rest_seconds)s.phase="intervalRest";else{s.repetition++;s.phase="work";}}
-      else if(s.set<t.sets){if(t.set_rest_seconds)s.phase="setRest";else{s.set++;s.repetition=1;s.phase="work";}}
-      else s.phase="complete";
-    }else if(s.phase==="intervalRest"){s.repetition++;s.phase="work";}
-    else if(s.phase==="setRest"){s.set++;s.repetition=1;s.phase="work";}
+      if(t.execution_mode==="single_hand"&&s.hand===1)s.phase="handRest";
+      else{
+        s.hand=1;
+        if(s.repetition<t.repetitions){if(t.interval_rest_seconds)s.phase="intervalRest";else{s.repetition++;s.phase="work";}}
+        else if(s.set<t.sets){if(t.set_rest_seconds)s.phase="setRest";else{s.set++;s.repetition=1;s.phase="work";}}
+        else s.phase="complete";
+      }
+    }else if(s.phase==="handRest"){s.hand=2;s.phase="work";}
+    else if(s.phase==="intervalRest"){s.repetition++;s.hand=1;s.phase="work";}
+    else if(s.phase==="setRest"){s.set++;s.repetition=1;s.hand=1;s.phase="work";}
     if(s.phase==="complete"){s.remaining=0;s.running=false;stopIsoTimerTick();isoTimerSignal(980);renderIsoTimer();return;}
     s.remaining=isoTimerDuration();isoTimerDeadline=Date.now()+s.remaining*1000;renderIsoTimer();
   }
   function isoTimerTickStep(){if(!isoTimerState?.running)return;const next=Math.max(0,Math.ceil((isoTimerDeadline-Date.now())/1000));if(next!==isoTimerState.remaining){isoTimerState.remaining=next;renderIsoTimer();}if(Date.now()>=isoTimerDeadline)advanceIsoTimer();}
   function runIsoTimer(){if(!isoTimerState||isoTimerState.phase==="complete")return;isoTimerState.running=true;isoTimerDeadline=Date.now()+isoTimerState.remaining*1000;stopIsoTimerTick();isoTimerInterval=setInterval(isoTimerTickStep,200);renderIsoTimer();}
   function pauseIsoTimer(){if(!isoTimerState)return;if(isoTimerState.running){isoTimerState.remaining=Math.max(0,Math.ceil((isoTimerDeadline-Date.now())/1000));isoTimerState.running=false;stopIsoTimerTick();renderIsoTimer();}else runIsoTimer();}
-  function restartIsoTimer(){if(!isoTimerState)return;stopIsoTimerTick();isoTimerState.phase="preparation";isoTimerState.set=1;isoTimerState.repetition=1;isoTimerState.remaining=isoTimerState.timer.preparation_seconds;isoTimerState.running=false;renderIsoTimer();isoTimerSignal(660);runIsoTimer();}
+  function restartIsoTimer(){if(!isoTimerState)return;stopIsoTimerTick();isoTimerState.phase="preparation";isoTimerState.set=1;isoTimerState.repetition=1;isoTimerState.hand=1;isoTimerState.remaining=isoTimerState.timer.preparation_seconds;isoTimerState.running=false;renderIsoTimer();isoTimerSignal(660);runIsoTimer();}
   function openIsoTimer(exercise){
-    const timer=normalizedIsometricTimer(exercise?.prescription);if(!timer)return;isoTimerState={timer,phase:"preparation",set:1,repetition:1,remaining:timer.preparation_seconds,running:false};
+    const timer=normalizedIsometricTimer(exercise?.prescription);if(!timer)return;isoTimerState={timer,phase:"preparation",set:1,repetition:1,hand:1,remaining:timer.preparation_seconds,running:false};
     document.getElementById("isoTimerTitle").textContent=exercise.exercise_name||"Esercizio isometrico";
     document.getElementById("isoTimerSummary").textContent=isometricTimerSummary(timer);
     document.getElementById("isoTimerWorkLabel").textContent=timer.work_seconds+" s";
-    document.getElementById("isoTimerRestLabel").textContent=timer.interval_rest_seconds?timer.interval_rest_seconds+" s":"—";
+    document.getElementById("isoTimerRestLabel").textContent=timer.execution_mode==="single_hand"?timer.hand_change_seconds+" s · cambio mano":timer.interval_rest_seconds?timer.interval_rest_seconds+" s":"—";
     document.getElementById("isoTimerSetsLabel").textContent=timer.sets;
     document.getElementById("isoTimerOverlay").classList.remove("hidden");holdScreenAwake("timer");renderIsoTimer();isoTimerSignal(880);runIsoTimer();
   }
@@ -2499,13 +2512,26 @@
     finally{btn.disabled=false;}
   });
 
+  async function deleteCoachDraftProgram(programId,button){
+    const program=coachState.programs.find(p=>p.id===programId);if(!program||program.status!=="draft")return;
+    if(!confirm(`Eliminare definitivamente la bozza “${program.name}”? Verranno eliminate anche settimane, sedute ed esercizi contenuti nella bozza.`))return;
+    if(button)button.disabled=true;
+    try{
+      const {data,error}=await sb.from("programs").delete().eq("id",program.id).eq("coach_id",currentUser.id).eq("status","draft").select("id");if(error)throw error;
+      if(!data?.length)throw new Error("La bozza non è stata eliminata. Ricarica la pagina e riprova.");
+      if(coachState.selectedProgramId===program.id)closeCoachProgramBuilder(true);
+      await loadCoachDashboard();coachGo("coachPrograms");setCoachMessage("coachProgramMessage","Bozza eliminata.","ok");
+    }catch(err){alert(err?.message||"Non è stato possibile eliminare la bozza.");if(button)button.disabled=false;}
+  }
   document.getElementById("coachProgramsList").addEventListener("click",e=>{
+    const remove=e.target.closest(".delete-draft-program");if(remove){deleteCoachDraftProgram(remove.dataset.programId,remove);return;}
     const b=e.target.closest(".open-program"); if(b) openCoachProgram(b.dataset.programId);
   });
   document.getElementById("coachDetailProgramList").addEventListener("click",e=>{
     const b=e.target.closest(".open-detail-program"); if(b) openCoachProgram(b.dataset.programId);
   });
   document.getElementById("coachBackPrograms").addEventListener("click",()=>closeCoachProgramBuilder(true));
+  document.getElementById("coachDeleteProgram").addEventListener("click",e=>{const p=selectedProgram();if(p)deleteCoachDraftProgram(p.id,e.currentTarget);});
   document.getElementById("coachPublishProgram").addEventListener("click",async ()=>{
     const p=selectedProgram();if(!p||p.status!=="draft")return;
     const btn=document.getElementById("coachPublishProgram");btn.disabled=true;

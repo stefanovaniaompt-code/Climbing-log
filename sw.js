@@ -1,4 +1,4 @@
-const CACHE = "climbing-coach-v2-18-timer-wake-lock";
+const CACHE = "climbing-coach-v2-19-unilateral-timer-draft-delete";
 const APP_ASSETS = [
   "./",
   "./index.html",
