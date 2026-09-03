@@ -1,4 +1,4 @@
-const CACHE = "climbing-coach-v2-16-isometric-timer";
+const CACHE = "climbing-coach-v2-17-library-timer-config";
 const APP_ASSETS = [
   "./",
   "./index.html",
