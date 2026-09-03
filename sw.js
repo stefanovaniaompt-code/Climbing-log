@@ -1,4 +1,4 @@
-const CACHE = "climbing-coach-v2-15-cloud-program-only";
+const CACHE = "climbing-coach-v2-16-isometric-timer";
 const APP_ASSETS = [
   "./",
   "./index.html",
