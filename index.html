@@ -1027,6 +1027,7 @@
 
   function showLoggedOut(){
     stopCoachRefresh();
+    allowAllScreenSleep();
     currentUser=null; currentProfile=null; athleteAreaReady=false;
     document.getElementById("appShell").classList.add("hidden");
     document.getElementById("coachShell").classList.add("hidden");
@@ -1728,13 +1729,14 @@
   function normalizedIsometricTimer(source){
     const t=source&&source.timer?source.timer:source;if(!t||t.type!=="isometric")return null;
     const rawWork=Number(t.work_seconds);if(!(rawWork>0))return null;
-    const work=Math.max(1,rawWork),repetitions=Math.max(1,Number(t.repetitions)||1),sets=Math.max(1,Number(t.sets)||1);
+    const prescribedSets=source&&source.timer?Number(source.sets):0;
+    const work=Math.max(1,rawWork),repetitions=Math.max(1,Number(t.repetitions)||1),sets=Math.max(1,prescribedSets||Number(t.sets)||1);
     return {type:"isometric",preparation_seconds:5,work_seconds:work,interval_rest_seconds:Math.max(0,Number(t.interval_rest_seconds)||0),repetitions,sets,set_rest_seconds:Math.max(0,Number(t.set_rest_seconds)||0)};
   }
 
   function isometricTimerSummary(timer){
     const t=normalizedIsometricTimer(timer);if(!t)return "";
-    return t.repetitions+" rip. × "+t.work_seconds+"s"+(t.interval_rest_seconds?" / "+t.interval_rest_seconds+"s":"")+" · "+t.sets+" serie · rec "+t.set_rest_seconds+"s";
+    return t.sets+" serie · "+t.repetitions+" rip./serie × "+t.work_seconds+"s"+(t.interval_rest_seconds?" / "+t.interval_rest_seconds+"s":"")+" · rec. serie "+t.set_rest_seconds+"s";
   }
 
   function isometricDose(timer){
@@ -1773,12 +1775,29 @@
     return normalizedIsometricTimer({type:"isometric",work_seconds:document.getElementById("coachExerciseTimerWork").value,interval_rest_seconds:document.getElementById("coachExerciseTimerIntervalRest").value,repetitions:document.getElementById("coachExerciseTimerRepetitions").value,sets:document.getElementById("coachExerciseTimerSets").value,set_rest_seconds:document.getElementById("coachExerciseTimerSetRest").value});
   }
 
-  let isoTimerState=null,isoTimerInterval=null,isoTimerDeadline=0,isoTimerAudio=null;
+  let isoTimerState=null,isoTimerInterval=null,isoTimerDeadline=0,isoTimerAudio=null,screenWakeLock=null;
+  const screenWakeReasons=new Set();
+  async function syncScreenWakeLock(){
+    if(!("wakeLock" in navigator))return;
+    if(document.visibilityState!=="visible"||!screenWakeReasons.size){
+      if(screenWakeLock){try{await screenWakeLock.release();}catch(_err){}screenWakeLock=null;}
+      return;
+    }
+    if(screenWakeLock)return;
+    try{
+      const lock=await navigator.wakeLock.request("screen");screenWakeLock=lock;
+      lock.addEventListener("release",()=>{if(screenWakeLock===lock)screenWakeLock=null;});
+      if(document.visibilityState!=="visible"||!screenWakeReasons.size){await lock.release();if(screenWakeLock===lock)screenWakeLock=null;}
+    }catch(_err){screenWakeLock=null;}
+  }
+  function holdScreenAwake(reason){screenWakeReasons.add(reason);syncScreenWakeLock();}
+  function allowScreenSleep(reason){screenWakeReasons.delete(reason);syncScreenWakeLock();}
+  function allowAllScreenSleep(){screenWakeReasons.clear();syncScreenWakeLock();}
   function isoTimerClock(value){const total=Math.max(0,Math.ceil(Number(value)||0)),minutes=Math.floor(total/60),seconds=total%60;return String(minutes).padStart(2,"0")+":"+String(seconds).padStart(2,"0");}
   function isoTimerDuration(){if(!isoTimerState)return 0;const t=isoTimerState.timer;return ({preparation:t.preparation_seconds,work:t.work_seconds,intervalRest:t.interval_rest_seconds,setRest:t.set_rest_seconds})[isoTimerState.phase]||0;}
   function isoTimerSignal(frequency=760){
-    try{const AudioContext=window.AudioContext||window.webkitAudioContext;if(!AudioContext)return;if(!isoTimerAudio)isoTimerAudio=new AudioContext();isoTimerAudio.resume();const oscillator=isoTimerAudio.createOscillator(),gain=isoTimerAudio.createGain();oscillator.frequency.value=frequency;gain.gain.setValueAtTime(.0001,isoTimerAudio.currentTime);gain.gain.exponentialRampToValueAtTime(.18,isoTimerAudio.currentTime+.02);gain.gain.exponentialRampToValueAtTime(.0001,isoTimerAudio.currentTime+.18);oscillator.connect(gain).connect(isoTimerAudio.destination);oscillator.start();oscillator.stop(isoTimerAudio.currentTime+.2);}catch(_err){}
-    if(navigator.vibrate)navigator.vibrate(80);
+    try{const AudioContext=window.AudioContext||window.webkitAudioContext;if(!AudioContext)return;if(!isoTimerAudio)isoTimerAudio=new AudioContext();isoTimerAudio.resume();const oscillator=isoTimerAudio.createOscillator(),gain=isoTimerAudio.createGain();oscillator.type="square";oscillator.frequency.value=frequency;gain.gain.setValueAtTime(.0001,isoTimerAudio.currentTime);gain.gain.exponentialRampToValueAtTime(.65,isoTimerAudio.currentTime+.02);gain.gain.exponentialRampToValueAtTime(.0001,isoTimerAudio.currentTime+.38);oscillator.connect(gain).connect(isoTimerAudio.destination);oscillator.start();oscillator.stop(isoTimerAudio.currentTime+.4);}catch(_err){}
+    if(navigator.vibrate)navigator.vibrate(140);
   }
   function renderIsoTimer(){
     if(!isoTimerState)return;const t=isoTimerState.timer,total=isoTimerDuration(),remaining=Math.max(0,isoTimerState.remaining),progress=total?Math.min(360,Math.max(0,(total-remaining)/total*360)):360;
@@ -1815,9 +1834,9 @@
     document.getElementById("isoTimerWorkLabel").textContent=timer.work_seconds+" s";
     document.getElementById("isoTimerRestLabel").textContent=timer.interval_rest_seconds?timer.interval_rest_seconds+" s":"—";
     document.getElementById("isoTimerSetsLabel").textContent=timer.sets;
-    document.getElementById("isoTimerOverlay").classList.remove("hidden");renderIsoTimer();isoTimerSignal(660);runIsoTimer();
+    document.getElementById("isoTimerOverlay").classList.remove("hidden");holdScreenAwake("timer");renderIsoTimer();isoTimerSignal(880);runIsoTimer();
   }
-  function closeIsoTimer(){stopIsoTimerTick();if(isoTimerState)isoTimerState.running=false;document.getElementById("isoTimerOverlay").classList.add("hidden");}
+  function closeIsoTimer(){stopIsoTimerTick();if(isoTimerState)isoTimerState.running=false;document.getElementById("isoTimerOverlay").classList.add("hidden");allowScreenSleep("timer");}
 
   function syncRxUnitToLoadType(){
     const type=document.getElementById("coachRxLoadType").value,unit=document.getElementById("coachRxUnit");
@@ -1981,6 +2000,7 @@
     if(!btn)return;
     document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b===btn));
     document.querySelectorAll(".tabpage").forEach(p=>p.classList.toggle("hidden",p.id!==id));
+    if(id==="cloudPlan"&&athleteCloud.selectedSessionId)holdScreenAwake("workout");else allowScreenSleep("workout");
   }
 
   async function loadAthleteCloudPlan(){
@@ -2115,7 +2135,8 @@
 
   function renderAthleteCloudSession(){
     const box=document.getElementById("athleteCloudSessionDetail"),s=athleteCloudSession();
-    if(!s){box.classList.add("hidden");return;}
+    if(!s){box.classList.add("hidden");allowScreenSleep("workout");return;}
+    holdScreenAwake("workout");
     box.classList.remove("hidden");
     const log=athleteSessionLog(s.id),draft=readAthleteSessionDraft(s.id);
     document.getElementById("athleteCloudSessionTitle").textContent=`${scheduledDayLabel(s.scheduled_day)} · ${s.title}`;
@@ -2263,6 +2284,8 @@
   document.getElementById("isoTimerRestart").addEventListener("click",restartIsoTimer);
   document.getElementById("isoTimerClose").addEventListener("click",closeIsoTimer);
   document.getElementById("isoTimerOverlay").addEventListener("click",e=>{if(e.target.id==="isoTimerOverlay")closeIsoTimer();});
+  document.addEventListener("visibilitychange",syncScreenWakeLock);
+  window.addEventListener("pagehide",allowAllScreenSleep);
   document.getElementById("athleteCloudCloseSession").addEventListener("click",()=>{athleteCloud.selectedSessionId=null;renderAthleteCloudSession();});
   document.getElementById("athleteCloudCompleteSession").addEventListener("click",()=>saveAthleteCloudSession(true));
   document.getElementById("athleteCloudSessionDetail").addEventListener("input",e=>{if(e.target.matches("input,textarea"))scheduleAthleteCloudAutosave();});
