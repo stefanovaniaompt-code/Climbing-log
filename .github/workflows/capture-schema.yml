@@ -34,7 +34,7 @@ jobs:
           PY
           )"
 
-          echo "SUPABASE_DB_URL=postgresql://postgres.xkymrvalnydxeamrajqs:${ENCODED_PASSWORD}@aws-0-eu-west-1.pooler.supabase.com:5432/postgres" >> "$GITHUB_ENV"
+          echo "SUPABASE_DB_URL=postgresql://postgres.xkymrvalnydxeamrajqs:${ENCODED_PASSWORD}@aws-1-eu-west-1.pooler.supabase.com:5432/postgres" >> "$GITHUB_ENV"
 
       - name: Dump public schema only
         shell: bash
