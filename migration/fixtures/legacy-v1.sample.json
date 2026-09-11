@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "settings": {
+    "bodyWeight": 71.5,
+    "pull1RM": 42.5,
+    "block1RM": 40.6,
+    "rounding": 0.5
+  },
+  "currentWeek": 1,
+  "weeks": [
+    {
+      "name": "Carico 1",
+      "weekNotes": "Buona qualità generale",
+      "day3Notes": "Ridotto volume per pelle",
+      "routes": [
+        { "grade": "7a", "attempts": 2, "style": "lead" }
+      ],
+      "ex": {
+        "block-lift-20mm": {
+          "done": true,
+          "actualLoad": 32.5,
+          "rpe": 8,
+          "notes": "Solido",
+          "setActual": [32.5, 32.5, 33],
+          "ana": []
+        },
+        "pull-up-weighted": {
+          "done": true,
+          "actualLoad": 27.5,
+          "rpe": 8,
+          "notes": "Ultima serie lenta",
+          "setActual": [27.5, 27.5, 27.5],
+          "ana": []
+        }
+      }
+    },
+    {
+      "name": "Carico 2",
+      "weekNotes": "",
+      "day3Notes": "",
+      "routes": [
+        { "grade": "7a+", "attempts": 3, "style": "lead" }
+      ],
+      "ex": {
+        "anaerobic-repeaters": {
+          "done": false,
+          "actualLoad": 0,
+          "rpe": 7,
+          "notes": "",
+          "setActual": [],
+          "ana": [
+            { "work": 7, "rest": 3, "rpe": 7 },
+            { "work": 7, "rest": 3, "rpe": 8 }
+          ]
+        }
+      }
+    }
+  ]
+}

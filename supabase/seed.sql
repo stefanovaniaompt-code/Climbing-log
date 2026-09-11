@@ -1,0 +1,2 @@
+-- Intentionally empty. Product data is created through authenticated flows.
+-- Deterministic fixtures belong in supabase/tests, never in production migrations.

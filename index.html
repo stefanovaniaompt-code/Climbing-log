@@ -1,30 +1,21 @@
 <!doctype html>
 <html lang="it">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="robots" content="noindex">
-  <meta http-equiv="refresh" content="0; url=https://climbing-coach.stefanovania-ompt.chatgpt.site/">
-  <title>Climbing Coach</title>
-  <link rel="canonical" href="https://climbing-coach.stefanovania-ompt.chatgpt.site/">
-</head>
-<body>
-  <p>Climbing Coach si è trasferito. <a href="https://climbing-coach.stefanovania-ompt.chatgpt.site/">Apri l’app</a>.</p>
-  <script>
-    (async () => {
-      try {
-        if ("serviceWorker" in navigator) {
-          const registrations = await navigator.serviceWorker.getRegistrations();
-          await Promise.all(registrations.map(registration => registration.unregister()));
-        }
-        if ("caches" in window) {
-          const cacheNames = await caches.keys();
-          await Promise.all(cacheNames.map(cacheName => caches.delete(cacheName)));
-        }
-      } finally {
-        window.location.replace("https://climbing-coach.stefanovania-ompt.chatgpt.site/");
-      }
-    })();
-  </script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#3f1655" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Climbing Coach" />
+    <meta name="description" content="Climbing Coach — programmi, sessioni e test per atleti e coach di arrampicata." />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png" />
+    <title>Climbing Coach</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>
