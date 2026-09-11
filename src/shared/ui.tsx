@@ -1,4 +1,4 @@
-﻿import type { ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { TrendingUp, Trash2, TriangleAlert } from 'lucide-react'
 
 export function Tag({ children, tone = 'neutral' }: { children: ReactNode; tone?: 'neutral' | 'purple' | 'signal' | 'success' | 'warning' }) {
