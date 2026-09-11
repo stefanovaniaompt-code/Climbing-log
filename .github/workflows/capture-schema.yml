@@ -54,7 +54,7 @@ jobs:
 
           echo "Schema-only dump confirmed."
           echo "CREATE TABLE: $(grep -c 'CREATE TABLE' production_public_schema.sql || true)"
-          echo "CREATE FUNCTION: $(grep -c 'CREATE FUNCTION' production_public_schema.sql || true)"
+          echo "FUNCTIONS: $(grep -Ec 'CREATE( OR REPLACE)? FUNCTION' production_public_schema.sql || true)"
           echo "CREATE POLICY: $(grep -c 'CREATE POLICY' production_public_schema.sql || true)"
 
       - name: Verify key production tables
@@ -78,3 +78,11 @@ jobs:
           done
 
           echo "All key production tables are present."
+
+      - name: Upload schema for inspection
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-public-schema
+          path: production_public_schema.sql
+          if-no-files-found: error
+          retention-days: 1
