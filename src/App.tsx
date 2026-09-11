@@ -57,6 +57,7 @@ import { createLibraryExercise, deleteLibraryExercise, loadExerciseLibrary, setL
 import { buildComparisons, calculateAsymmetry, metricHistory, validateTest, type TestData, type TestInput, type TestMetricInput, type TestSessionRecord } from './tests/testAnalytics'
 import { createTest, deleteTest, loadTests } from './tests/testRepository'
 import { Bars, ConfirmDialog, Metric, Panel, ScreenHeader, Tag } from './shared/ui'
+import { useScreenWakeLock } from './shared/hooks/useScreenWakeLock'
 
 type ViewId = 'system' | 'home' | 'session' | 'dashboard' | 'athletes' | 'builder' | 'library' | 'test' | 'migration' | 'account'
 
@@ -90,41 +91,6 @@ const palette = [
   { name: 'Success', value: '#176B4D', usage: 'Completato' },
   { name: 'Error', value: '#A33131', usage: 'Errore' },
 ]
-
-function useScreenWakeLock(enabled: boolean) {
-  const [status, setStatus] = useState<'active' | 'unsupported' | 'blocked' | 'inactive'>('inactive')
-
-  useEffect(() => {
-    type WakeLockSentinelLike = { released: boolean; release: () => Promise<void>; addEventListener: (type: 'release', listener: () => void) => void }
-    type NavigatorWithWakeLock = Navigator & { wakeLock?: { request: (type: 'screen') => Promise<WakeLockSentinelLike> } }
-    let sentinel: WakeLockSentinelLike | null = null
-    let disposed = false
-    const wakeLock = (navigator as NavigatorWithWakeLock).wakeLock
-
-    if (!enabled) { setStatus('inactive'); return }
-    if (!wakeLock) { setStatus('unsupported'); return }
-
-    const acquire = async () => {
-      if (disposed || document.visibilityState !== 'visible' || (sentinel && !sentinel.released)) return
-      try {
-        sentinel = await wakeLock.request('screen')
-        if (disposed) { await sentinel.release(); return }
-        setStatus('active')
-        sentinel.addEventListener('release', () => { if (!disposed) setStatus('inactive') })
-      } catch { if (!disposed) setStatus('blocked') }
-    }
-    const handleVisibility = () => { if (document.visibilityState === 'visible') void acquire() }
-    void acquire()
-    document.addEventListener('visibilitychange', handleVisibility)
-    return () => {
-      disposed = true
-      document.removeEventListener('visibilitychange', handleVisibility)
-      if (sentinel && !sentinel.released) void sentinel.release()
-    }
-  }, [enabled])
-
-  return status
-}
 
 function SystemScreen() {
   return (
