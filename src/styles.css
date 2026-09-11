@@ -510,3 +510,34 @@ textarea { width: calc(100% - 36px); min-height: 76px; padding: 10px; resize: ve
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+/* WEEK SESSION ALIGNMENT FIX
+   Le barre e i pulsanti delle sessioni condividono
+   esattamente larghezza, gap e punto di partenza. */
+.trend-panel + .component-row {
+  margin-left: 218px;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 5px;
+  align-items: stretch;
+}
+
+.trend-panel + .component-row > .button {
+  flex: 1 1 0;
+  min-width: 0;
+  justify-content: space-between;
+  overflow: hidden;
+}
+
+.trend-panel + .component-row > .button > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .trend-panel + .component-row {
+    margin-left: 0;
+  }
+}
