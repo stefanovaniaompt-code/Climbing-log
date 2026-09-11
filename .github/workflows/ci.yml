@@ -25,13 +25,36 @@ jobs:
   database:
     runs-on: ubuntu-latest
     env:
-      SUPABASE_WORKDIR: migration/v1-upgrade
+      SUPABASE_WORKDIR: migration/ci-baseline
     steps:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
         with:
           version: 2.116.0
-      - run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
-      - run: supabase db reset --local --no-seed
-      - name: Report migration replay success
-        run: echo "V1 upgrade migration chain rebuilt successfully from a clean local database."
+      - name: Start isolated Supabase stack
+        run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
+      - name: Rebuild database from production baseline
+        run: supabase db reset --local --no-seed
+      - name: Verify reconstructed application schema
+        shell: bash
+        run: |
+          supabase db dump --local --schema public,private -f reconstructed.sql
+
+          TABLE_COUNT="$(grep -c '^CREATE TABLE' reconstructed.sql || true)"
+          PRIVATE_FUNCTION_COUNT="$(grep -c '^CREATE OR REPLACE FUNCTION \"private\"' reconstructed.sql || true)"
+          POLICY_COUNT="$(grep -c '^CREATE POLICY' reconstructed.sql || true)"
+
+          echo "Tables: ${TABLE_COUNT}"
+          echo "Private functions: ${PRIVATE_FUNCTION_COUNT}"
+          echo "Public/private policies: ${POLICY_COUNT}"
+
+          test "${TABLE_COUNT}" -ge 21
+          test "${PRIVATE_FUNCTION_COUNT}" -ge 23
+          test "${POLICY_COUNT}" -ge 75
+
+          grep -q 'CREATE TABLE IF NOT EXISTS "public"\."test_plan_items"' reconstructed.sql
+          grep -q 'CREATE TABLE IF NOT EXISTS "public"\."athlete_invitations"' reconstructed.sql
+          grep -q 'CREATE OR REPLACE FUNCTION "private"\."handle_new_user"' reconstructed.sql
+          grep -q 'CREATE OR REPLACE FUNCTION "private"\."can_access_test_acquisition"' reconstructed.sql
+
+          echo "Production baseline rebuilt successfully from a clean local Supabase database."
