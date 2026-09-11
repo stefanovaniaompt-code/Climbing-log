@@ -113,7 +113,7 @@ function ConfirmDialog({ title, text, confirmLabel, busy = false, onCancel, onCo
     <section className="confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="confirm-dialog-title" aria-describedby="confirm-dialog-text">
       <div className="confirm-dialog__icon"><TriangleAlert size={22} /></div>
       <div><span className="eyebrow">CONFERMA RICHIESTA</span><h2 id="confirm-dialog-title">{title}</h2><p id="confirm-dialog-text">{text}</p></div>
-      <div className="confirm-dialog__actions"><button className="button button--secondary" disabled={busy} onClick={onCancel}>Annulla</button><button className="button button--danger" disabled={busy} onClick={onConfirm}><Trash2 size={16} /> {busy ? 'Eliminoâ€¦' : confirmLabel}</button></div>
+      <div className="confirm-dialog__actions"><button className="button button--secondary" disabled={busy} onClick={onCancel}>Annulla</button><button className="button button--danger" disabled={busy} onClick={onConfirm}><Trash2 size={16} /> {busy ? 'Elimino…' : confirmLabel}</button></div>
     </section>
   </div>
 }
@@ -215,7 +215,7 @@ function SystemScreen() {
             {[
               ['MODULAR', 'Rettangoli, bordi sottili, raggi minimi'],
               ['DATA FIRST', 'Numero grande, etichetta breve, contesto vicino'],
-              ['TASK FIRST', 'Unâ€™azione primaria evidente per schermata'],
+              ['TASK FIRST', 'Un’azione primaria evidente per schermata'],
               ['QUIET MOTION', 'Transizioni brevi, nessuna coreografia decorativa'],
             ].map(([key, value], index) => (
               <div className="principle" key={key}><b>0{index + 1}</b><span>{key}</span><p>{value}</p></div>
@@ -297,14 +297,14 @@ function HomeScreen({ openSession, profile }: { openSession: (sessionId: string)
     try {
       if (selectedWeekId) window.localStorage.setItem(weekStorageKey, selectedWeekId)
       else window.localStorage.removeItem(weekStorageKey)
-    } catch { /* Storage puÃ² essere disabilitato dal browser. */ }
+    } catch { /* Storage può essere disabilitato dal browser. */ }
   }, [selectedWeekId, weekStorageKey])
 
   const today = new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: '2-digit', month: 'short' }).format(new Date()).toUpperCase()
 
   if (error) return (
     <div className="screen">
-      <ScreenHeader eyebrow={`ATLETA / ${today}`} title={`Ciao, ${profile.displayName.split(' ')[0]}.`} text="Non riesco a leggere il programma in questo momento; nessun dato Ã¨ stato modificato." />
+      <ScreenHeader eyebrow={`ATLETA / ${today}`} title={`Ciao, ${profile.displayName.split(' ')[0]}.`} text="Non riesco a leggere il programma in questo momento; nessun dato è stato modificato." />
       <Panel className="home-state home-state--error" title="Programma non disponibile" index="!">
         <TriangleAlert size={24} /><p>{error}</p><button className="button button--secondary" onClick={() => setReloadKey(value => value + 1)}>Riprova</button>
       </Panel>
@@ -314,14 +314,14 @@ function HomeScreen({ openSession, profile }: { openSession: (sessionId: string)
   if (home === undefined) return (
     <div className="screen">
       <ScreenHeader eyebrow={`ATLETA / ${today}`} title={`Ciao, ${profile.displayName.split(' ')[0]}.`} text="Sto preparando la tua settimana di allenamento." />
-      <Panel className="home-state" title="Caricamento programma" index="â€¦"><div className="skeleton-stack" aria-label="Caricamento"><span /><span /><span /></div></Panel>
+      <Panel className="home-state" title="Caricamento programma" index="…"><div className="skeleton-stack" aria-label="Caricamento"><span /><span /><span /></div></Panel>
     </div>
   )
 
   if (!home) return (
     <div className="screen">
-      <ScreenHeader eyebrow={`ATLETA / ${today}`} title={`Ciao, ${profile.displayName.split(' ')[0]}.`} text="Il tuo storico Ã¨ al sicuro; al momento non risulta un programma attivo." />
-      <Panel className="home-state" title="Nessun programma attivo" index="00"><ClipboardCheck size={25} /><p>Quando il coach pubblicherÃ  il prossimo programma, comparirÃ  qui senza perdere allenamenti o test precedenti.</p></Panel>
+      <ScreenHeader eyebrow={`ATLETA / ${today}`} title={`Ciao, ${profile.displayName.split(' ')[0]}.`} text="Il tuo storico è al sicuro; al momento non risulta un programma attivo." />
+      <Panel className="home-state" title="Nessun programma attivo" index="00"><ClipboardCheck size={25} /><p>Quando il coach pubblicherà il prossimo programma, comparirà qui senza perdere allenamenti o test precedenti.</p></Panel>
     </div>
   )
 
@@ -355,13 +355,13 @@ function HomeScreen({ openSession, profile }: { openSession: (sessionId: string)
       <ScreenHeader eyebrow={`ATLETA / ${today}`} title={`Ciao, ${profile.displayName.split(' ')[0]}.`} text="Il prossimo compito arriva direttamente dal tuo programma." action={<Tag tone={home.source === 'legacy-v1' ? 'success' : 'neutral'}>{home.source === 'legacy-v1' ? 'DATI LIVE' : 'DEMO'}</Tag>} />
       <div className="readiness-strip">
         <div><span>SETTIMANA</span><strong>{String(home.week.weekNumber).padStart(2, '0')}</strong><em>/{home.program.name}</em></div>
-        <p>{home.program.goal || home.week.blockName || home.week.phase || 'Programma attivo'} Â· {summary.completed} sessioni completate su {summary.total}.</p>
+        <p>{home.program.goal || home.week.blockName || home.week.phase || 'Programma attivo'} · {summary.completed} sessioni completate su {summary.total}.</p>
         <Tag tone={progress === 100 ? 'success' : 'purple'}>{progress}% completato</Tag>
       </div>
       <div className="grid grid--2-1">
         <Panel className="session-hero" title={nextSession ? 'Prossima sessione' : 'Settimana completata'} index="01" action={nextSession?.durationMinutes ? <Tag tone="signal">{nextSession.durationMinutes} min</Tag> : undefined}>
-          <div className="session-hero__title"><Grip size={30} /><div><small>{home.week.phase || home.week.blockName || 'ALLENAMENTO'} Â· W{String(home.week.weekNumber).padStart(2, '0')}{nextSession ? `/D${String(nextSession.scheduledDay).padStart(2, '0')}` : ''}</small><h2>{nextSession?.title ?? 'Tutte le sessioni registrate'}</h2></div></div>
-          <div className="session-facts"><span><b>{nextSession?.exerciseCount ?? summary.exerciseCount}</b> esercizi</span><span><b>{nextSession?.order ?? summary.total}</b> posizione</span><span><b>{nextSession?.sessionRpe ?? 'â€”'}</b> RPE</span></div>
+          <div className="session-hero__title"><Grip size={30} /><div><small>{home.week.phase || home.week.blockName || 'ALLENAMENTO'} · W{String(home.week.weekNumber).padStart(2, '0')}{nextSession ? `/D${String(nextSession.scheduledDay).padStart(2, '0')}` : ''}</small><h2>{nextSession?.title ?? 'Tutte le sessioni registrate'}</h2></div></div>
+          <div className="session-facts"><span><b>{nextSession?.exerciseCount ?? summary.exerciseCount}</b> esercizi</span><span><b>{nextSession?.order ?? summary.total}</b> posizione</span><span><b>{nextSession?.sessionRpe ?? '—'}</b> RPE</span></div>
           {nextSession && <button className="button button--signal button--wide" onClick={() => openSession(nextSession.id)}><Play size={17} fill="currentColor" /><span>{nextSession.status === 'in_progress' ? 'Riprendi sessione' : 'Avvia sessione'}</span><ArrowRight size={17} /></button>}
         </Panel>
         <Panel
@@ -402,7 +402,7 @@ function HomeScreen({ openSession, profile }: { openSession: (sessionId: string)
             })}
           </div>
           <div className="progress-line"><span style={{ width: `${progress}%` }} /></div>
-          <p className="muted-copy">{summary.completed} di {summary.total} sessioni completate Â· {summary.exerciseCount} esercizi prescritti.</p>
+          <p className="muted-copy">{summary.completed} di {summary.total} sessioni completate · {summary.exerciseCount} esercizi prescritti.</p>
           <p className="muted-copy">{home.week.startDate ? `Inizio settimana: ${new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(`${home.week.startDate}T12:00:00`))}` : `Settimana ${home.week.weekNumber}`}</p>
         </Panel>
       </div>
@@ -410,10 +410,10 @@ function HomeScreen({ openSession, profile }: { openSession: (sessionId: string)
         <Metric label="Sessioni" value={String(summary.completed).padStart(2, '0')} unit={`/${String(summary.total).padStart(2, '0')}`} />
         <Metric label="Esercizi" value={String(summary.exerciseCount).padStart(2, '0')} />
         <Metric label="Durata prevista" value={String(summary.plannedMinutes)} unit=" min" />
-        <Metric label="RPE medio" value={summary.averageRpe?.toFixed(1) ?? 'â€”'} unit="/10" />
+        <Metric label="RPE medio" value={summary.averageRpe?.toFixed(1) ?? '—'} unit="/10" />
       </div>
       <Panel title="Sequenza settimana" index="03" action={<Tag tone="purple">{home.week.status}</Tag>}>
-        <div className="trend-panel"><div><b>{home.week.blockName || home.week.phase || home.program.name}</b><p>Ogni barra Ã¨ una sessione: completata, in corso o pianificata.</p></div><Bars values={stageValues.length > 0 ? stageValues : [8]} accentAt={nextIndex} /></div>
+        <div className="trend-panel"><div><b>{home.week.blockName || home.week.phase || home.program.name}</b><p>Ogni barra è una sessione: completata, in corso o pianificata.</p></div><Bars values={stageValues.length > 0 ? stageValues : [8]} accentAt={nextIndex} /></div>
         <div className="component-row">
           {home.sessions.map(session => (
             <button
@@ -421,7 +421,7 @@ function HomeScreen({ openSession, profile }: { openSession: (sessionId: string)
               className={`button ${session.status === 'in_progress' ? 'button--signal' : 'button--secondary'}`}
               onClick={() => openSession(session.id)}
             >
-              <span>D{String(session.scheduledDay).padStart(2, '0')} Â· {session.title}</span>
+              <span>D{String(session.scheduledDay).padStart(2, '0')} · {session.title}</span>
               <ArrowRight size={16} />
             </button>
           ))}
@@ -470,7 +470,7 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
   }, [timerState?.running, timerState?.phase])
 
   if (error && !runner) return <div className="screen"><Panel className="home-state home-state--error" title="Sessione non disponibile" index="!"><TriangleAlert size={24} /><p>{error}</p></Panel></div>
-  if (runner === undefined) return <div className="screen"><Panel className="home-state" title="Caricamento sessione" index="â€¦"><div className="skeleton-stack" aria-label="Caricamento"><span /><span /><span /></div></Panel></div>
+  if (runner === undefined) return <div className="screen"><Panel className="home-state" title="Caricamento sessione" index="…"><div className="skeleton-stack" aria-label="Caricamento"><span /><span /><span /></div></Panel></div>
   if (!runner || runner.exercises.length === 0) return <div className="screen"><Panel className="home-state" title="Nessuna sessione pronta" index="00"><ClipboardCheck size={24} /><p>Non risultano esercizi prescritti nella sessione corrente.</p></Panel></div>
 
   const summary = summarizeRunner(runner.exercises)
@@ -514,10 +514,10 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
   }
 
   const completeCurrentSession = async () => {
-    if (!outcome) { setError('Scegli se la sessione Ã¨ stata completata oppure no.'); return }
+    if (!outcome) { setError('Scegli se la sessione è stata completata oppure no.'); return }
     if (outcome === 'partial' && missedIds.length === 0) { setError('Indica almeno un esercizio non eseguito.'); return }
     const parsedSessionRpe = sessionRpe.trim() ? Number(sessionRpe) : null
-    if (parsedSessionRpe !== null && (!Number.isFinite(parsedSessionRpe) || parsedSessionRpe < 0 || parsedSessionRpe > 10)) { setError('Lâ€™RPE sessione deve essere compreso tra 0 e 10.'); return }
+    if (parsedSessionRpe !== null && (!Number.isFinite(parsedSessionRpe) || parsedSessionRpe < 0 || parsedSessionRpe > 10)) { setError('L’RPE sessione deve essere compreso tra 0 e 10.'); return }
 
     setSaveState('finishing')
     setError('')
@@ -546,7 +546,7 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
       setRunner(nextRunner)
       if (hasQueuedWrites) {
         setSaveState('queued')
-        setError('La sessione Ã¨ protetta nella coda offline. VerrÃ  chiusa dopo la sincronizzazione.')
+        setError('La sessione è protetta nella coda offline. Verrà chiusa dopo la sincronizzazione.')
         return
       }
 
@@ -564,9 +564,9 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
 
   return (
     <div className="screen screen--session">
-      <ScreenHeader eyebrow="SESSIONE / PANORAMICA" title={runner.session.title} text={[runner.session.objective, runner.session.durationMinutes ? String(runner.session.durationMinutes) + ' min' : ''].filter(Boolean).join(' Â· ')} action={<div className="header-actions"><Tag tone={runner.source === 'legacy-v1' ? 'success' : 'neutral'}>{runner.source === 'legacy-v1' ? 'DATI LIVE' : 'DEMO'}</Tag>{wakeLockStatus === 'active' && <Tag tone="success">SCHERMO ATTIVO</Tag>}</div>} />
+      <ScreenHeader eyebrow="SESSIONE / PANORAMICA" title={runner.session.title} text={[runner.session.objective, runner.session.durationMinutes ? String(runner.session.durationMinutes) + ' min' : ''].filter(Boolean).join(' · ')} action={<div className="header-actions"><Tag tone={runner.source === 'legacy-v1' ? 'success' : 'neutral'}>{runner.source === 'legacy-v1' ? 'DATI LIVE' : 'DEMO'}</Tag>{wakeLockStatus === 'active' && <Tag tone="success">SCHERMO ATTIVO</Tag>}</div>} />
       <div className="session-status session-status--compact">
-        <div className="session-status__progress"><span>ESERCIZI DELLA SESSIONE</span><b>{String(runner.exercises.length).padStart(2, '0')} Â· {summary.completed} registrati</b><div className="progress-line"><i style={{ width: String(summary.percentage) + '%' }} /></div></div>
+        <div className="session-status__progress"><span>ESERCIZI DELLA SESSIONE</span><b>{String(runner.exercises.length).padStart(2, '0')} · {summary.completed} registrati</b><div className="progress-line"><i style={{ width: String(summary.percentage) + '%' }} /></div></div>
       </div>
 
       <div className="session-exercise-list">
@@ -584,17 +584,17 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
             <div className="session-exercise-card__head"><span>{String(exercise.order).padStart(2, '0')}</span><div><h2>{exercise.name}</h2><p>{formatPrescription(exercise)}</p></div>{exercise.progress?.completed ? <Tag tone="success">Registrato</Tag> : <Tag tone="purple">{getSetCount(exercise)} serie</Tag>}</div>
             {variableSeries.length > 0 ? <div className="variable-series"><div className="variable-series__label"><b>Carichi differenti</b><span>Una riga per ogni serie</span></div><ol>{variableSeries.map((series, index) => <li key={series + index}><span>{String(index + 1).padStart(2, '0')}</span><b>{series}</b></li>)}</ol></div> : <div className="uniform-prescription"><div><small>STRUTTURA</small><b>{getSetCount(exercise)} serie</b></div><div><small>DOSE</small><b>{dose}</b></div><div><small>CARICO</small><b>{load}</b></div><div><small>RECUPERO</small><b>{getRestSeconds(exercise)} sec</b></div></div>}
             <div className="exercise-guidance"><span>Indicazioni</span><p>{exercise.instructions || runner.session.coachNotes || 'Segui la prescrizione e interrompi in caso di dolore.'}</p></div>
-            {canEdit && timerConfig && activeTimer && <div className={'exercise-timer ' + (timerActive ? 'is-active' : '')}><div><small>{exerciseTimerPhaseLabel(activeTimer)}</small><strong>{timerLabel}</strong><span>Serie {activeTimer.set}/{timerConfig.sets}{timerConfig.repetitions > 1 ? ` Â· Rip. ${activeTimer.repetition}/${timerConfig.repetitions}` : ''}</span></div><button className="exercise-timer__control" onClick={() => toggleTimer(exercise)} aria-label={timerActive && timerState?.running ? `Metti in pausa il timer di ${exercise.name}` : `Avvia il timer di ${exercise.name}`}>{timerActive && timerState?.running ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}<span>{timerActive && timerState?.running ? 'Pausa' : timerActive && timerState?.phase !== 'complete' ? 'Riprendi' : timerActive ? 'Ricomincia' : 'Avvia'}</span></button><button className="exercise-timer__reset" onClick={() => resetTimer(exercise)} aria-label={`Reimposta il timer di ${exercise.name}`}><TimerReset size={17} /></button></div>}
+            {canEdit && timerConfig && activeTimer && <div className={'exercise-timer ' + (timerActive ? 'is-active' : '')}><div><small>{exerciseTimerPhaseLabel(activeTimer)}</small><strong>{timerLabel}</strong><span>Serie {activeTimer.set}/{timerConfig.sets}{timerConfig.repetitions > 1 ? ` · Rip. ${activeTimer.repetition}/${timerConfig.repetitions}` : ''}</span></div><button className="exercise-timer__control" onClick={() => toggleTimer(exercise)} aria-label={timerActive && timerState?.running ? `Metti in pausa il timer di ${exercise.name}` : `Avvia il timer di ${exercise.name}`}>{timerActive && timerState?.running ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}<span>{timerActive && timerState?.running ? 'Pausa' : timerActive && timerState?.phase !== 'complete' ? 'Riprendi' : timerActive ? 'Ricomincia' : 'Avvia'}</span></button><button className="exercise-timer__reset" onClick={() => resetTimer(exercise)} aria-label={`Reimposta il timer di ${exercise.name}`}><TimerReset size={17} /></button></div>}
           </article>
         })}
       </div>
 
-      {runner.session.status === 'completed' ? <div className="completion-banner"><ShieldCheck size={19} /><div><b>{runner.session.completionOutcome === 'partial' ? 'Sessione registrata come non completata' : 'Sessione completata'}</b><span>{runner.session.completionOutcome === 'partial' ? runner.session.notes : 'Lo storico Ã¨ stato salvato.'}</span></div></div> : runner.session.logId ? <Panel className="session-outcome-panel" title="Esito sessione" index="âœ“">
-        <div className="session-outcome-choice" role="group" aria-label="Esito della sessione"><button className={outcome === 'completed' ? 'active' : ''} onClick={() => { setOutcome('completed'); setMissedIds([]); setError('') }}><Check size={18} /><span><b>Completata</b><small>Ho eseguito tutti gli esercizi.</small></span></button><button className={outcome === 'partial' ? 'active partial' : ''} onClick={() => { setOutcome('partial'); setError('') }}><TriangleAlert size={18} /><span><b>Non completata</b><small>IndicherÃ² cosa non ho eseguito.</small></span></button></div>
-        {outcome === 'partial' && <fieldset className="missed-exercises"><legend>Cosa non hai eseguito?</legend>{runner.exercises.map(exercise => <label className={exercise.progress?.completed ? 'is-disabled' : ''} key={exercise.id}><input type="checkbox" checked={missedIds.includes(exercise.id)} disabled={Boolean(exercise.progress?.completed)} onChange={() => toggleMissed(exercise.id)} /><span><b>{exercise.name}</b><small>{exercise.progress?.completed ? 'GiÃ  registrato' : formatPrescription(exercise)}</small></span></label>)}</fieldset>}
-        <div className="session-feedback"><label><span>RPE sessione</span><input type="number" min="0" max="10" step="0.5" value={sessionRpe} onChange={event => setSessionRpe(event.target.value)} /></label><label><span>Note</span><textarea value={sessionNote} onChange={event => setSessionNote(event.target.value)} placeholder="Sensazioni, dolore, osservazioniâ€¦" /></label></div>
-        <button className="button button--signal button--wide session-submit" disabled={!outcome || saveState === 'finishing'} onClick={() => void completeCurrentSession()}><span>{saveState === 'finishing' ? 'Salvataggioâ€¦' : 'Registra esito sessione'}</span><ArrowRight size={17} /></button>
-      </Panel> : <div className="session-dock"><div><small>SESSIONE PRONTA</small><b>{runner.session.title}</b></div><button className="button button--signal" disabled={saveState === 'starting'} onClick={startCurrentSession}><span>{saveState === 'starting' ? 'Avvioâ€¦' : 'Avvia sessione'}</span><Play size={17} /></button></div>}
+      {runner.session.status === 'completed' ? <div className="completion-banner"><ShieldCheck size={19} /><div><b>{runner.session.completionOutcome === 'partial' ? 'Sessione registrata come non completata' : 'Sessione completata'}</b><span>{runner.session.completionOutcome === 'partial' ? runner.session.notes : 'Lo storico è stato salvato.'}</span></div></div> : runner.session.logId ? <Panel className="session-outcome-panel" title="Esito sessione" index="✓">
+        <div className="session-outcome-choice" role="group" aria-label="Esito della sessione"><button className={outcome === 'completed' ? 'active' : ''} onClick={() => { setOutcome('completed'); setMissedIds([]); setError('') }}><Check size={18} /><span><b>Completata</b><small>Ho eseguito tutti gli esercizi.</small></span></button><button className={outcome === 'partial' ? 'active partial' : ''} onClick={() => { setOutcome('partial'); setError('') }}><TriangleAlert size={18} /><span><b>Non completata</b><small>Indicherò cosa non ho eseguito.</small></span></button></div>
+        {outcome === 'partial' && <fieldset className="missed-exercises"><legend>Cosa non hai eseguito?</legend>{runner.exercises.map(exercise => <label className={exercise.progress?.completed ? 'is-disabled' : ''} key={exercise.id}><input type="checkbox" checked={missedIds.includes(exercise.id)} disabled={Boolean(exercise.progress?.completed)} onChange={() => toggleMissed(exercise.id)} /><span><b>{exercise.name}</b><small>{exercise.progress?.completed ? 'Già registrato' : formatPrescription(exercise)}</small></span></label>)}</fieldset>}
+        <div className="session-feedback"><label><span>RPE sessione</span><input type="number" min="0" max="10" step="0.5" value={sessionRpe} onChange={event => setSessionRpe(event.target.value)} /></label><label><span>Note</span><textarea value={sessionNote} onChange={event => setSessionNote(event.target.value)} placeholder="Sensazioni, dolore, osservazioni…" /></label></div>
+        <button className="button button--signal button--wide session-submit" disabled={!outcome || saveState === 'finishing'} onClick={() => void completeCurrentSession()}><span>{saveState === 'finishing' ? 'Salvataggio…' : 'Registra esito sessione'}</span><ArrowRight size={17} /></button>
+      </Panel> : <div className="session-dock"><div><small>SESSIONE PRONTA</small><b>{runner.session.title}</b></div><button className="button button--signal" disabled={saveState === 'starting'} onClick={startCurrentSession}><span>{saveState === 'starting' ? 'Avvio…' : 'Avvia sessione'}</span><Play size={17} /></button></div>}
 
       {error && <div className={'completion-banner ' + (saveState === 'queued' ? 'completion-banner--queued' : 'completion-banner--error')}><TriangleAlert size={19} /><div><b>{saveState === 'queued' ? 'Sessione in attesa di sincronizzazione' : 'Operazione non completata'}</b><span>{error}</span></div></div>}
       {saveState === 'saved' && <div className="completion-banner"><Check size={19} /><div><b>Esito salvato</b><span>La sessione e gli esercizi eseguiti sono stati registrati.</span></div></div>}
@@ -623,7 +623,7 @@ function DashboardScreen({ profile, goTo, openAthlete }: { profile: AppProfile; 
       <ScreenHeader eyebrow="COACH / PORTAFOGLIO" title={`${data.activeAthletes} ${data.activeAthletes === 1 ? 'atleta attivo' : 'atleti attivi'}, ${data.needsReview} da rivedere.`} text="La dashboard mette prima eccezioni e aderenza, leggendo programmi, sessioni e test aggiornati." action={<div className="header-actions"><Tag tone={data.source === 'legacy-v1' ? 'success' : 'neutral'}>{data.source === 'legacy-v1' ? 'DATI LIVE' : 'DEMO'}</Tag><button className="button button--primary" onClick={() => goTo('athletes')}><Users size={16} /> Gestisci atleti</button></div>} />
       <div className="coach-summary">
         <Metric label="Atleti attivi" value={String(data.activeAthletes).padStart(2, '0')} />
-        <Metric label="Aderenza media" value={data.averageAdherence === null ? 'â€”' : String(data.averageAdherence)} unit={data.averageAdherence === null ? undefined : '%'} />
+        <Metric label="Aderenza media" value={data.averageAdherence === null ? '—' : String(data.averageAdherence)} unit={data.averageAdherence === null ? undefined : '%'} />
         <Metric label="Da rivedere" value={String(data.needsReview).padStart(2, '0')} signal={data.needsReview > 0} />
       </div>
       <div className="grid grid--2-1">
@@ -634,7 +634,7 @@ function DashboardScreen({ profile, goTo, openAthlete }: { profile: AppProfile; 
               <button className="athlete" key={athlete.id} onClick={() => openAthlete(athlete.id)}>
                 <span className="avatar">{athlete.initials}</span>
                 <span className="athlete__copy"><b>{athlete.name}</b><small>{athlete.programLabel}</small></span>
-                <span className="athlete__score"><b>{athlete.adherence ?? 'â€”'}</b><small>{athlete.adherence === null ? 'N/D' : '%'}</small></span>
+                <span className="athlete__score"><b>{athlete.adherence ?? '—'}</b><small>{athlete.adherence === null ? 'N/D' : '%'}</small></span>
                 <Tag tone={athlete.relationshipStatus !== 'active' || athlete.needsAttention ? 'warning' : 'success'}>{athlete.relationshipStatus !== 'active' ? athlete.relationshipStatus : athlete.needsAttention ? 'Controlla' : 'In linea'}</Tag>
                 <ArrowRight size={16} />
               </button>
@@ -642,12 +642,12 @@ function DashboardScreen({ profile, goTo, openAthlete }: { profile: AppProfile; 
           </div>
         </Panel>
         <Panel title="Attenzione" index="02">
-          {data.alerts.length === 0 && <div className="empty-state empty-state--compact"><Check size={20} /><b>Nessuna eccezione aperta</b><span>Il portafoglio Ã¨ allineato.</span></div>}
+          {data.alerts.length === 0 && <div className="empty-state empty-state--compact"><Check size={20} /><b>Nessuna eccezione aperta</b><span>Il portafoglio è allineato.</span></div>}
           {data.alerts.map(alert => <div className={`alert-card ${alert.tone === 'neutral' ? 'alert-card--neutral' : ''}`} key={alert.id}>{alert.tone === 'warning' ? <TriangleAlert size={20} /> : <ClipboardCheck size={20} />}<div><b>{alert.title}</b><p>{alert.detail}</p><button onClick={() => openAthlete(alert.athleteId)}>Apri atleta</button></div></div>)}
         </Panel>
       </div>
       <div className="grid grid--2">
-        <Panel title="Aderenza / ultime settimane" index="03">{data.adherenceTrend.length ? <Bars values={data.adherenceTrend} accentAt={data.adherenceTrend.length - 1} /> : <div className="empty-state empty-state--compact"><TrendingUp size={20} /><b>Trend in costruzione</b><span>ComparirÃ  dopo le prime settimane pianificate.</span></div>}<div className="chart-legend"><span><i className="purple" /> Completato</span><span><i className="mustard" /> Settimana corrente</span></div></Panel>
+        <Panel title="Aderenza / ultime settimane" index="03">{data.adherenceTrend.length ? <Bars values={data.adherenceTrend} accentAt={data.adherenceTrend.length - 1} /> : <div className="empty-state empty-state--compact"><TrendingUp size={20} /><b>Trend in costruzione</b><span>Comparirà dopo le prime settimane pianificate.</span></div>}<div className="chart-legend"><span><i className="purple" /> Completato</span><span><i className="mustard" /> Settimana corrente</span></div></Panel>
         <Panel title="Relazioni atleti" index="04"><div className="distribution"><div className="donut" style={{ background: `conic-gradient(var(--purple-700) 0 ${activeShare}%, var(--mustard-500) ${activeShare}% 100%)` }}><span>{activeShare}<small>%</small></span></div><ul><li><i className="purple" /> Attivi <b>{data.relationshipDistribution.active}</b></li><li><i className="mustard" /> Inattivi <b>{data.relationshipDistribution.inactive}</b></li><li><i className="pale" /> In attesa <b>{data.relationshipDistribution.pending}</b></li></ul></div></Panel>
       </div>
     </div>
@@ -688,7 +688,7 @@ function AthleteManagementScreen({ profile, selectedAthleteId, setSelectedAthlet
     event.preventDefault(); setState('saving'); setError(''); setMessage('')
     try {
       const athleteId = await createManagedAthlete(profile, firstName, lastName, email)
-      setFirstName(''); setLastName(''); setEmail(''); setMessage('Atleta creato. Puoi giÃ  aprire il profilo e preparare programma e test.'); setData(await loadAthleteManagement(profile)); setSelectedAthleteId(athleteId)
+      setFirstName(''); setLastName(''); setEmail(''); setMessage('Atleta creato. Puoi già aprire il profilo e preparare programma e test.'); setData(await loadAthleteManagement(profile)); setSelectedAthleteId(athleteId)
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Atleta non creato.') } finally { setState('idle') }
   }
 
@@ -715,7 +715,7 @@ function AthleteManagementScreen({ profile, selectedAthleteId, setSelectedAthlet
       await removeAthleteRelationship(profile, removeTarget.id)
       setSelectedAthleteId('')
       setRemoveTarget(null)
-      setMessage('Collegamento rimosso. Profilo, allenamenti completati, log esercizi e test dellâ€™atleta sono rimasti intatti.')
+      setMessage('Collegamento rimosso. Profilo, allenamenti completati, log esercizi e test dell’atleta sono rimasti intatti.')
       setData(await loadAthleteManagement(profile))
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Atleta non rimosso.') } finally { setState('idle') }
   }
@@ -729,23 +729,23 @@ function AthleteManagementScreen({ profile, selectedAthleteId, setSelectedAthlet
       <button className="athlete-action-card" onClick={() => goToAthlete('builder', selectedAthlete.id)}><SlidersHorizontal size={22} /><span><b>Programma di esercizi</b><small>Apri schede, settimane, sessioni e parametri.</small></span><ArrowRight size={18} /></button>
       <button className="athlete-action-card" onClick={() => goToAthlete('test', selectedAthlete.id)}><TestTube2 size={22} /><span><b>Test e progressi</b><small>Consulta lo storico o registra una nuova rilevazione.</small></span><ArrowRight size={18} /></button>
     </div>
-    <Panel title="Gestione collegamento" index="03"><div className="relationship-actions"><div><b>Rimuovi atleta dal coach</b><p>Viene eliminato solo il collegamento. Lâ€™account dellâ€™atleta e tutto il suo storico restano nel database.</p></div><button className="button button--danger" disabled={state === 'saving'} onClick={() => setRemoveTarget({ id: selectedAthlete.id, name: selectedAthlete.name })}><Trash2 size={16} /> Rimuovi atleta</button></div></Panel>
-    <Panel title="Accesso app" index="04">{selectedAthlete.appAccessActive ? <div className="completion-banner"><Check size={19} /><div><b>Accesso app attivo</b><span>Lâ€™account Ã¨ collegato a questa identitÃ  atleta.</span></div></div> : <form className="invite-form" onSubmit={submitInvite}><b>Accesso app non attivo</b><label><span>Email atleta</span><input className="standalone-input" type="email" value={email || selectedAthlete.email || ''} onChange={event => setEmail(event.target.value)} required /></label><button className="button button--signal" disabled={state === 'saving'}><Mail size={16} /> Invita alla app</button></form>}</Panel>
+    <Panel title="Gestione collegamento" index="03"><div className="relationship-actions"><div><b>Rimuovi atleta dal coach</b><p>Viene eliminato solo il collegamento. L’account dell’atleta e tutto il suo storico restano nel database.</p></div><button className="button button--danger" disabled={state === 'saving'} onClick={() => setRemoveTarget({ id: selectedAthlete.id, name: selectedAthlete.name })}><Trash2 size={16} /> Rimuovi atleta</button></div></Panel>
+    <Panel title="Accesso app" index="04">{selectedAthlete.appAccessActive ? <div className="completion-banner"><Check size={19} /><div><b>Accesso app attivo</b><span>L’account è collegato a questa identità atleta.</span></div></div> : <form className="invite-form" onSubmit={submitInvite}><b>Accesso app non attivo</b><label><span>Email atleta</span><input className="standalone-input" type="email" value={email || selectedAthlete.email || ''} onChange={event => setEmail(event.target.value)} required /></label><button className="button button--signal" disabled={state === 'saving'}><Mail size={16} /> Invita alla app</button></form>}</Panel>
     {error && <div className="completion-banner completion-banner--error"><TriangleAlert size={19} /><div><b>Operazione non completata</b><span>{error}</span></div></div>}
     {message && <div className="completion-banner"><ShieldCheck size={19} /><div><b>Operazione confermata</b><span>{message}</span></div></div>}
-    {removeTarget && <ConfirmDialog title={`Rimuovere ${removeTarget.name}?`} text="Perderai lâ€™accesso coach ai suoi dati finchÃ© non verrÃ  collegato di nuovo. Profilo, allenamenti completati, esercizi registrati e test non saranno cancellati." confirmLabel="Rimuovi atleta" busy={state === 'saving'} onCancel={() => setRemoveTarget(null)} onConfirm={() => void removeAthlete()} />}
+    {removeTarget && <ConfirmDialog title={`Rimuovere ${removeTarget.name}?`} text="Perderai l’accesso coach ai suoi dati finché non verrà collegato di nuovo. Profilo, allenamenti completati, esercizi registrati e test non saranno cancellati." confirmLabel="Rimuovi atleta" busy={state === 'saving'} onCancel={() => setRemoveTarget(null)} onConfirm={() => void removeAthlete()} />}
   </div>
 
   return <div className="screen">
-    <ScreenHeader eyebrow="COACH / ATLETI" title="Crea lâ€™atleta, poi lavora subito." text="Lâ€™account app Ã¨ facoltativo e puÃ² essere collegato in seguito senza cambiare atleta o perdere lo storico." action={data && <Tag tone={data.source === 'legacy-v1' ? 'success' : 'neutral'}>{data.source === 'legacy-v1' ? 'DATI LIVE' : 'DEMO'}</Tag>} />
+    <ScreenHeader eyebrow="COACH / ATLETI" title="Crea l’atleta, poi lavora subito." text="L’account app è facoltativo e può essere collegato in seguito senza cambiare atleta o perdere lo storico." action={data && <Tag tone={data.source === 'legacy-v1' ? 'success' : 'neutral'}>{data.source === 'legacy-v1' ? 'DATI LIVE' : 'DEMO'}</Tag>} />
     <div className="grid grid--2-1">
       <Panel title="Atleti collegati" index="01">
         {state === 'loading' && !data && <div className="skeleton-stack"><span /><span /><span /></div>}
-        {data?.athletes.length === 0 && <div className="empty-state"><Users size={22} /><b>Nessun atleta collegato</b><span>Creane uno: lâ€™email non Ã¨ obbligatoria.</span></div>}
+        {data?.athletes.length === 0 && <div className="empty-state"><Users size={22} /><b>Nessun atleta collegato</b><span>Creane uno: l’email non è obbligatoria.</span></div>}
         <div className="management-list">{data?.athletes.map(athlete => <div className="management-row" key={athlete.id}><button className="management-athlete-link" onClick={() => { setEmail(athlete.email ?? ''); setSelectedAthleteId(athlete.id) }}><span className="avatar">{athlete.initials}</span><span><b>{athlete.name}</b><small>{athlete.appAccessActive ? 'Accesso app attivo' : 'Accesso app non attivo'}</small></span></button><Tag tone={athlete.status === 'active' ? 'success' : 'warning'}>{athlete.status}</Tag><button className="button button--secondary" disabled={state === 'saving'} onClick={() => void changeStatus(athlete.id, athlete.status === 'active' ? 'inactive' : 'active')}>{athlete.status === 'active' ? 'Sospendi' : 'Riattiva'}</button></div>)}</div>
       </Panel>
       <Panel title="Aggiungi nuovo atleta" index="02">
-        <form className="invite-form" onSubmit={submitAthlete}><label><span>Nome *</span><input className="standalone-input" value={firstName} onChange={event => setFirstName(event.target.value)} required /></label><label><span>Cognome *</span><input className="standalone-input" value={lastName} onChange={event => setLastName(event.target.value)} required /></label><label><span>Email (facoltativa)</span><input className="standalone-input" type="email" value={email} onChange={event => setEmail(event.target.value)} /></label><p>Lâ€™atleta viene creato subito. Lâ€™invito alla app resta unâ€™azione separata.</p><button className="button button--signal button--wide" disabled={state === 'saving'}><Plus size={16} /> {state === 'saving' ? 'Creazioneâ€¦' : 'Crea atleta'}</button></form>
+        <form className="invite-form" onSubmit={submitAthlete}><label><span>Nome *</span><input className="standalone-input" value={firstName} onChange={event => setFirstName(event.target.value)} required /></label><label><span>Cognome *</span><input className="standalone-input" value={lastName} onChange={event => setLastName(event.target.value)} required /></label><label><span>Email (facoltativa)</span><input className="standalone-input" type="email" value={email} onChange={event => setEmail(event.target.value)} /></label><p>L’atleta viene creato subito. L’invito alla app resta un’azione separata.</p><button className="button button--signal button--wide" disabled={state === 'saving'}><Plus size={16} /> {state === 'saving' ? 'Creazione…' : 'Crea atleta'}</button></form>
       </Panel>
     </div>
     {error && <div className="completion-banner completion-banner--error"><TriangleAlert size={19} /><div><b>Operazione non completata</b><span>{error}</span></div></div>}
@@ -841,17 +841,17 @@ function BuilderScreen({ profile, selectedAthleteId }: { profile: AppProfile; se
     void run(() => publishProgram(profile, program.id, program.athleteId), 'Programma pubblicato. Il precedente resta archiviato e consultabile.')
   }
 
-  if (state === 'loading' && !data) return <div className="screen"><ScreenHeader eyebrow="PROGRAM BUILDER" title="Carico la programmazioneâ€¦" text="Recupero atleti, programmi e libreria esercizi." /><div className="skeleton-stack"><span /><span /><span /></div></div>
+  if (state === 'loading' && !data) return <div className="screen"><ScreenHeader eyebrow="PROGRAM BUILDER" title="Carico la programmazione…" text="Recupero atleti, programmi e libreria esercizi." /><div className="skeleton-stack"><span /><span /><span /></div></div>
 
   return <div className="screen">
-    <ScreenHeader eyebrow="PROGRAM BUILDER / LIVE" title={program?.name ?? 'Nuovo programma'} text="Costruisci la scheda per livelli. Ogni salvataggio Ã¨ verificato dal database e lo storico non viene eliminato." action={<div className="header-actions"><Tag tone={data?.source === 'legacy-v1' ? 'success' : 'neutral'}>{data?.source === 'legacy-v1' ? 'DATI LIVE' : 'DEMO'}</Tag><button className="button button--primary" disabled={!program || state === 'saving' || program.status === 'active'} onClick={publish}><Save size={16} /> {program?.status === 'active' ? 'Pubblicato' : 'Pubblica'}</button></div>} />
+    <ScreenHeader eyebrow="PROGRAM BUILDER / LIVE" title={program?.name ?? 'Nuovo programma'} text="Costruisci la scheda per livelli. Ogni salvataggio è verificato dal database e lo storico non viene eliminato." action={<div className="header-actions"><Tag tone={data?.source === 'legacy-v1' ? 'success' : 'neutral'}>{data?.source === 'legacy-v1' ? 'DATI LIVE' : 'DEMO'}</Tag><button className="button button--primary" disabled={!program || state === 'saving' || program.status === 'active'} onClick={publish}><Save size={16} /> {program?.status === 'active' ? 'Pubblicato' : 'Pubblica'}</button></div>} />
     <div className="builder-toolbar">
       <label><span>Atleta</span><select value={athleteId} onChange={event => setAthleteId(event.target.value)} disabled={state === 'saving'}>{data?.athletes.map(athlete => <option key={athlete.id} value={athlete.id}>{athlete.name}</option>)}</select></label>
-      <label><span>Programma</span><select value={programId} onChange={event => setProgramId(event.target.value)} disabled={state === 'saving'}><option value="">Nuova bozzaâ€¦</option>{athletePrograms.map(item => <option key={item.id} value={item.id}>{item.name} Â· {item.status}</option>)}</select></label>
+      <label><span>Programma</span><select value={programId} onChange={event => setProgramId(event.target.value)} disabled={state === 'saving'}><option value="">Nuova bozza…</option>{athletePrograms.map(item => <option key={item.id} value={item.id}>{item.name} · {item.status}</option>)}</select></label>
       {program && <div className="builder-program-status"><small>STATO</small><Tag tone={program.status === 'active' ? 'success' : program.status === 'draft' ? 'signal' : 'neutral'}>{program.status}</Tag><span>{program.goal || 'Obiettivo da definire'}</span></div>}
     </div>
     {!data?.athletes.length && <Panel title="Nessun atleta attivo" index="00"><div className="empty-state"><Users size={22} /><b>Collega o riattiva un atleta</b><span>Il builder mostra soltanto le relazioni coach-atleta attive.</span></div></Panel>}
-    {!!athleteId && !program && <Panel title="Crea una bozza" index="00"><form className="builder-create-form" onSubmit={submitProgram}><label><span>Nome programma</span><input className="standalone-input" value={newProgram.name} onChange={event => setNewProgram(current => ({ ...current, name: event.target.value }))} placeholder="Es. Forza dita Â· Autunno" required /></label><label><span>Obiettivo</span><input className="standalone-input" value={newProgram.goal} onChange={event => setNewProgram(current => ({ ...current, goal: event.target.value }))} placeholder="Obiettivo del blocco" /></label><button className="button button--signal" disabled={state === 'saving'}><Plus size={16} /> Crea bozza</button></form></Panel>}
+    {!!athleteId && !program && <Panel title="Crea una bozza" index="00"><form className="builder-create-form" onSubmit={submitProgram}><label><span>Nome programma</span><input className="standalone-input" value={newProgram.name} onChange={event => setNewProgram(current => ({ ...current, name: event.target.value }))} placeholder="Es. Forza dita · Autunno" required /></label><label><span>Obiettivo</span><input className="standalone-input" value={newProgram.goal} onChange={event => setNewProgram(current => ({ ...current, goal: event.target.value }))} placeholder="Obiettivo del blocco" /></label><button className="button button--signal" disabled={state === 'saving'}><Plus size={16} /> Crea bozza</button></form></Panel>}
     {program && <div className="builder-layout">
       <Panel className="week-rail" title="Settimane" index="01">
         {weeks.map(week => <button className={week.id === weekId ? 'active' : ''} key={week.id} onClick={() => setWeekId(week.id)}><span>W{String(week.weekNumber).padStart(2, '0')}</span><b>{week.blockName || `Settimana ${week.weekNumber}`}</b><em>{week.phase || week.status}</em></button>)}
@@ -863,22 +863,22 @@ function BuilderScreen({ profile, selectedAthleteId }: { profile: AppProfile; se
           <div className="builder-details builder-details--week"><label><span>Blocco settimana</span><input value={weekDetails.blockName} onChange={event => setWeekDetails(value => ({ ...value, blockName: event.target.value }))} /></label><label><span>Fase</span><input value={weekDetails.phase} onChange={event => setWeekDetails(value => ({ ...value, phase: event.target.value }))} /></label><button className="text-button" disabled={state === 'saving'} onClick={saveWeek}><Save size={14} /> Salva settimana</button></div>
           <div className="session-tabs">{sessions.map(item => <button className={item.id === sessionId ? 'active' : ''} key={item.id} onClick={() => setSessionId(item.id)}><b>S{String(item.order).padStart(2, '0')}</b><span>{item.title}</span></button>)}</div>
           {!sessionId && <div className="empty-state empty-state--compact"><TimerReset size={20} /><b>Aggiungi la prima sessione</b></div>}
-          {sessionId && <div className="builder-details builder-details--session"><label><span>Titolo sessione</span><input value={sessionDetails.title} onChange={event => setSessionDetails(value => ({ ...value, title: event.target.value }))} /></label><label><span>Obiettivo</span><input value={sessionDetails.objective} onChange={event => setSessionDetails(value => ({ ...value, objective: event.target.value }))} /></label><label><span>Durata</span><input type="number" min="0" value={sessionDetails.durationMinutes} onChange={event => setSessionDetails(value => ({ ...value, durationMinutes: Number(event.target.value) }))} /></label><label><span>Giorno 1â€“7</span><input type="number" min="1" max="7" value={sessionDetails.scheduledDay} onChange={event => setSessionDetails(value => ({ ...value, scheduledDay: Number(event.target.value) }))} /></label><button className="text-button" disabled={state === 'saving'} onClick={saveSession}><Save size={14} /> Salva sessione</button></div>}
-          {exercises.map(item => <button className={`exercise-block ${item.id === exerciseId ? 'active' : ''}`} key={item.id} onClick={() => setExerciseId(item.id)}><span className="drag-handle">â ¿</span><span className="exercise-number">{String(item.order).padStart(2, '0')}</span><div><b>{item.name}</b><small>{prescriptionSummary(item)}</small></div><Tag tone="purple">Esercizio</Tag><ChevronDown size={17} /></button>)}
-          {sessionId && <form className="exercise-adder" onSubmit={submitExercise}><select value={libraryId} onChange={event => setLibraryId(event.target.value)}><option value="">Esercizio rapidoâ€¦</option>{data?.library.map(item => <option value={item.id} key={item.id}>{item.name}{item.category ? ` Â· ${item.category}` : ''}</option>)}</select>{!libraryId && <input value={newExercise} onChange={event => setNewExercise(event.target.value)} placeholder="Nome esercizio" />}<button className="drop-zone" disabled={state === 'saving'}><Plus size={17} /> Aggiungi alla sessione</button></form>}
+          {sessionId && <div className="builder-details builder-details--session"><label><span>Titolo sessione</span><input value={sessionDetails.title} onChange={event => setSessionDetails(value => ({ ...value, title: event.target.value }))} /></label><label><span>Obiettivo</span><input value={sessionDetails.objective} onChange={event => setSessionDetails(value => ({ ...value, objective: event.target.value }))} /></label><label><span>Durata</span><input type="number" min="0" value={sessionDetails.durationMinutes} onChange={event => setSessionDetails(value => ({ ...value, durationMinutes: Number(event.target.value) }))} /></label><label><span>Giorno 1–7</span><input type="number" min="1" max="7" value={sessionDetails.scheduledDay} onChange={event => setSessionDetails(value => ({ ...value, scheduledDay: Number(event.target.value) }))} /></label><button className="text-button" disabled={state === 'saving'} onClick={saveSession}><Save size={14} /> Salva sessione</button></div>}
+          {exercises.map(item => <button className={`exercise-block ${item.id === exerciseId ? 'active' : ''}`} key={item.id} onClick={() => setExerciseId(item.id)}><span className="drag-handle">⠿</span><span className="exercise-number">{String(item.order).padStart(2, '0')}</span><div><b>{item.name}</b><small>{prescriptionSummary(item)}</small></div><Tag tone="purple">Esercizio</Tag><ChevronDown size={17} /></button>)}
+          {sessionId && <form className="exercise-adder" onSubmit={submitExercise}><select value={libraryId} onChange={event => setLibraryId(event.target.value)}><option value="">Esercizio rapido…</option>{data?.library.map(item => <option value={item.id} key={item.id}>{item.name}{item.category ? ` · ${item.category}` : ''}</option>)}</select>{!libraryId && <input value={newExercise} onChange={event => setNewExercise(event.target.value)} placeholder="Nome esercizio" />}<button className="drop-zone" disabled={state === 'saving'}><Plus size={17} /> Aggiungi alla sessione</button></form>}
         </Panel>}
       </div>
       <Panel className="inspector" title="Parametri" index="03">
         {!exercise && <div className="empty-state empty-state--compact"><Settings2 size={20} /><b>Seleziona un esercizio</b><span>Qui modificherai volume, carico, RPE e recupero.</span></div>}
         {exercise && <>
-          <label><span>Serie</span><div className="stepper"><button onClick={() => setPatch(value => ({ ...value, sets: Math.max(1, value.sets - 1) }))}>âˆ’</button><b>{patch.sets}</b><button onClick={() => setPatch(value => ({ ...value, sets: value.sets + 1 }))}>+</button></div></label>
+          <label><span>Serie</span><div className="stepper"><button onClick={() => setPatch(value => ({ ...value, sets: Math.max(1, value.sets - 1) }))}>−</button><b>{patch.sets}</b><button onClick={() => setPatch(value => ({ ...value, sets: value.sets + 1 }))}>+</button></div></label>
           <label><span>Ripetizioni</span><div className="input-shell"><input type="number" min="0" value={patch.reps} onChange={event => setPatch(value => ({ ...value, reps: Number(event.target.value) }))} /><em>rep</em></div></label>
           <label><span>Durata</span><div className="input-shell"><input type="number" min="0" value={patch.seconds} onChange={event => setPatch(value => ({ ...value, seconds: Number(event.target.value) }))} /><em>sec</em></div></label>
           <label><span>Carico</span><div className="input-shell"><input type="number" min="0" step="0.5" value={patch.loadKg} onChange={event => setPatch(value => ({ ...value, loadKg: Number(event.target.value) }))} /><em>kg</em></div></label>
           <label><span>Recupero</span><div className="input-shell"><input type="number" min="0" step="15" value={patch.restSeconds} onChange={event => setPatch(value => ({ ...value, restSeconds: Number(event.target.value) }))} /><em>sec</em></div></label>
           <label><span>RPE target</span><div className="rpe-scale">{[6, 7, 8, 9, 10].map(value => <button className={value === patch.rpe ? 'active' : ''} key={value} onClick={() => setPatch(current => ({ ...current, rpe: value }))}>{value}</button>)}</div></label>
           <label className="inspector-notes"><span>Indicazioni</span><textarea value={patch.instructions} onChange={event => setPatch(value => ({ ...value, instructions: event.target.value }))} /></label>
-          <button className="button button--signal button--wide" disabled={state === 'saving'} onClick={saveParameters}><Save size={15} /> {state === 'saving' ? 'Salvoâ€¦' : 'Salva parametri'}</button>
+          <button className="button button--signal button--wide" disabled={state === 'saving'} onClick={saveParameters}><Save size={15} /> {state === 'saving' ? 'Salvo…' : 'Salva parametri'}</button>
         </>}
       </Panel>
     </div>}
@@ -925,7 +925,7 @@ function LibraryScreen({ profile }: { profile: AppProfile }) {
     try {
       if (selected) {
         await updateLibraryExercise(profile, selected.id, input)
-        setMessage('Esercizio aggiornato. Le sessioni giÃ  svolte conservano i valori registrati.')
+        setMessage('Esercizio aggiornato. Le sessioni già svolte conservano i valori registrati.')
       } else {
         const id = await createLibraryExercise(profile, input)
         setSelectedId(id); setMessage('Esercizio creato e disponibile nel Program Builder.')
@@ -951,30 +951,30 @@ function LibraryScreen({ profile }: { profile: AppProfile }) {
       const remaining = await refresh()
       setSelectedId(remaining.find(item => !item.archived)?.id ?? remaining[0]?.id ?? '')
       setDeleteTarget(null)
-      setMessage('Esercizio eliminato definitivamente dalla libreria. Le copie nelle sessioni e i risultati giÃ  registrati sono rimasti intatti.')
+      setMessage('Esercizio eliminato definitivamente dalla libreria. Le copie nelle sessioni e i risultati già registrati sono rimasti intatti.')
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Esercizio non eliminato.') } finally { setState('idle') }
   }
 
   return <div className="screen">
-    <ScreenHeader eyebrow="LIBRERIA / ESERCIZI" title="Un esercizio, una definizione chiara." text="Crea prescrizioni riutilizzabili nei programmi. Lâ€™eliminazione richiede conferma e non modifica le sessioni o lo storico giÃ  registrati." action={<div className="header-actions"><Tag tone={source === 'legacy-v1' ? 'success' : 'neutral'}>{source === 'legacy-v1' ? 'DATI LIVE' : 'DEMO'}</Tag><button className="button button--signal" onClick={() => { setSelectedId(''); setInput(emptyExercise()); setError(''); setMessage('') }}><Plus size={16} /> Nuovo esercizio</button></div>} />
+    <ScreenHeader eyebrow="LIBRERIA / ESERCIZI" title="Un esercizio, una definizione chiara." text="Crea prescrizioni riutilizzabili nei programmi. L’eliminazione richiede conferma e non modifica le sessioni o lo storico già registrati." action={<div className="header-actions"><Tag tone={source === 'legacy-v1' ? 'success' : 'neutral'}>{source === 'legacy-v1' ? 'DATI LIVE' : 'DEMO'}</Tag><button className="button button--signal" onClick={() => { setSelectedId(''); setInput(emptyExercise()); setError(''); setMessage('') }}><Plus size={16} /> Nuovo esercizio</button></div>} />
     <div className="library-summary"><Metric label="Esercizi totali" value={String(items.length).padStart(2, '0')} /><Metric label="In uso" value={String(usedCount).padStart(2, '0')} /><Metric label="Archivio precedente" value={String(items.filter(item => item.archived).length).padStart(2, '0')} /></div>
     <div className="library-layout">
       <Panel className="library-catalog" title="Catalogo" index="01">
-        <div className="library-filters"><div className="library-search"><Search size={16} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Cerca nome, categoriaâ€¦" /></div><select value={category} onChange={event => setCategory(event.target.value)}><option value="">Tutte le categorie</option>{categories.map(value => <option key={value}>{value}</option>)}</select><select value={status} onChange={event => setStatus(event.target.value as LibraryStatusFilter)}><option value="active">Attivi</option><option value="archived">Archiviati</option><option value="all">Tutti</option></select></div>
+        <div className="library-filters"><div className="library-search"><Search size={16} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Cerca nome, categoria…" /></div><select value={category} onChange={event => setCategory(event.target.value)}><option value="">Tutte le categorie</option>{categories.map(value => <option key={value}>{value}</option>)}</select><select value={status} onChange={event => setStatus(event.target.value as LibraryStatusFilter)}><option value="active">Attivi</option><option value="archived">Archiviati</option><option value="all">Tutti</option></select></div>
         {state === 'loading' && <div className="skeleton-stack"><span /><span /><span /></div>}
         {!visibleItems.length && state !== 'loading' && <div className="empty-state"><BookOpen size={22} /><b>Nessun esercizio trovato</b><span>Modifica i filtri oppure crea il primo esercizio.</span></div>}
-        <div className="exercise-library-list">{visibleItems.map(item => <button className={item.id === selectedId ? 'active' : ''} key={item.id} onClick={() => setSelectedId(item.id)}><span className="exercise-library-list__mark">{item.name.slice(0, 2).toUpperCase()}</span><div><b>{item.name}</b><small>{[item.category, item.modality].filter(Boolean).join(' Â· ') || 'Senza categoria'}</small></div><span className="exercise-library-list__usage">{item.usageCount}<small>usi</small></span>{item.archived ? <Tag tone="warning">Archivio</Tag> : <ChevronDown size={16} />}</button>)}</div>
+        <div className="exercise-library-list">{visibleItems.map(item => <button className={item.id === selectedId ? 'active' : ''} key={item.id} onClick={() => setSelectedId(item.id)}><span className="exercise-library-list__mark">{item.name.slice(0, 2).toUpperCase()}</span><div><b>{item.name}</b><small>{[item.category, item.modality].filter(Boolean).join(' · ') || 'Senza categoria'}</small></div><span className="exercise-library-list__usage">{item.usageCount}<small>usi</small></span>{item.archived ? <Tag tone="warning">Archivio</Tag> : <ChevronDown size={16} />}</button>)}</div>
       </Panel>
       <Panel className="library-editor" title={selected ? 'Modifica esercizio' : 'Nuovo esercizio'} index="02" action={selected && <Tag tone={selected.archived ? 'warning' : 'success'}>{selected.archived ? 'Archiviato' : 'Attivo'}</Tag>}>
         <form onSubmit={save}>
-          <div className="library-form-grid"><label className="library-form-grid__wide"><span>Nome</span><input value={input.name} onChange={event => setInput(value => ({ ...value, name: event.target.value }))} placeholder="Es. Max hang Â· 20 mm" required /></label><label><span>Categoria</span><input value={input.category} onChange={event => setInput(value => ({ ...value, category: event.target.value }))} placeholder="Dita, Trazioneâ€¦" /></label><label><span>ModalitÃ </span><input value={input.modality} onChange={event => setInput(value => ({ ...value, modality: event.target.value }))} placeholder="Forza, Isometricoâ€¦" /></label><label><span>Serie</span><input type="number" min="1" step="1" value={input.defaultPrescription.sets} onChange={event => setInput(value => ({ ...value, defaultPrescription: { ...value.defaultPrescription, sets: Number(event.target.value) } }))} /></label><label><span>Ripetizioni</span><input type="number" min="0" value={input.defaultPrescription.reps} onChange={event => setInput(value => ({ ...value, defaultPrescription: { ...value.defaultPrescription, reps: Number(event.target.value) } }))} /></label><label><span>Durata</span><div className="input-shell"><input type="number" min="0" value={input.defaultPrescription.seconds} onChange={event => setInput(value => ({ ...value, defaultPrescription: { ...value.defaultPrescription, seconds: Number(event.target.value) } }))} /><em>sec</em></div></label><label><span>Carico</span><div className="input-shell"><input type="number" min="0" step="0.5" value={input.defaultPrescription.loadKg} onChange={event => setInput(value => ({ ...value, defaultPrescription: { ...value.defaultPrescription, loadKg: Number(event.target.value) } }))} /><em>kg</em></div></label><label className="library-form-grid__wide"><span>Descrizione</span><textarea value={input.description} onChange={event => setInput(value => ({ ...value, description: event.target.value }))} placeholder="Scopo e configurazione dellâ€™esercizio" /></label><label className="library-form-grid__wide"><span>Indicazioni predefinite</span><textarea value={input.defaultInstructions} onChange={event => setInput(value => ({ ...value, defaultInstructions: event.target.value }))} placeholder="Tecnica, criteri di stop, sicurezzaâ€¦" /></label></div>
+          <div className="library-form-grid"><label className="library-form-grid__wide"><span>Nome</span><input value={input.name} onChange={event => setInput(value => ({ ...value, name: event.target.value }))} placeholder="Es. Max hang · 20 mm" required /></label><label><span>Categoria</span><input value={input.category} onChange={event => setInput(value => ({ ...value, category: event.target.value }))} placeholder="Dita, Trazione…" /></label><label><span>Modalità</span><input value={input.modality} onChange={event => setInput(value => ({ ...value, modality: event.target.value }))} placeholder="Forza, Isometrico…" /></label><label><span>Serie</span><input type="number" min="1" step="1" value={input.defaultPrescription.sets} onChange={event => setInput(value => ({ ...value, defaultPrescription: { ...value.defaultPrescription, sets: Number(event.target.value) } }))} /></label><label><span>Ripetizioni</span><input type="number" min="0" value={input.defaultPrescription.reps} onChange={event => setInput(value => ({ ...value, defaultPrescription: { ...value.defaultPrescription, reps: Number(event.target.value) } }))} /></label><label><span>Durata</span><div className="input-shell"><input type="number" min="0" value={input.defaultPrescription.seconds} onChange={event => setInput(value => ({ ...value, defaultPrescription: { ...value.defaultPrescription, seconds: Number(event.target.value) } }))} /><em>sec</em></div></label><label><span>Carico</span><div className="input-shell"><input type="number" min="0" step="0.5" value={input.defaultPrescription.loadKg} onChange={event => setInput(value => ({ ...value, defaultPrescription: { ...value.defaultPrescription, loadKg: Number(event.target.value) } }))} /><em>kg</em></div></label><label className="library-form-grid__wide"><span>Descrizione</span><textarea value={input.description} onChange={event => setInput(value => ({ ...value, description: event.target.value }))} placeholder="Scopo e configurazione dell’esercizio" /></label><label className="library-form-grid__wide"><span>Indicazioni predefinite</span><textarea value={input.defaultInstructions} onChange={event => setInput(value => ({ ...value, defaultInstructions: event.target.value }))} placeholder="Tecnica, criteri di stop, sicurezza…" /></label></div>
           {error && <p className="form-error form-error--box" role="alert">{error}</p>}
-          <div className="library-actions"><button className="button button--primary" disabled={state === 'saving'}><Save size={16} /> {state === 'saving' ? 'Salvoâ€¦' : selected ? 'Salva modifiche' : 'Crea esercizio'}</button>{selected?.archived && <button type="button" className="button button--secondary" disabled={state === 'saving'} onClick={toggleArchive}><Archive size={16} /> Ripristina</button>}{selected && <button type="button" className="button button--danger" disabled={state === 'saving'} onClick={() => setDeleteTarget(selected)}><Trash2 size={16} /> Elimina</button>}</div>
+          <div className="library-actions"><button className="button button--primary" disabled={state === 'saving'}><Save size={16} /> {state === 'saving' ? 'Salvo…' : selected ? 'Salva modifiche' : 'Crea esercizio'}</button>{selected?.archived && <button type="button" className="button button--secondary" disabled={state === 'saving'} onClick={toggleArchive}><Archive size={16} /> Ripristina</button>}{selected && <button type="button" className="button button--danger" disabled={state === 'saving'} onClick={() => setDeleteTarget(selected)}><Trash2 size={16} /> Elimina</button>}</div>
         </form>
       </Panel>
     </div>
     {message && <div className="completion-banner"><ShieldCheck size={19} /><div><b>Libreria aggiornata</b><span>{message}</span></div></div>}
-    {deleteTarget && <ConfirmDialog title={`Eliminare ${deleteTarget.name}?`} text={`${deleteTarget.usageCount ? `Ãˆ usato in ${deleteTarget.usageCount} sessioni. ` : ''}La voce sparirÃ  dalla libreria, ma le sessioni giÃ  create e i risultati registrati manterranno nome, parametri e storico.`} confirmLabel="Elimina definitivamente" busy={state === 'saving'} onCancel={() => setDeleteTarget(null)} onConfirm={() => void removeExercise()} />}
+    {deleteTarget && <ConfirmDialog title={`Eliminare ${deleteTarget.name}?`} text={`${deleteTarget.usageCount ? `È usato in ${deleteTarget.usageCount} sessioni. ` : ''}La voce sparirà dalla libreria, ma le sessioni già create e i risultati registrati manterranno nome, parametri e storico.`} confirmLabel="Elimina definitivamente" busy={state === 'saving'} onCancel={() => setDeleteTarget(null)} onConfirm={() => void removeExercise()} />}
   </div>
 }
 
@@ -1035,10 +1035,10 @@ function TestScreen({ profile, selectedAthleteId }: { profile: AppProfile; selec
     {formOpen && <Panel className="test-entry-panel" title="Nuova rilevazione" index="00" action={<Tag tone="signal">Nuovo record</Tag>}>
       <form onSubmit={submit}>
         <div className="test-meta-form"><label><span>Data</span><input type="date" value={input.testedAt} onChange={event => setInput(value => ({ ...value, testedAt: event.target.value }))} required /></label><label><span>Peso corporeo</span><div className="input-shell"><input type="number" min="1" step="0.1" value={input.bodyWeightKg ?? ''} onChange={event => setInput(value => ({ ...value, bodyWeightKg: event.target.value ? Number(event.target.value) : null }))} /><em>kg</em></div></label><label><span>Protocollo</span><input value={input.protocolVersion} onChange={event => setInput(value => ({ ...value, protocolVersion: event.target.value }))} required /></label><label><span>Setup generale</span><input value={String(input.context.posture ?? '')} onChange={event => setInput(value => ({ ...value, context: { ...value.context, posture: event.target.value } }))} placeholder="Es. seated" /></label></div>
-        <div className="test-metric-editor"><div className="test-metric-head"><b>Misure</b><button type="button" className="text-button" onClick={() => setInput(value => ({ ...value, metrics: [...value.metrics, createMetricInput()] }))}><Plus size={14} /> Aggiungi misura</button></div>{input.metrics.map((metric, index) => <div className="test-metric-row" key={`${index}-${metric.side}`}><label><span>Metrica</span><input value={metric.metricLabel} onChange={event => updateMetric(index, { metricLabel: event.target.value, metricKey: event.target.value.toLocaleLowerCase('it').trim().replace(/[^a-z0-9]+/g, '_') })} /></label><label><span>Lato</span><select value={metric.side ?? ''} onChange={event => updateMetric(index, { side: (event.target.value || null) as TestMetricInput['side'] })}><option value="bilateral">Bilaterale</option><option value="right">Destra</option><option value="left">Sinistra</option><option value="">Nessuno</option></select></label><label><span>Valore</span><input type="number" step="0.01" value={Number.isFinite(metric.value) ? metric.value : ''} onChange={event => updateMetric(index, { value: event.target.value === '' ? Number.NaN : Number(event.target.value) })} required /></label><label><span>UnitÃ </span><input value={metric.unit} onChange={event => updateMetric(index, { unit: event.target.value })} /></label><label><span>Presa</span><input value={metric.grip} onChange={event => updateMetric(index, { grip: event.target.value })} /></label><label className="test-normalize"><input type="checkbox" checked={metric.normalizeToBodyWeight} onChange={event => updateMetric(index, { normalizeToBodyWeight: event.target.checked })} /><span>Normalizza BW</span></label>{input.metrics.length > 1 && <button type="button" className="text-button test-remove" onClick={() => setInput(value => ({ ...value, metrics: value.metrics.filter((_, metricIndex) => metricIndex !== index) }))}>Rimuovi</button>}</div>)}</div>
-        <label className="test-notes"><span>Note</span><textarea value={input.notes} onChange={event => setInput(value => ({ ...value, notes: event.target.value }))} placeholder="Condizioni, dolore, osservazioniâ€¦" /></label>
+        <div className="test-metric-editor"><div className="test-metric-head"><b>Misure</b><button type="button" className="text-button" onClick={() => setInput(value => ({ ...value, metrics: [...value.metrics, createMetricInput()] }))}><Plus size={14} /> Aggiungi misura</button></div>{input.metrics.map((metric, index) => <div className="test-metric-row" key={`${index}-${metric.side}`}><label><span>Metrica</span><input value={metric.metricLabel} onChange={event => updateMetric(index, { metricLabel: event.target.value, metricKey: event.target.value.toLocaleLowerCase('it').trim().replace(/[^a-z0-9]+/g, '_') })} /></label><label><span>Lato</span><select value={metric.side ?? ''} onChange={event => updateMetric(index, { side: (event.target.value || null) as TestMetricInput['side'] })}><option value="bilateral">Bilaterale</option><option value="right">Destra</option><option value="left">Sinistra</option><option value="">Nessuno</option></select></label><label><span>Valore</span><input type="number" step="0.01" value={Number.isFinite(metric.value) ? metric.value : ''} onChange={event => updateMetric(index, { value: event.target.value === '' ? Number.NaN : Number(event.target.value) })} required /></label><label><span>Unità</span><input value={metric.unit} onChange={event => updateMetric(index, { unit: event.target.value })} /></label><label><span>Presa</span><input value={metric.grip} onChange={event => updateMetric(index, { grip: event.target.value })} /></label><label className="test-normalize"><input type="checkbox" checked={metric.normalizeToBodyWeight} onChange={event => updateMetric(index, { normalizeToBodyWeight: event.target.checked })} /><span>Normalizza BW</span></label>{input.metrics.length > 1 && <button type="button" className="text-button test-remove" onClick={() => setInput(value => ({ ...value, metrics: value.metrics.filter((_, metricIndex) => metricIndex !== index) }))}>Rimuovi</button>}</div>)}</div>
+        <label className="test-notes"><span>Note</span><textarea value={input.notes} onChange={event => setInput(value => ({ ...value, notes: event.target.value }))} placeholder="Condizioni, dolore, osservazioni…" /></label>
         {error && <p className="form-error form-error--box" role="alert">{error}</p>}
-        <button className="button button--primary" disabled={state === 'saving'}><Save size={16} /> {state === 'saving' ? 'Registroâ€¦' : 'Registra e calcola'}</button>
+        <button className="button button--primary" disabled={state === 'saving'}><Save size={16} /> {state === 'saving' ? 'Registro…' : 'Registra e calcola'}</button>
       </form>
     </Panel>}
     {state === 'loading' && <div className="skeleton-stack"><span /><span /><span /></div>}
@@ -1046,10 +1046,10 @@ function TestScreen({ profile, selectedAthleteId }: { profile: AppProfile; selec
     {message && <div className="completion-banner"><ShieldCheck size={19} /><div><b>Analytics aggiornate</b><span>{message}</span></div></div>}
     {!athleteSessions.length && state !== 'loading' && <Panel title="Nessun test" index="01"><div className="empty-state"><TestTube2 size={22} /><b>Registra la baseline</b><span>Il primo test crea il riferimento; dal secondo iniziano delta e trend.</span></div></Panel>}
     {!!comparisons.length && <div className="test-analytics-grid">
-      {comparisons.map((item, index) => { const history = data ? metricHistory(data, athleteId, item.key) : []; const maximum = Math.max(...history.map(point => Math.abs(point.value)), 1); return <Panel className="test-metric-card" title={`${item.label}${item.side ? ` Â· ${item.side === 'right' ? 'DX' : item.side === 'left' ? 'SX' : 'BI'}` : ''}`} index={String(index + 1).padStart(2, '0')} action={<Tag tone={item.comparable ? 'success' : 'warning'}>{item.comparable ? 'Coerente' : 'Non confrontabile'}</Tag>} key={item.key}><div className="test-current"><strong>{item.latest.toLocaleString('it-IT', { maximumFractionDigits: 2 })}<small> {item.unit}</small></strong>{item.delta !== null && <span className={item.delta >= 0 ? 'positive' : 'negative'}>{item.delta >= 0 ? '+' : ''}{item.delta.toLocaleString('it-IT', { maximumFractionDigits: 2 })} Â· {item.percent?.toLocaleString('it-IT', { maximumFractionDigits: 1 })}%</span>}</div><div className="test-trend" aria-label={`Storico ${item.label}`}>{history.map(point => <i key={point.date} style={{ height: `${Math.max(8, Math.abs(point.value) / maximum * 100)}%` }} title={`${point.date}: ${point.value} ${item.unit}`} />)}</div><div className="test-card-meta"><span>{item.grip || 'Presa n/d'}</span>{item.normalized !== null && <span>{item.normalized.toLocaleString('it-IT', { maximumFractionDigits: 2 })} Ã— BW</span>}<span>{item.reason ?? `${history.length} rilevazioni`}</span></div></Panel> })}
-      {asymmetries.map(item => <Panel className="asymmetry" title={`Asimmetria Â· ${item.label}`} index="Î”" key={item.key}><div className="asymmetry__value">{item.percent.toLocaleString('it-IT', { maximumFractionDigits: 1 })}<span>%</span></div><div className="asymmetry__track"><i style={{ left: `${Math.min(100, item.percent * 5)}%` }} /></div><p>{item.weakerSide === 'Bilanciato' ? 'Valori bilanciati.' : `Lato piÃ¹ debole: ${item.weakerSide}.`} {item.percent <= 7 ? 'Entro la soglia operativa del 7%.' : 'Sopra la soglia operativa del 7%.'}</p><Tag tone={item.percent <= 7 ? 'success' : 'warning'}>{item.percent <= 7 ? 'Bilanciato' : 'Da monitorare'}</Tag></Panel>)}
+      {comparisons.map((item, index) => { const history = data ? metricHistory(data, athleteId, item.key) : []; const maximum = Math.max(...history.map(point => Math.abs(point.value)), 1); return <Panel className="test-metric-card" title={`${item.label}${item.side ? ` · ${item.side === 'right' ? 'DX' : item.side === 'left' ? 'SX' : 'BI'}` : ''}`} index={String(index + 1).padStart(2, '0')} action={<Tag tone={item.comparable ? 'success' : 'warning'}>{item.comparable ? 'Coerente' : 'Non confrontabile'}</Tag>} key={item.key}><div className="test-current"><strong>{item.latest.toLocaleString('it-IT', { maximumFractionDigits: 2 })}<small> {item.unit}</small></strong>{item.delta !== null && <span className={item.delta >= 0 ? 'positive' : 'negative'}>{item.delta >= 0 ? '+' : ''}{item.delta.toLocaleString('it-IT', { maximumFractionDigits: 2 })} · {item.percent?.toLocaleString('it-IT', { maximumFractionDigits: 1 })}%</span>}</div><div className="test-trend" aria-label={`Storico ${item.label}`}>{history.map(point => <i key={point.date} style={{ height: `${Math.max(8, Math.abs(point.value) / maximum * 100)}%` }} title={`${point.date}: ${point.value} ${item.unit}`} />)}</div><div className="test-card-meta"><span>{item.grip || 'Presa n/d'}</span>{item.normalized !== null && <span>{item.normalized.toLocaleString('it-IT', { maximumFractionDigits: 2 })} × BW</span>}<span>{item.reason ?? `${history.length} rilevazioni`}</span></div></Panel> })}
+      {asymmetries.map(item => <Panel className="asymmetry" title={`Asimmetria · ${item.label}`} index="Δ" key={item.key}><div className="asymmetry__value">{item.percent.toLocaleString('it-IT', { maximumFractionDigits: 1 })}<span>%</span></div><div className="asymmetry__track"><i style={{ left: `${Math.min(100, item.percent * 5)}%` }} /></div><p>{item.weakerSide === 'Bilanciato' ? 'Valori bilanciati.' : `Lato più debole: ${item.weakerSide}.`} {item.percent <= 7 ? 'Entro la soglia operativa del 7%.' : 'Sopra la soglia operativa del 7%.'}</p><Tag tone={item.percent <= 7 ? 'success' : 'warning'}>{item.percent <= 7 ? 'Bilanciato' : 'Da monitorare'}</Tag></Panel>)}
     </div>}
-    {!!athleteSessions.length && <Panel title="Storico test" index="H"><div className="test-history"><div><b>Data</b><b>Protocollo</b><b>Peso</b><b>Misure</b><b>Note</b><b>Azioni</b></div>{athleteSessions.map(session => <div key={session.id}><span>{new Intl.DateTimeFormat('it-IT', { dateStyle: 'medium' }).format(new Date(`${session.testedAt}T12:00:00`))}</span><span>{session.protocolVersion || 'Non indicato'}</span><span>{session.bodyWeightKg ? `${session.bodyWeightKg.toLocaleString('it-IT')} kg` : 'â€”'}</span><span>{data?.results.filter(result => result.testSessionId === session.id).length ?? 0}</span><span>{session.notes || 'â€”'}</span><button className="test-delete-button" disabled={state === 'saving'} onClick={() => setDeleteTarget(session)}><Trash2 size={14} /> Elimina</button></div>)}</div></Panel>}
+    {!!athleteSessions.length && <Panel title="Storico test" index="H"><div className="test-history"><div><b>Data</b><b>Protocollo</b><b>Peso</b><b>Misure</b><b>Note</b><b>Azioni</b></div>{athleteSessions.map(session => <div key={session.id}><span>{new Intl.DateTimeFormat('it-IT', { dateStyle: 'medium' }).format(new Date(`${session.testedAt}T12:00:00`))}</span><span>{session.protocolVersion || 'Non indicato'}</span><span>{session.bodyWeightKg ? `${session.bodyWeightKg.toLocaleString('it-IT')} kg` : '—'}</span><span>{data?.results.filter(result => result.testSessionId === session.id).length ?? 0}</span><span>{session.notes || '—'}</span><button className="test-delete-button" disabled={state === 'saving'} onClick={() => setDeleteTarget(session)}><Trash2 size={14} /> Elimina</button></div>)}</div></Panel>}
     {deleteTarget && <ConfirmDialog title={`Eliminare il test del ${new Intl.DateTimeFormat('it-IT', { dateStyle: 'long' }).format(new Date(`${deleteTarget.testedAt}T12:00:00`))}?`} text={`Verranno eliminati definitivamente la rilevazione e le sue ${data?.results.filter(result => result.testSessionId === deleteTarget.id).length ?? 0} misure. Gli altri test, gli atleti e gli allenamenti non saranno modificati.`} confirmLabel="Elimina test" busy={state === 'saving'} onCancel={() => setDeleteTarget(null)} onConfirm={() => void removeTest()} />}
   </div>
 }
@@ -1065,24 +1065,24 @@ function MigrationScreen() {
     setChecking(false)
   }
   const stages = [
-    { icon: Save, label: 'Snapshot', copy: '46 tabelle Â· 430 righe Â· checksum', state: 'Verificato' },
+    { icon: Save, label: 'Snapshot', copy: '46 tabelle · 430 righe · checksum', state: 'Verificato' },
     { icon: ShieldCheck, label: 'Inventario', copy: 'Relazioni, RLS, log e test mappati', state: 'Completo' },
     { icon: Layers3, label: 'Evolvi V1', copy: 'Upgrade additivo sul database esistente', state: 'Autorizzato' },
     { icon: Check, label: 'Riconcilia', copy: 'Conteggi e checksum dopo ogni passaggio', state: 'Bloccante' },
   ]
   return (
     <div className="screen">
-      <ScreenHeader eyebrow="CONTINUITÃ€ DATI / UPGRADE IN-PLACE" title="La V1 diventa V2 senza perdere la memoria." text="Possiamo modificare direttamente la V1. Ogni passaggio parte dallo snapshot, resta additivo e si chiude confrontando atleti, allenamenti eseguiti, esercizi e test." action={<Tag tone="success">Snapshot verificato</Tag>} />
+      <ScreenHeader eyebrow="CONTINUITÀ DATI / UPGRADE IN-PLACE" title="La V1 diventa V2 senza perdere la memoria." text="Possiamo modificare direttamente la V1. Ogni passaggio parte dallo snapshot, resta additivo e si chiude confrontando atleti, allenamenti eseguiti, esercizi e test." action={<Tag tone="success">Snapshot verificato</Tag>} />
       <div className="migration-pipeline">
         {stages.map((stage, index) => { const Icon = stage.icon; return <div className="pipeline-stage" key={stage.label}><span className="pipeline-stage__index">0{index + 1}</span><Icon size={23} /><b>{stage.label}</b><p>{stage.copy}</p><Tag tone={index < 2 ? 'success' : index === 2 ? 'purple' : 'signal'}>{stage.state}</Tag></div> })}
       </div>
-      <Panel className="import-panel" title="Prova un backup V1" index="00" action={<Tag tone={report?.valid ? 'success' : 'neutral'}>{checking ? 'Controlloâ€¦' : report?.valid ? 'Valido' : 'Solo lettura'}</Tag>}>
+      <Panel className="import-panel" title="Prova un backup V1" index="00" action={<Tag tone={report?.valid ? 'success' : 'neutral'}>{checking ? 'Controllo…' : report?.valid ? 'Valido' : 'Solo lettura'}</Tag>}>
         <div className="import-zone">
-          <div className="import-zone__copy"><Upload size={24} /><div><b>Seleziona lâ€™export JSON della V1</b><p>Il file viene analizzato su questo dispositivo. Nessun dato viene caricato o salvato.</p></div></div>
-          <label className="button button--signal import-button"><input type="file" accept="application/json,.json" onChange={inspectFile} />{checking ? 'Analisiâ€¦' : 'Scegli file'}</label>
+          <div className="import-zone__copy"><Upload size={24} /><div><b>Seleziona l’export JSON della V1</b><p>Il file viene analizzato su questo dispositivo. Nessun dato viene caricato o salvato.</p></div></div>
+          <label className="button button--signal import-button"><input type="file" accept="application/json,.json" onChange={inspectFile} />{checking ? 'Analisi…' : 'Scegli file'}</label>
         </div>
         {report && <div className={`import-result ${report.valid ? 'is-valid' : 'is-error'}`}>
-          <div className="import-result__head"><FileCheck2 size={20} /><div><b>{report.fileName}</b><span>V{report.version} Â· checksum {report.checksum?.slice(0, 12) ?? 'non disponibile'}â€¦</span></div><Tag tone={report.valid ? 'success' : 'warning'}>{report.valid ? 'Struttura valida' : 'Da correggere'}</Tag></div>
+          <div className="import-result__head"><FileCheck2 size={20} /><div><b>{report.fileName}</b><span>V{report.version} · checksum {report.checksum?.slice(0, 12) ?? 'non disponibile'}…</span></div><Tag tone={report.valid ? 'success' : 'warning'}>{report.valid ? 'Struttura valida' : 'Da correggere'}</Tag></div>
           <div className="import-counts">{Object.entries(report.counts).map(([label, value]) => <div key={label}><strong>{value}</strong><span>{label}</span></div>)}</div>
           {[...report.errors, ...report.warnings].map(message => <p className="import-message" key={message}>{message}</p>)}
           <div className="zero-write"><ShieldCheck size={15} /> Scritture eseguite: {report.writesPerformed}</div>
@@ -1097,7 +1097,7 @@ function MigrationScreen() {
         </Panel>
         <Panel title="Gate di cutover" index="02">
           <div className="gate-score"><span>READINESS</span><strong>05<small>/06</small></strong></div>
-          <ul className="check-list"><li><Check size={15} /> Snapshot cloud con checksum</li><li><Check size={15} /> Cronologia migration V1 acquisita</li><li><Check size={15} /> Mapping entitÃ  e FK verificato</li><li><Check size={15} /> Frontend collegato con chiave pubblicabile</li><li><Check size={15} /> Upgrade in-place autorizzato</li><li className="pending"><MoreHorizontal size={15} /> Export localStorage dei dispositivi</li></ul>
+          <ul className="check-list"><li><Check size={15} /> Snapshot cloud con checksum</li><li><Check size={15} /> Cronologia migration V1 acquisita</li><li><Check size={15} /> Mapping entità e FK verificato</li><li><Check size={15} /> Frontend collegato con chiave pubblicabile</li><li><Check size={15} /> Upgrade in-place autorizzato</li><li className="pending"><MoreHorizontal size={15} /> Export localStorage dei dispositivi</li></ul>
         </Panel>
       </div>
       <Panel title="Mappa di trasformazione" index="03">
@@ -1106,10 +1106,10 @@ function MigrationScreen() {
           ['session_logs', 'snapshot + checksum', 'session_logs', 'allenamenti svolti intatti'],
           ['exercise_logs.actual', 'snapshot JSONB', 'exercise_logs.actual', 'payload e precisione invariati'],
           ['test_results', 'snapshot + vista storico', 'test_results', 'protocollo, lato e setup intatti'],
-          ['localStorage V1', 'export per dispositivo', 'import idempotente', 'nessuna pulizia prima dellâ€™import'],
+          ['localStorage V1', 'export per dispositivo', 'import idempotente', 'nessuna pulizia prima dell’import'],
         ].map(row => <div key={row[0]}>{row.map(cell => <span key={cell}>{cell}</span>)}</div>)}</div>
       </Panel>
-      <div className="safety-note"><ShieldCheck size={22} /><div><b>Regola non negoziabile</b><p>La V1 si puÃ² evolvere e puÃ² restare offline durante i lavori. Non si cancellano nÃ© si sovrascrivono dati atleta, allenamenti svolti, log esercizi o storico test senza snapshot, verifica e riconciliazione.</p></div></div>
+      <div className="safety-note"><ShieldCheck size={22} /><div><b>Regola non negoziabile</b><p>La V1 si può evolvere e può restare offline durante i lavori. Non si cancellano né si sovrascrivono dati atleta, allenamenti svolti, log esercizi o storico test senza snapshot, verifica e riconciliazione.</p></div></div>
     </div>
   )
 }
@@ -1139,12 +1139,12 @@ function AccountSecurityScreen({ profile }: { profile: AppProfile }) {
 
   const submitCoachLink = async (event: FormEvent) => {
     event.preventDefault(); setError(''); setLinkMessage(''); setState('saving')
-    try { const result = await requestCoachLink(profile, coachEmail); setLinkMessage(result === 'active' ? 'Sei giÃ  collegato a questo coach.' : 'Richiesta inviata. Il collegamento sarÃ  attivo dopo lâ€™accettazione del coach.'); setCoachEmail('') }
+    try { const result = await requestCoachLink(profile, coachEmail); setLinkMessage(result === 'active' ? 'Sei già collegato a questo coach.' : 'Richiesta inviata. Il collegamento sarà attivo dopo l’accettazione del coach.'); setCoachEmail('') }
     catch (reason) { setError(reason instanceof Error ? reason.message : 'Richiesta non inviata.') } finally { setState('idle') }
   }
 
   return <div className="screen account-screen">
-    <ScreenHeader eyebrow="ACCOUNT / SICUREZZA" title="Accedi da ogni dispositivo." text="La tua email Ã¨ il nome utente. Crea una password personale: lâ€™account e tutti i dati giÃ  presenti restano gli stessi." action={<Tag tone="success">Account protetto</Tag>} />
+    <ScreenHeader eyebrow="ACCOUNT / SICUREZZA" title="Accedi da ogni dispositivo." text="La tua email è il nome utente. Crea una password personale: l’account e tutti i dati già presenti restano gli stessi." action={<Tag tone="success">Account protetto</Tag>} />
     <div className="grid grid--2-1">
       <Panel title="Imposta password" index="01">
         <form className="account-password-form" onSubmit={submit}>
@@ -1152,15 +1152,15 @@ function AccountSecurityScreen({ profile }: { profile: AppProfile }) {
           <label><span>Nuova password</span><div className="auth-input"><KeyRound size={17} /><input type="password" autoComplete="new-password" value={password} onChange={event => setNewPassword(event.target.value)} placeholder="Almeno 8 caratteri" required /></div></label>
           <label><span>Ripeti password</span><div className="auth-input"><KeyRound size={17} /><input type="password" autoComplete="new-password" value={confirmation} onChange={event => setConfirmation(event.target.value)} placeholder="Ripeti la password" required /></div></label>
           {error && <p className="form-error form-error--box" role="alert">{error}</p>}
-          <button className="button button--signal button--wide" disabled={state === 'saving'}><ShieldCheck size={17} /> {state === 'saving' ? 'Salvataggioâ€¦' : 'Salva password'}</button>
+          <button className="button button--signal button--wide" disabled={state === 'saving'}><ShieldCheck size={17} /> {state === 'saving' ? 'Salvataggio…' : 'Salva password'}</button>
         </form>
         {state === 'saved' && <div className="completion-banner"><Check size={19} /><div><b>Password attiva</b><span>Ora puoi accedere da telefono, tablet o altro computer usando email e password.</span></div></div>}
       </Panel>
       <Panel title="Come funziona" index="02">
-        <ol className="account-steps"><li><b>01</b><span>Imposta qui la password una sola volta.</span></li><li><b>02</b><span>Esci dallâ€™app quando vuoi cambiare account.</span></li><li><b>03</b><span>Su ogni dispositivo usa la stessa email e la password scelta.</span></li></ol>
+        <ol className="account-steps"><li><b>01</b><span>Imposta qui la password una sola volta.</span></li><li><b>02</b><span>Esci dall’app quando vuoi cambiare account.</span></li><li><b>03</b><span>Su ogni dispositivo usa la stessa email e la password scelta.</span></li></ol>
         <div className="safety-note"><ShieldCheck size={20} /><div><b>Nessuna migrazione account</b><p>Non viene creato un nuovo utente: cambiamo soltanto il metodo di accesso allo stesso profilo Supabase.</p></div></div>
       </Panel>
-      {profile.capabilities.canAccessAthleteArea && <Panel title="Collegati a un coach" index="03"><form className="account-password-form" onSubmit={submitCoachLink}><label><span>Email del coach</span><div className="auth-input"><Mail size={17} /><input type="email" value={coachEmail} onChange={event => setCoachEmail(event.target.value)} placeholder="coach@email.it" required /></div></label><p>Il coach dovrÃ  accettare la richiesta prima di vedere e gestire i tuoi dati.</p><button className="button button--secondary button--wide" disabled={state === 'saving'}>Invia richiesta</button></form>{linkMessage && <div className="completion-banner"><Check size={19} /><div><b>Richiesta registrata</b><span>{linkMessage}</span></div></div>}</Panel>}
+      {profile.capabilities.canAccessAthleteArea && <Panel title="Collegati a un coach" index="03"><form className="account-password-form" onSubmit={submitCoachLink}><label><span>Email del coach</span><div className="auth-input"><Mail size={17} /><input type="email" value={coachEmail} onChange={event => setCoachEmail(event.target.value)} placeholder="coach@email.it" required /></div></label><p>Il coach dovrà accettare la richiesta prima di vedere e gestire i tuoi dati.</p><button className="button button--secondary button--wide" disabled={state === 'saving'}>Invia richiesta</button></form>{linkMessage && <div className="completion-banner"><Check size={19} /><div><b>Richiesta registrata</b><span>{linkMessage}</span></div></div>}</Panel>}
     </div>
   </div>
 }
@@ -1225,7 +1225,7 @@ export default function App({ profile, onSignOut, initialMode }: { profile: AppP
     if (!modes.includes(next)) return
     setMode(next); setView(next === 'coach' ? 'dashboard' : 'home'); setMenuOpen(false)
     routeNavigate(`/app/${next}`)
-    try { window.localStorage.setItem(`cc-mode:${profile.userId}`, next) } catch { /* Storage puÃ² essere disabilitato. */ }
+    try { window.localStorage.setItem(`cc-mode:${profile.userId}`, next) } catch { /* Storage può essere disabilitato. */ }
   }
 
   useEffect(() => {
@@ -1235,21 +1235,21 @@ export default function App({ profile, onSignOut, initialMode }: { profile: AppP
   }, [initialMode, mode, modes])
 
   useEffect(() => {
-    try { window.localStorage.setItem(viewStorageKey, view) } catch { /* Storage puÃ² essere disabilitato dal browser. */ }
+    try { window.localStorage.setItem(viewStorageKey, view) } catch { /* Storage può essere disabilitato dal browser. */ }
   }, [view, viewStorageKey])
 
   useEffect(() => {
     try {
       if (selectedAthleteId) window.localStorage.setItem(athleteStorageKey, selectedAthleteId)
       else window.localStorage.removeItem(athleteStorageKey)
-    } catch { /* Storage puÃ² essere disabilitato dal browser. */ }
+    } catch { /* Storage può essere disabilitato dal browser. */ }
   }, [athleteStorageKey, selectedAthleteId])
 
   useEffect(() => {
     try {
       if (selectedSessionId) window.localStorage.setItem(sessionStorageKey, selectedSessionId)
       else window.localStorage.removeItem(sessionStorageKey)
-    } catch { /* Storage puÃ² essere disabilitato dal browser. */ }
+    } catch { /* Storage può essere disabilitato dal browser. */ }
   }, [sessionStorageKey, selectedSessionId])
 
   useEffect(() => {
@@ -1294,7 +1294,7 @@ export default function App({ profile, onSignOut, initialMode }: { profile: AppP
     const registration = context.registerTool({
       name: 'start_training_session',
       title: 'Avvia sessione di allenamento',
-      description: 'Apre il runner della sessione assegnata e lo rende visibile nellâ€™app.',
+      description: 'Apre il runner della sessione assegnata e lo rende visibile nell’app.',
       inputSchema: { type: 'object', properties: {}, additionalProperties: false },
       annotations: { readOnlyHint: false, untrustedContentHint: false },
       execute(input) {
@@ -1347,13 +1347,13 @@ export default function App({ profile, onSignOut, initialMode }: { profile: AppP
         <nav aria-label="Navigazione prototipo">
           {groups.map(group => <div className="nav-group" key={group}><small>{group}</small>{roleNavItems.filter(item => item.group === group).map(item => { const Icon = item.icon; return <button key={item.id} className={view === item.id ? 'active' : ''} onClick={() => navigate(item.id)}><Icon size={17} /><span>{item.label}</span><i>{item.id === 'migration' ? '!' : ''}</i></button> })}</div>)}
         </nav>
-        <div className="sidebar__foot"><div><span className={`status-dot ${pendingCount ? 'status-dot--sync' : 'status-dot--ok'}`} /><b>{profile.workspaceName}</b></div><small>{dataRuntime.isConfigured ? 'Supabase collegato' : 'Demo locale'} Â· {pendingCount ? `${pendingCount} modifiche in coda` : 'coda vuota'}</small></div>
+        <div className="sidebar__foot"><div><span className={`status-dot ${pendingCount ? 'status-dot--sync' : 'status-dot--ok'}`} /><b>{profile.workspaceName}</b></div><small>{dataRuntime.isConfigured ? 'Supabase collegato' : 'Demo locale'} · {pendingCount ? `${pendingCount} modifiche in coda` : 'coda vuota'}</small></div>
       </aside>
       <div className="app-main">
         <div className="topbar">
           <button className="menu-button" onClick={() => setMenuOpen(!menuOpen)} aria-label="Apri navigazione"><Menu size={20} /></button>
           <div className="topbar__crumb"><span>CC</span><i>/</i><b>{viewMeta[view].label}</b></div>
-          <div className="topbar__tools">{modes.length > 1 ? <div className="mode-switch" aria-label="ModalitÃ "><button className={mode === 'coach' ? 'active' : ''} onClick={() => changeMode('coach')}>Coach</button><button className={mode === 'athlete' ? 'active' : ''} onClick={() => changeMode('athlete')}>Atleta</button></div> : <span className="role-chip">{mode === 'coach' ? 'Coach' : 'Atleta'}</span>}<button className="sync-chip" onClick={() => void synchronizePending()} disabled={syncing || pendingCount === 0} title="Sincronizza la coda offline"><span className={`status-dot ${pendingCount ? 'status-dot--sync' : 'status-dot--ok'}`} />{syncing ? 'Sincronizzoâ€¦' : pendingCount ? `${pendingCount} in coda` : 'Cloud allineato'}</button><button className="icon-button" aria-label="Ricerca"><Search size={17} /></button><button className="icon-button" aria-label="Account e sicurezza" onClick={() => navigate('account')}><Settings2 size={17} /></button><button className="profile-button" onClick={() => void onSignOut()} title="Esci"><span>{initials}</span><LogOut size={14} /></button></div>
+          <div className="topbar__tools">{modes.length > 1 ? <div className="mode-switch" aria-label="Modalità"><button className={mode === 'coach' ? 'active' : ''} onClick={() => changeMode('coach')}>Coach</button><button className={mode === 'athlete' ? 'active' : ''} onClick={() => changeMode('athlete')}>Atleta</button></div> : <span className="role-chip">{mode === 'coach' ? 'Coach' : 'Atleta'}</span>}<button className="sync-chip" onClick={() => void synchronizePending()} disabled={syncing || pendingCount === 0} title="Sincronizza la coda offline"><span className={`status-dot ${pendingCount ? 'status-dot--sync' : 'status-dot--ok'}`} />{syncing ? 'Sincronizzo…' : pendingCount ? `${pendingCount} in coda` : 'Cloud allineato'}</button><button className="icon-button" aria-label="Ricerca"><Search size={17} /></button><button className="icon-button" aria-label="Account e sicurezza" onClick={() => navigate('account')}><Settings2 size={17} /></button><button className="profile-button" onClick={() => void onSignOut()} title="Esci"><span>{initials}</span><LogOut size={14} /></button></div>
         </div>
         <main><Screen goTo={navigate} goToAthlete={goToAthlete} openAthlete={openAthlete} openSession={openSession} profile={activeProfile} selectedAthleteId={selectedAthleteId} setSelectedAthleteId={setSelectedAthleteId} selectedSessionId={selectedSessionId} /></main>
         <nav className="bottom-nav" aria-label="Navigazione mobile">
