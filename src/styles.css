@@ -366,7 +366,7 @@ textarea { width: calc(100% - 36px); min-height: 76px; padding: 10px; resize: ve
 .history-table { margin: 0 !important; overflow-x: auto; }.history-table > div { min-width: 620px; min-height: 42px; display: grid; grid-template-columns: 1.3fr repeat(4,1fr); align-items: center; padding: 0 18px; border-bottom: 1px solid var(--line); }.history-table > div:first-child { min-height: 32px; background: #eeebe5; color: var(--muted); text-transform: uppercase; font: 600 8px/1 'IBM Plex Mono', monospace; }.history-table span { font: 500 9px/1 'IBM Plex Mono', monospace; }.history-table span:last-child { display: flex; align-items: center; gap: 5px; color: var(--success); }
 
 .migration-pipeline { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 21px; }
-.pipeline-stage { position: relative; min-height: 170px; padding: 17px; border: 1px solid var(--widget-edge); background: var(--surface); box-shadow: var(--widget-shadow); }.pipeline-stage::after { content: 'Ã¢â€ â€™'; position: absolute; right: -15px; top: 50%; z-index: 2; width: 17px; height: 17px; display: grid; place-items: center; background: var(--purple-900); color: #fff; font: 600 10px/1 'IBM Plex Mono', monospace; }.pipeline-stage:last-child::after { display: none; }.pipeline-stage__index { position: absolute; top: 14px; right: 14px; color: var(--line-strong); font: 600 9px/1 'IBM Plex Mono', monospace; }.pipeline-stage > svg { color: var(--purple-700); }.pipeline-stage b { display: block; margin-top: 20px; font-size: 13px; }.pipeline-stage p { min-height: 31px; margin: 6px 0 13px; color: var(--muted); font-size: 9px; line-height: 1.45; }
+.pipeline-stage { position: relative; min-height: 170px; padding: 17px; border: 1px solid var(--widget-edge); background: var(--surface); box-shadow: var(--widget-shadow); }.pipeline-stage::after { content: 'ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢'; position: absolute; right: -15px; top: 50%; z-index: 2; width: 17px; height: 17px; display: grid; place-items: center; background: var(--purple-900); color: #fff; font: 600 10px/1 'IBM Plex Mono', monospace; }.pipeline-stage:last-child::after { display: none; }.pipeline-stage__index { position: absolute; top: 14px; right: 14px; color: var(--line-strong); font: 600 9px/1 'IBM Plex Mono', monospace; }.pipeline-stage > svg { color: var(--purple-700); }.pipeline-stage b { display: block; margin-top: 20px; font-size: 13px; }.pipeline-stage p { min-height: 31px; margin: 6px 0 13px; color: var(--muted); font-size: 9px; line-height: 1.45; }
 .import-panel::before { background: var(--mustard-500); }
 .import-zone { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 4px 0 18px; }
 .import-zone__copy { display: grid; grid-template-columns: 28px 1fr; gap: 12px; align-items: start; }.import-zone__copy > svg { color: var(--purple-700); }.import-zone__copy b { font-size: 14px; }.import-zone__copy p { margin: 5px 0 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
@@ -623,5 +623,166 @@ textarea { width: calc(100% - 36px); min-height: 76px; padding: 10px; resize: ve
   .athlete-block-select select {
     min-height: 46px;
     font-size: 12px;
+  }
+}
+/* TYPOGRAPHY READABILITY PASS
+   Aumenta la leggibilità senza alterare i titoli principali. */
+
+body {
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+/* navigazione */
+.sidebar nav button span {
+  font-size: 14px;
+}
+
+.nav-group > small {
+  font-size: 10px;
+}
+
+.topbar__crumb {
+  font-size: 12px;
+}
+
+.role-chip {
+  font-size: 11px;
+}
+
+/* intestazioni e testi descrittivi */
+.eyebrow {
+  font-size: 11px;
+}
+
+.screen-head p {
+  font-size: 15px;
+}
+
+/* pannelli */
+.panel__title {
+  font-size: 12px;
+}
+
+.tag {
+  font-size: 10px;
+  min-height: 24px;
+}
+
+/* pulsanti */
+.button {
+  font-size: 13px;
+}
+
+.text-button {
+  font-size: 12px;
+}
+
+/* metriche */
+.metric__label {
+  font-size: 11px;
+}
+
+/* home atleta */
+.readiness-strip p {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.readiness-strip span {
+  font-size: 10px;
+}
+
+.session-hero__title small {
+  font-size: 11px;
+}
+
+.session-facts {
+  font-size: 12px;
+}
+
+.week-days span {
+  font-size: 11px;
+}
+
+.week-days b {
+  font-size: 13px;
+}
+
+.muted-copy {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.trend-panel b {
+  font-size: 14px;
+}
+
+.trend-panel p {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.component-row .button {
+  font-size: 13px;
+}
+
+/* selezione blocco */
+.athlete-block-select > span {
+  font-size: 11px;
+}
+
+.athlete-block-select select {
+  font-size: 13px;
+}
+
+/* form */
+input,
+select,
+textarea {
+  font-size: 16px;
+}
+
+/* smartphone */
+@media (max-width: 560px) {
+
+  body {
+    font-size: 16px;
+  }
+
+  .panel__title {
+    font-size: 12px;
+  }
+
+  .button {
+    font-size: 14px;
+  }
+
+  .tag {
+    font-size: 10px;
+  }
+
+  .readiness-strip p {
+    font-size: 14px;
+  }
+
+  .session-facts {
+    font-size: 13px;
+  }
+
+  .muted-copy {
+    font-size: 13px;
+  }
+
+  .trend-panel p {
+    font-size: 13px;
+  }
+
+  .athlete-block-select > span {
+    font-size: 12px;
+  }
+
+  .athlete-block-select select {
+    font-size: 14px;
   }
 }
