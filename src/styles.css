@@ -366,7 +366,7 @@ textarea { width: calc(100% - 36px); min-height: 76px; padding: 10px; resize: ve
 .history-table { margin: 0 !important; overflow-x: auto; }.history-table > div { min-width: 620px; min-height: 42px; display: grid; grid-template-columns: 1.3fr repeat(4,1fr); align-items: center; padding: 0 18px; border-bottom: 1px solid var(--line); }.history-table > div:first-child { min-height: 32px; background: #eeebe5; color: var(--muted); text-transform: uppercase; font: 600 8px/1 'IBM Plex Mono', monospace; }.history-table span { font: 500 9px/1 'IBM Plex Mono', monospace; }.history-table span:last-child { display: flex; align-items: center; gap: 5px; color: var(--success); }
 
 .migration-pipeline { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 21px; }
-.pipeline-stage { position: relative; min-height: 170px; padding: 17px; border: 1px solid var(--widget-edge); background: var(--surface); box-shadow: var(--widget-shadow); }.pipeline-stage::after { content: '→'; position: absolute; right: -15px; top: 50%; z-index: 2; width: 17px; height: 17px; display: grid; place-items: center; background: var(--purple-900); color: #fff; font: 600 10px/1 'IBM Plex Mono', monospace; }.pipeline-stage:last-child::after { display: none; }.pipeline-stage__index { position: absolute; top: 14px; right: 14px; color: var(--line-strong); font: 600 9px/1 'IBM Plex Mono', monospace; }.pipeline-stage > svg { color: var(--purple-700); }.pipeline-stage b { display: block; margin-top: 20px; font-size: 13px; }.pipeline-stage p { min-height: 31px; margin: 6px 0 13px; color: var(--muted); font-size: 9px; line-height: 1.45; }
+.pipeline-stage { position: relative; min-height: 170px; padding: 17px; border: 1px solid var(--widget-edge); background: var(--surface); box-shadow: var(--widget-shadow); }.pipeline-stage::after { content: 'â†’'; position: absolute; right: -15px; top: 50%; z-index: 2; width: 17px; height: 17px; display: grid; place-items: center; background: var(--purple-900); color: #fff; font: 600 10px/1 'IBM Plex Mono', monospace; }.pipeline-stage:last-child::after { display: none; }.pipeline-stage__index { position: absolute; top: 14px; right: 14px; color: var(--line-strong); font: 600 9px/1 'IBM Plex Mono', monospace; }.pipeline-stage > svg { color: var(--purple-700); }.pipeline-stage b { display: block; margin-top: 20px; font-size: 13px; }.pipeline-stage p { min-height: 31px; margin: 6px 0 13px; color: var(--muted); font-size: 9px; line-height: 1.45; }
 .import-panel::before { background: var(--mustard-500); }
 .import-zone { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 4px 0 18px; }
 .import-zone__copy { display: grid; grid-template-columns: 28px 1fr; gap: 12px; align-items: start; }.import-zone__copy > svg { color: var(--purple-700); }.import-zone__copy b { font-size: 14px; }.import-zone__copy p { margin: 5px 0 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
@@ -515,7 +515,7 @@ textarea { width: calc(100% - 36px); min-height: 76px; padding: 10px; resize: ve
    Le barre e i pulsanti delle sessioni condividono
    esattamente larghezza, gap e punto di partenza. */
 .trend-panel + .component-row {
-  margin-left: 218px;
+  margin-left: 236px;
   display: flex;
   flex-wrap: nowrap;
   gap: 5px;
@@ -539,5 +539,40 @@ textarea { width: calc(100% - 36px); min-height: 76px; padding: 10px; resize: ve
 @media (max-width: 560px) {
   .trend-panel + .component-row {
     margin-left: 0;
+  }
+}
+
+/* MOBILE WEEK NAV FIX */
+@media (max-width: 560px) {
+  .session-hero + .panel .panel__head {
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .session-hero + .panel .panel__title {
+    flex: 1 1 100%;
+  }
+
+  .session-hero + .panel .header-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .session-hero + .panel .header-actions .icon-button {
+    width: 44px;
+    height: 40px;
+    display: inline-grid !important;
+  }
+
+  .session-hero + .panel .header-actions .tag {
+    width: 100%;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 }
