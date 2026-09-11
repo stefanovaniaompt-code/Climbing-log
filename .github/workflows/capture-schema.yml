@@ -41,7 +41,7 @@ jobs:
         run: |
           supabase db dump \
             --db-url "$SUPABASE_DB_URL" \
-            --schema public \
+            --schema public,private \
             -f production_public_schema.sql
 
       - name: Verify no row data was dumped
@@ -86,3 +86,4 @@ jobs:
           path: production_public_schema.sql
           if-no-files-found: error
           retention-days: 1
+
