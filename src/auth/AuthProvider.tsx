@@ -23,6 +23,12 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
+function appUrl(path: string) {
+  const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`
+  const cleanPath = path.replace(/^\//, '')
+  return new URL(`${base}${cleanPath}`, window.location.origin).toString()
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null)
   const [loading, setLoading] = useState(dataRuntime.isConfigured)
@@ -65,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async requestPasswordReset(email) {
       if (!supabase) throw new Error('Supabase non è ancora configurato.')
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/recovery`,
+        redirectTo: appUrl('/auth/recovery'),
       })
       if (error) throw error
     },
@@ -75,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email,
         options: {
           shouldCreateUser: createAccount,
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: appUrl('/auth/callback'),
         },
       })
       if (error) throw error

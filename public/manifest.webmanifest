@@ -1,11 +1,11 @@
 {
-  "id": "/",
+  "id": "./",
   "name": "Climbing Coach",
   "short_name": "Climbing Coach",
   "description": "Programmi, sessioni e test per atleti e coach di arrampicata.",
   "lang": "it",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone"],
   "orientation": "any",
@@ -13,19 +13,19 @@
   "theme_color": "#3f1655",
   "icons": [
     {
-      "src": "/icon-192.png",
+      "src": "icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-512.png",
+      "src": "icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-maskable-512.png",
+      "src": "icon-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

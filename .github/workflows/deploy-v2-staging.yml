@@ -1,0 +1,62 @@
+name: deploy-v2-staging
+
+on:
+  push:
+    branches:
+      - v2-react
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-v2-staging
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build React V2 staging
+        env:
+          VITE_BASE_PATH: /Climbing-log/
+          VITE_SUPABASE_URL: https://xkymrvalnydxeamrajqs.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_YH6-gBiNDVAarLxMkLFFSw_056xeSKK
+          VITE_BACKEND_SCHEMA: legacy-v1
+        run: pnpm build
+
+      - name: Add SPA fallback for GitHub Pages
+        run: cp dist/index.html dist/404.html
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy staging to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

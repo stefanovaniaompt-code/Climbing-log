@@ -1,12 +1,16 @@
-const CACHE_NAME = 'climbing-coach-shell-v1'
+const CACHE_NAME = 'climbing-coach-shell-v2'
+
+const BASE_URL = new URL('./', self.registration.scope).pathname
+const appPath = path => `${BASE_URL}${path}`
+
 const APP_SHELL = [
-  '/',
-  '/index.html',
-  '/manifest.webmanifest',
-  '/icon-180.png',
-  '/icon-192.png',
-  '/icon-512.png',
-  '/icon-maskable-512.png',
+  BASE_URL,
+  appPath('index.html'),
+  appPath('manifest.webmanifest'),
+  appPath('icon-180.png'),
+  appPath('icon-192.png'),
+  appPath('icon-512.png'),
+  appPath('icon-maskable-512.png'),
 ]
 
 self.addEventListener('install', event => {
@@ -38,11 +42,11 @@ self.addEventListener('fetch', event => {
         .then(response => {
           if (response.ok) {
             const copy = response.clone()
-            caches.open(CACHE_NAME).then(cache => cache.put('/index.html', copy))
+            caches.open(CACHE_NAME).then(cache => cache.put(appPath('index.html'), copy))
           }
           return response
         })
-        .catch(() => caches.match('/index.html')),
+        .catch(() => caches.match(appPath('index.html'))),
     )
     return
   }
