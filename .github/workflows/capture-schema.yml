@@ -1,4 +1,4 @@
-﻿name: capture-production-schema
+name: capture-production-schema
 
 on:
   push:

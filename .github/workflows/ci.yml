@@ -1,4 +1,4 @@
-﻿name: quality
+name: quality
 
 on:
   push:
