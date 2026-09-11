@@ -1,0 +1,80 @@
+﻿name: capture-production-schema
+
+on:
+  push:
+    branches:
+      - v2-react
+    paths:
+      - ".github/workflows/capture-schema.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.116.0
+
+      - name: Build database connection URL
+        shell: bash
+        env:
+          DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          ENCODED_PASSWORD="$(python3 - <<'PY'
+          import os
+          import urllib.parse
+          print(urllib.parse.quote(os.environ["DB_PASSWORD"], safe=""))
+          PY
+          )"
+
+          echo "SUPABASE_DB_URL=postgresql://postgres.xkymrvalnydxeamrajqs:${ENCODED_PASSWORD}@aws-0-eu-west-1.pooler.supabase.com:5432/postgres" >> "$GITHUB_ENV"
+
+      - name: Dump public schema only
+        shell: bash
+        run: |
+          supabase db dump \
+            --db-url "$SUPABASE_DB_URL" \
+            --schema public \
+            -f production_public_schema.sql
+
+      - name: Verify no row data was dumped
+        shell: bash
+        run: |
+          if grep -Eq '^[[:space:]]*(INSERT INTO|COPY[[:space:]].*FROM stdin;)' production_public_schema.sql; then
+            echo "ERROR: row-data statements found."
+            exit 1
+          fi
+
+          echo "Schema-only dump confirmed."
+          echo "CREATE TABLE: $(grep -c 'CREATE TABLE' production_public_schema.sql || true)"
+          echo "CREATE FUNCTION: $(grep -c 'CREATE FUNCTION' production_public_schema.sql || true)"
+          echo "CREATE POLICY: $(grep -c 'CREATE POLICY' production_public_schema.sql || true)"
+
+      - name: Verify key production tables
+        shell: bash
+        run: |
+          for table in \
+            profiles \
+            athletes \
+            programs \
+            training_weeks \
+            sessions \
+            test_library \
+            test_plans \
+            test_plan_items \
+            athlete_invitations
+          do
+            if ! grep -Eqi "CREATE TABLE( IF NOT EXISTS)? (\"?public\"?\.)?\"?${table}\"?" production_public_schema.sql; then
+              echo "ERROR: expected table missing: $table"
+              exit 1
+            fi
+          done
+
+          echo "All key production tables are present."
