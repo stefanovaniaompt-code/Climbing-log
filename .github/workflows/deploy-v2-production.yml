@@ -3,7 +3,7 @@ name: deploy-v2-production
 on:
   push:
     branches:
-      - v2-finalization
+      - main
   workflow_dispatch:
 
 permissions:
