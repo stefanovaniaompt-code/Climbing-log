@@ -209,12 +209,35 @@ export class LiveTestRuntime {
           ) {
             this.publish()
           }
+
+          if (
+            event.type === 'connection' &&
+            (
+              event.state === 'error' ||
+              event.state === 'disconnected'
+            ) &&
+            this.isAcquiring
+          ) {
+            void this.interruptAcquisition(
+              'disconnect',
+            ).catch(
+              () => undefined,
+            )
+          }
         },
       )
   }
 
   get deviceKind() {
     return this.device.kind
+  }
+
+  get isAcquiring() {
+    return Boolean(
+      this.acquisition &&
+      this.runnerState.phase ===
+        'acquiring',
+    )
   }
 
   get snapshot():
@@ -538,6 +561,26 @@ export class LiveTestRuntime {
     this.publish()
 
     return result
+  }
+
+  async interruptAcquisition(
+    qualityFlag:
+      | 'disconnect'
+      | 'app-background',
+  ) {
+    if (
+      !this.acquisition ||
+      this.runnerState.phase !==
+        'acquiring'
+    ) {
+      return null
+    }
+
+    this.acquisition.addQualityFlag(
+      qualityFlag,
+    )
+
+    return this.stopAcquisition()
   }
 
   selectAttempt(
