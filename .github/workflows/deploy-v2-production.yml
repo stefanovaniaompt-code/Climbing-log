@@ -1,4 +1,4 @@
-name: deploy-v2-staging
+name: deploy-v2-production
 
 on:
   push:
@@ -12,7 +12,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages-v2-staging
+  group: pages-v2-production
   cancel-in-progress: true
 
 jobs:
@@ -34,9 +34,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build V2 preview
+      - name: Full V2 release gate
+        run: pnpm check
+
+      - name: Build V2 production
         env:
           VITE_BASE_PATH: /Climbing-log/
+          VITE_SUPABASE_URL: https://xkymrvalnydxeamrajqs.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_YH6-gBiNDVAarLxMkLFFSw_056xeSKK
           VITE_BACKEND_SCHEMA: legacy-v1
         run: pnpm build
 
@@ -58,6 +63,6 @@ jobs:
     needs: build
 
     steps:
-      - name: Deploy V2 preview
+      - name: Deploy V2 production
         id: deployment
         uses: actions/deploy-pages@v4
