@@ -1141,3 +1141,218 @@ textarea {
     flex-basis: 54px;
   }
 }
+
+/* Remote manual tests ----------------------------------------------------- */
+
+.remote-tests {
+  display: grid;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.remote-tests__heading,
+.remote-tests__actions,
+.remote-assignment__progress,
+.remote-assignment__item > header,
+.remote-test-builder__item,
+.remote-assignment__coach-list > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.remote-tests__heading {
+  justify-content: space-between;
+}
+
+.remote-tests__heading small,
+.remote-assignment__item header small {
+  letter-spacing: .12em;
+  opacity: .62;
+}
+
+.remote-tests__heading h3,
+.remote-assignment__item h4 {
+  margin: 2px 0 0;
+}
+
+.remote-tests__notice,
+.remote-tests__empty {
+  border: 1px solid var(--border);
+  padding: 12px 14px;
+}
+
+.remote-tests__notice--error {
+  border-style: dashed;
+}
+
+.remote-tests__empty {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  opacity: .72;
+}
+
+.remote-test-builder__controls {
+  display: grid;
+  grid-template-columns: minmax(180px, 2fr) minmax(110px, 1fr) minmax(140px, 1.3fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.remote-test-builder__controls label,
+.remote-assignment__metric-grid label,
+.remote-assignment__notes {
+  display: grid;
+  gap: 6px;
+}
+
+.remote-test-builder__controls label > span,
+.remote-assignment__metric-grid label > span,
+.remote-assignment__notes > span {
+  font-size: .78rem;
+  opacity: .68;
+}
+
+.remote-test-builder__controls input,
+.remote-test-builder__controls select,
+.remote-assignment__metric-input input,
+.remote-assignment__notes textarea {
+  width: 100%;
+}
+
+.remote-test-builder__items,
+.remote-assignment__coach-list,
+.remote-assignment__items {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.remote-test-builder__item,
+.remote-assignment__coach-list > div {
+  justify-content: space-between;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.remote-test-builder__item > div,
+.remote-assignment__coach-list > div > div {
+  display: grid;
+  gap: 2px;
+}
+
+.remote-test-builder__item span,
+.remote-assignment__coach-list span,
+.remote-assignment__item header span {
+  font-size: .82rem;
+  opacity: .65;
+}
+
+.remote-tests__icon-button {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 7px;
+}
+
+.remote-tests__actions {
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.remote-tests__actions--footer {
+  justify-content: flex-end;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+
+.remote-assignment__progress {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.remote-assignment__progress strong {
+  margin-left: auto;
+  font-size: 1.25rem;
+}
+
+.remote-assignment__item {
+  border: 1px solid var(--border);
+  padding: 14px;
+}
+
+.remote-assignment__item > header {
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.remote-assignment__metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.remote-assignment__metric-input {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.remote-assignment__metric-input b {
+  font-size: .8rem;
+  opacity: .65;
+}
+
+.remote-assignment__notes {
+  margin-top: 12px;
+}
+
+.remote-assignment__notes textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
+.remote-assignment__closed {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-weight: 700;
+}
+
+.remote-assignment__hint {
+  display: block;
+  margin-top: 10px;
+  opacity: .68;
+}
+
+@media (max-width: 760px) {
+  .remote-tests__heading {
+    align-items: flex-start;
+  }
+
+  .remote-test-builder__controls {
+    grid-template-columns: 1fr;
+  }
+
+  .remote-assignment__progress strong {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .remote-tests__actions--footer {
+    justify-content: stretch;
+  }
+
+  .remote-tests__actions--footer .button {
+    flex: 1 1 100%;
+  }
+
+  .remote-assignment__metric-grid {
+    grid-template-columns: 1fr;
+  }
+}

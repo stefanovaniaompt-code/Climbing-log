@@ -31,6 +31,7 @@ import {
   deleteTest,
   loadTests,
 } from './testRepository'
+import { RemoteTestPanel } from './RemoteTestPanel'
 import {
   buildRetestInput,
   buildTestPresentation,
@@ -630,15 +631,23 @@ export function TestScreen({
         </div>
       </div>
 
+      <RemoteTestPanel
+        profile={profile}
+        athleteId={athleteId}
+        onHistoryChanged={() => {
+          void refresh()
+        }}
+      />
+
       {profile.role === 'athlete' && (
         <div className="test-readonly-banner">
           <ShieldCheck size={18} />
           <div>
             <b>Vista atleta in sola lettura</b>
             <span>
-              Puoi consultare storico e progressi.
-              Nuove rilevazioni e cancellazioni
-              vengono gestite dal coach.
+              Lo storico resta in sola lettura.
+              Le batterie a distanza assegnate dal coach
+              possono essere compilate direttamente qui.
             </span>
           </div>
         </div>
