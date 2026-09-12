@@ -26,6 +26,18 @@ type LegacyProfileRow = {
   must_change_password: boolean
 }
 
+export function shouldRequireLegacyAthleteOnboarding(
+  role: 'athlete' | 'coach',
+  athleteId: string | null,
+  onboardingCompletedAt: string | null,
+) {
+  return (
+    role === 'athlete' &&
+    Boolean(athleteId) &&
+    !onboardingCompletedAt
+  )
+}
+
 async function loadLegacyProfile(user: AppUser): Promise<AppProfile | null> {
   if (!supabase) return null
   const { data, error } = await supabase
@@ -46,7 +58,22 @@ async function loadLegacyProfile(user: AppUser): Promise<AppProfile | null> {
   if (athleteError) throw athleteError
   const canAccessCoachArea = profile.role === 'coach'
   const canAccessAthleteArea = Boolean(athleteIdentity)
-  if (!canAccessCoachArea && !canAccessAthleteArea) throw new Error('Questo account non ha ancora un’area disponibile.')
+
+  if (!canAccessCoachArea && !canAccessAthleteArea) {
+    throw new Error(
+      'Questo account non ha ancora un’area disponibile.',
+    )
+  }
+
+  if (
+    shouldRequireLegacyAthleteOnboarding(
+      profile.role,
+      athleteIdentity?.id ?? null,
+      profile.onboarding_completed_at,
+    )
+  ) {
+    return null
+  }
   const composedName = [profile.first_name, profile.last_name].filter(Boolean).join(' ').trim()
   const displayName = composedName || profile.full_name?.trim() || user.email.split('@')[0] || 'Atleta'
   let workspaceId = profile.id
@@ -140,15 +167,18 @@ export async function completeOnboarding(user: AppUser, input: OnboardingInput):
     const row = (Array.isArray(data) ? data[0] : data) as { athlete_id: string; coach_id: string; completed_at: string } | null
     if (!row) throw new Error('Invito completato senza una relazione coach valida.')
     return {
-      userId: row.athlete_id,
+      userId: user.id,
       displayName: input.displayName.trim(),
       role: 'athlete',
       athleteId: row.athlete_id,
-      capabilities: { canAccessCoachArea: false, canAccessAthleteArea: true },
+      capabilities: {
+        canAccessCoachArea: false,
+        canAccessAthleteArea: true,
+      },
       workspaceId: row.coach_id,
       workspaceName: 'Programma condiviso',
       onboardingCompletedAt: row.completed_at,
-      mustChangePassword: false,
+      mustChangePassword: true,
     }
   }
 

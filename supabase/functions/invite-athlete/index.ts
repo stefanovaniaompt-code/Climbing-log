@@ -256,13 +256,52 @@ Deno.serve(async (req) => {
       existingInvitation?.status ===
       "accepted"
     ) {
-      return json(
-        {
-          error:
-            "Questo atleta ha gia accettato l invito.",
-        },
-        409,
-      );
+      const {
+        data: acceptedAthlete,
+        error: acceptedAthleteError,
+      } = await admin
+        .from("athletes")
+        .select("user_id")
+        .eq("id", athleteId)
+        .maybeSingle();
+
+      if (acceptedAthleteError) {
+        throw acceptedAthleteError;
+      }
+
+      let onboardingCompleted = false;
+
+      if (acceptedAthlete?.user_id) {
+        const {
+          data: acceptedProfile,
+          error: acceptedProfileError,
+        } = await admin
+          .from("profiles")
+          .select("onboarding_completed_at")
+          .eq(
+            "id",
+            acceptedAthlete.user_id,
+          )
+          .maybeSingle();
+
+        if (acceptedProfileError) {
+          throw acceptedProfileError;
+        }
+
+        onboardingCompleted = Boolean(
+          acceptedProfile?.onboarding_completed_at,
+        );
+      }
+
+      if (onboardingCompleted) {
+        return json(
+          {
+            error:
+              "Questo atleta ha gia completato l invito.",
+          },
+          409,
+        );
+      }
     }
 
     if (
