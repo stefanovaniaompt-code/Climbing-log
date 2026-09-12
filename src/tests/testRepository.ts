@@ -38,15 +38,111 @@ export async function loadTests(profile: AppProfile): Promise<TestData> {
   }
   const athleteIds = athletes.map(athlete => athlete.id)
   if (!athleteIds.length) return { source: 'legacy-v1', athletes, sessions: [], results: [] }
-  const sessionsResult = await supabase!.from('test_sessions').select('id,athlete_id,coach_id,tested_at,created_at,body_weight_kg,protocol_version,context,notes').in('athlete_id', athleteIds).order('tested_at', { ascending: false }).order('created_at', { ascending: false }).limit(200)
+  const sessionsResult = await supabase!.from('test_sessions').select('id,athlete_id,coach_id,tested_at,created_at,body_weight_kg,protocol_version,context,notes,mode,status').in('athlete_id', athleteIds).order('tested_at', { ascending: false }).order('created_at', { ascending: false }).limit(200)
   if (sessionsResult.error) throw sessionsResult.error
   const sessionIds = (sessionsResult.data ?? []).map(row => row.id as string)
-  const resultsResult = sessionIds.length ? await supabase!.from('test_results').select('id,test_session_id,metric_key,metric_label,value,unit,side,grip,normalize_to_body_weight,setup,notes').in('test_session_id', sessionIds) : { data: [], error: null }
+  const resultsResult = sessionIds.length ? await supabase!.from('test_results').select('id,test_session_id,metric_key,metric_label,value,unit,side,grip,normalize_to_body_weight,setup,notes,protocol_key,protocol_version,measurement_source,quality_status,is_primary,measured_at').in('test_session_id', sessionIds) : { data: [], error: null }
   if (resultsResult.error) throw resultsResult.error
   return {
     source: 'legacy-v1', athletes,
-    sessions: (sessionsResult.data ?? []).map(row => ({ id: row.id, athleteId: row.athlete_id, coachId: row.coach_id, testedAt: row.tested_at, createdAt: row.created_at, bodyWeightKg: row.body_weight_kg === null ? null : Number(row.body_weight_kg), protocolVersion: row.protocol_version ?? '', context: (row.context ?? {}) as Record<string, unknown>, notes: row.notes ?? '' })) as TestSessionRecord[],
-    results: (resultsResult.data ?? []).map(row => ({ id: row.id, testSessionId: row.test_session_id, metricKey: row.metric_key, metricLabel: row.metric_label, value: Number(row.value), unit: row.unit, side: row.side, grip: row.grip ?? '', normalizeToBodyWeight: row.normalize_to_body_weight, setup: (row.setup ?? {}) as Record<string, unknown>, notes: row.notes ?? '' })) as TestResultRecord[],
+        sessions:
+      (sessionsResult.data ?? [])
+        .map(row => ({
+          id:
+            row.id,
+
+          athleteId:
+            row.athlete_id,
+
+          coachId:
+            row.coach_id,
+
+          testedAt:
+            row.tested_at,
+
+          createdAt:
+            row.created_at,
+
+          bodyWeightKg:
+            row.body_weight_kg === null
+              ? null
+              : Number(
+                  row.body_weight_kg,
+                ),
+
+          protocolVersion:
+            row.protocol_version ?? '',
+
+          context:
+            (row.context ?? {}) as
+              Record<string, unknown>,
+
+          notes:
+            row.notes ?? '',
+
+          mode:
+            row.mode ?? 'manual',
+
+          status:
+            row.status ?? 'completed',
+        })) as TestSessionRecord[],
+        results:
+      (resultsResult.data ?? [])
+        .map(row => ({
+          id:
+            row.id,
+
+          testSessionId:
+            row.test_session_id,
+
+          metricKey:
+            row.metric_key,
+
+          metricLabel:
+            row.metric_label,
+
+          value:
+            Number(
+              row.value,
+            ),
+
+          unit:
+            row.unit,
+
+          side:
+            row.side,
+
+          grip:
+            row.grip ?? '',
+
+          normalizeToBodyWeight:
+            row.normalize_to_body_weight,
+
+          setup:
+            (row.setup ?? {}) as
+              Record<string, unknown>,
+
+          notes:
+            row.notes ?? '',
+
+          protocolKey:
+            row.protocol_key,
+
+          protocolVersion:
+            row.protocol_version,
+
+          measurementSource:
+            row.measurement_source,
+
+          qualityStatus:
+            row.quality_status,
+
+          isPrimary:
+            row.is_primary,
+
+          measuredAt:
+            row.measured_at,
+        })) as TestResultRecord[],
   }
 }
 

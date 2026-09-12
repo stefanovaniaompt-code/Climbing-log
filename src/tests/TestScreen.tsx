@@ -136,7 +136,14 @@ function MetricGroupCard({
       index="T"
       action={
         <Tag tone="purple">
-          {group.grip || 'Setup standard'}
+          {[
+            group.grip,
+            group.setupLabel,
+            group.protocolVersion,
+          ]
+            .filter(Boolean)
+            .join(' - ') ||
+            'Setup standard'}
         </Tag>
       }
     >
