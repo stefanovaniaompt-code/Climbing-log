@@ -37,7 +37,7 @@ import { countPendingOperations, flushExerciseOutbox, OUTBOX_CHANGED_EVENT } fro
 import { availableModes, defaultMode, type AppProfile, type AppRole } from './onboarding/types'
 import { summarizeWeek } from './dashboard/athleteHome'
 import { loadAthleteHome } from './dashboard/athleteHomeRepository'
-import { createExerciseTimerState, exerciseTimerPhaseLabel, formatPrescription, getExerciseTimerConfig, getRestSeconds, getSetCount, getVariableSeries, restoreExerciseTimerSnapshot, summarizeRunner, tickExerciseTimer, type ExerciseTimerSnapshot, type ExerciseTimerState, type SessionRunnerData } from './session/sessionRunner'
+import { createExerciseTimerState, exerciseTimerPhaseLabel, firstOpenExerciseIndex, formatPrescription, getExerciseTimerConfig, getRestSeconds, getSetCount, getVariableSeries, restoreExerciseTimerSnapshot, summarizeRunner, tickExerciseTimer, type ExerciseTimerSnapshot, type ExerciseTimerState, type SessionRunnerData } from './session/sessionRunner'
 import { autosaveSessionDraft, beginSession, finishSession, loadSessionRunner, saveExerciseProgress, syncQueuedExercise } from './session/sessionRunnerRepository'
 import { loadCoachDashboard } from './coach/coachDashboardRepository'
 import type { CoachDashboardData } from './coach/coachDashboard'
@@ -267,6 +267,18 @@ function HomeScreen({ openSession, profile }: { openSession: (sessionId: string)
   )
 }
 
+type ExerciseInputDraft = {
+  rpe: string
+  notes: string
+}
+
+type ExerciseSaveState =
+  | 'idle'
+  | 'saving'
+  | 'saved'
+  | 'queued'
+  | 'error'
+
 type SessionLocalDraft = {
   version: 1
   sessionId: string
@@ -275,6 +287,46 @@ type SessionLocalDraft = {
   sessionRpe: string
   sessionNote: string
   timer: ExerciseTimerSnapshot | null
+  exerciseInputs: Record<string, ExerciseInputDraft>
+}
+
+function readExerciseInputDrafts(
+  value: unknown,
+): Record<string, ExerciseInputDraft> {
+  if (
+    !value ||
+    typeof value !== 'object' ||
+    Array.isArray(value)
+  ) {
+    return {}
+  }
+
+  const result: Record<string, ExerciseInputDraft> = {}
+
+  for (const [exerciseId, raw] of Object.entries(value)) {
+    if (
+      !raw ||
+      typeof raw !== 'object' ||
+      Array.isArray(raw)
+    ) {
+      continue
+    }
+
+    const entry = raw as Record<string, unknown>
+
+    result[exerciseId] = {
+      rpe:
+        typeof entry.rpe === 'string'
+          ? entry.rpe
+          : '',
+      notes:
+        typeof entry.notes === 'string'
+          ? entry.notes
+          : '',
+    }
+  }
+
+  return result
 }
 
 function readSessionLocalDraft(
@@ -325,6 +377,10 @@ function readSessionLocalDraft(
           ? parsed.sessionNote
           : '',
       timer: timerCandidate,
+      exerciseInputs:
+        readExerciseInputDrafts(
+          parsed.exerciseInputs,
+        ),
     }
   } catch {
     return null
@@ -360,6 +416,8 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
   const [missedIds, setMissedIds] = useState<string[]>([])
   const [sessionRpe, setSessionRpe] = useState('')
   const [sessionNote, setSessionNote] = useState('')
+  const [exerciseInputs, setExerciseInputs] = useState<Record<string, ExerciseInputDraft>>({})
+  const [exerciseSaveStates, setExerciseSaveStates] = useState<Record<string, ExerciseSaveState>>({})
   const [saveState, setSaveState] = useState<'idle' | 'starting' | 'finishing' | 'saved' | 'queued' | 'error'>('idle')
   const [error, setError] = useState('')
   const [reloadKey, setReloadKey] = useState(0)
@@ -385,6 +443,8 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
         clearSessionLocalDraft(draftStorageKey)
         setTimerState(null)
         setMissedIds([])
+        setExerciseInputs({})
+        setExerciseSaveStates({})
         setSessionRpe(
           data.session.sessionRpe?.toString() ?? '',
         )
@@ -407,6 +467,8 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
         setMissedIds(draft.missedIds)
         setSessionRpe(draft.sessionRpe)
         setSessionNote(draft.sessionNote)
+        setExerciseInputs(draft.exerciseInputs)
+        setExerciseSaveStates({})
         setTimerState(
           draft.timer
             ? restoreExerciseTimerSnapshot(
@@ -419,6 +481,8 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
           data.session.completionOutcome ?? '',
         )
         setMissedIds([])
+        setExerciseInputs({})
+        setExerciseSaveStates({})
         setSessionRpe(
           data.session.sessionRpe?.toString() ?? '',
         )
@@ -432,7 +496,7 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
         setError(
           reason instanceof Error
             ? reason.message
-            : 'Session unavailable.',
+            : 'Sessione non disponibile.',
         )
         setDraftReady(true)
       }
@@ -471,6 +535,7 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
         missedIds,
         sessionRpe,
         sessionNote,
+        exerciseInputs,
         timer: timerState
           ? {
               state: timerState,
@@ -482,6 +547,7 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
   }, [
     draftReady,
     draftStorageKey,
+    exerciseInputs,
     missedIds,
     outcome,
     runner,
@@ -599,12 +665,59 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
     return () => window.clearInterval(interval)
   }, [timerState?.running, timerState?.phase])
 
+  useEffect(() => {
+    if (
+      !draftReady ||
+      !runner ||
+      runner.session.status !== 'in_progress'
+    ) {
+      return
+    }
+
+    const openIndex =
+      firstOpenExerciseIndex(runner.exercises)
+
+    const nextExercise =
+      runner.exercises[openIndex]
+
+    if (
+      !nextExercise ||
+      nextExercise.progress?.completed
+    ) {
+      return
+    }
+
+    const handle = window.setTimeout(() => {
+      document
+        .getElementById(
+          `exercise-${nextExercise.id}`,
+        )
+        ?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        })
+    }, 120)
+
+    return () => {
+      window.clearTimeout(handle)
+    }
+  }, [draftReady, runner])
+
   if (error && !runner) return <div className="screen"><Panel className="home-state home-state--error" title="Sessione non disponibile" index="!"><TriangleAlert size={24} /><p>{error}</p></Panel></div>
   if (runner === undefined) return <div className="screen"><Panel className="home-state" title="Caricamento sessione" index="…"><div className="skeleton-stack" aria-label="Caricamento"><span /><span /><span /></div></Panel></div>
   if (!runner || runner.exercises.length === 0) return <div className="screen"><Panel className="home-state" title="Nessuna sessione pronta" index="00"><ClipboardCheck size={24} /><p>Non risultano esercizi prescritti nella sessione corrente.</p></Panel></div>
 
   const summary = summarizeRunner(runner.exercises)
   const canEdit = runner.session.status !== 'completed'
+  const nextOpenIndex =
+    firstOpenExerciseIndex(runner.exercises)
+  const nextOpenExercise =
+    runner.exercises[nextOpenIndex]
+  const nextOpenExerciseId =
+    nextOpenExercise &&
+    !nextOpenExercise.progress?.completed
+      ? nextOpenExercise.id
+      : null
 
   const startCurrentSession = async () => {
     setSaveState('starting')
@@ -641,6 +754,148 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
     setMissedIds(ids => ids.includes(exerciseId) ? ids.filter(id => id !== exerciseId) : [...ids, exerciseId])
     setSaveState('idle')
     setError('')
+  }
+
+  const updateExerciseInput = (
+    exerciseId: string,
+    patch: Partial<ExerciseInputDraft>,
+  ) => {
+    setExerciseInputs(current => ({
+      ...current,
+      [exerciseId]: {
+        rpe: current[exerciseId]?.rpe ?? '',
+        notes: current[exerciseId]?.notes ?? '',
+        ...patch,
+      },
+    }))
+
+    setExerciseSaveStates(current => ({
+      ...current,
+      [exerciseId]: 'idle',
+    }))
+  }
+
+  const recordExercise = async (
+    exercise: SessionRunnerData['exercises'][number],
+  ) => {
+    if (exercise.progress?.completed) return
+
+    const input =
+      exerciseInputs[exercise.id] ?? {
+        rpe: '',
+        notes: '',
+      }
+
+    const parsedRpe =
+      input.rpe.trim()
+        ? Number(input.rpe)
+        : null
+
+    if (
+      parsedRpe !== null &&
+      (
+        !Number.isFinite(parsedRpe) ||
+        parsedRpe < 0 ||
+        parsedRpe > 10
+      )
+    ) {
+      setExerciseSaveStates(current => ({
+        ...current,
+        [exercise.id]: 'error',
+      }))
+
+      setError(
+        "L'RPE dell'esercizio deve essere compreso tra 0 e 10.",
+      )
+      return
+    }
+
+    setExerciseSaveStates(current => ({
+      ...current,
+      [exercise.id]: 'saving',
+    }))
+    setError('')
+
+    try {
+      let logId = runner.session.logId
+      let startedAt = runner.session.startedAt
+
+      if (!logId) {
+        const log = await beginSession(
+          profile,
+          runner.session.id,
+        )
+
+        logId = log.id
+        startedAt = log.started_at
+      }
+
+      const result = await saveExerciseProgress(
+        profile,
+        logId,
+        exercise,
+        {
+          rpe: parsedRpe,
+          notes: input.notes,
+        },
+      )
+
+      setRunner(current => {
+        if (!current) return current
+
+        return {
+          ...current,
+          session: {
+            ...current.session,
+            logId,
+            status: 'in_progress',
+            startedAt:
+              current.session.startedAt ??
+              startedAt,
+          },
+          exercises: current.exercises.map(item =>
+            item.id === exercise.id
+              ? {
+                  ...item,
+                  progress: result.progress,
+                }
+              : item,
+          ),
+        }
+      })
+
+      setMissedIds(current =>
+        current.filter(
+          id => id !== exercise.id,
+        ),
+      )
+
+      if (
+        timerState?.exerciseId ===
+        exercise.id
+      ) {
+        setTimerState(null)
+      }
+
+      setExerciseSaveStates(current => ({
+        ...current,
+        [exercise.id]:
+          result.disposition === 'queued'
+            ? 'queued'
+            : 'saved',
+      }))
+    } catch (reason) {
+      setExerciseSaveStates(current => ({
+        ...current,
+        [exercise.id]: 'error',
+      }))
+
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Esercizio non registrato.',
+      )
+    }
   }
 
   const completeCurrentSession = async () => {
@@ -704,6 +959,15 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
         {runner.exercises.map(exercise => {
           const variableSeries = getVariableSeries(exercise)
           const isMissed = missedIds.includes(exercise.id)
+          const exerciseInput =
+            exerciseInputs[exercise.id] ?? {
+              rpe: '',
+              notes: '',
+            }
+          const exerciseSaveState =
+            exerciseSaveStates[exercise.id] ?? 'idle'
+          const isNext =
+            exercise.id === nextOpenExerciseId
           const timerConfig = getExerciseTimerConfig(exercise)
           const timerActive = timerState?.exerciseId === exercise.id
           const activeTimer = timerActive ? timerState : createExerciseTimerState(exercise)
@@ -711,11 +975,137 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
           const timerLabel = String(Math.floor(timerSeconds / 60)).padStart(2, '0') + ':' + String(timerSeconds % 60).padStart(2, '0')
           const dose = String(exercise.prescription.dose ?? 'Dose indicata dal coach')
           const load = exercise.prescription.load_value == null ? 'Corpo libero' : String(exercise.prescription.load_value) + (exercise.prescription.unit ? ' ' + String(exercise.prescription.unit) : '')
-          return <article className={'session-exercise-card ' + (isMissed ? 'is-missed' : '') + (exercise.progress?.completed ? ' is-recorded' : '')} key={exercise.id}>
-            <div className="session-exercise-card__head"><span>{String(exercise.order).padStart(2, '0')}</span><div><h2>{exercise.name}</h2><p>{formatPrescription(exercise)}</p></div>{exercise.progress?.completed ? <Tag tone="success">Registrato</Tag> : <Tag tone="purple">{getSetCount(exercise)} serie</Tag>}</div>
+          return <article
+            id={`exercise-${exercise.id}`}
+            className={
+              'session-exercise-card ' +
+              (isMissed ? 'is-missed' : '') +
+              (exercise.progress?.completed ? ' is-recorded' : '') +
+              (isNext ? ' is-next' : '')
+            }
+            key={exercise.id}
+          >
+            <div className="session-exercise-card__head">
+              <span>{String(exercise.order).padStart(2, '0')}</span>
+              <div>
+                <h2>{exercise.name}</h2>
+                <p>{formatPrescription(exercise)}</p>
+              </div>
+              {exercise.progress?.completed
+                ? (
+                  <Tag
+                    tone={
+                      exercise.progress.syncState === 'queued'
+                        ? 'warning'
+                        : 'success'
+                    }
+                  >
+                    {exercise.progress.syncState === 'queued'
+                      ? 'IN CODA'
+                      : 'REGISTRATO'}
+                  </Tag>
+                )
+                : isNext
+                  ? <Tag tone="signal">PROSSIMO</Tag>
+                  : <Tag tone="purple">{getSetCount(exercise)} serie</Tag>}
+            </div>
             {variableSeries.length > 0 ? <div className="variable-series"><div className="variable-series__label"><b>Carichi differenti</b><span>Una riga per ogni serie</span></div><ol>{variableSeries.map((series, index) => <li key={series + index}><span>{String(index + 1).padStart(2, '0')}</span><b>{series}</b></li>)}</ol></div> : <div className="uniform-prescription"><div><small>STRUTTURA</small><b>{getSetCount(exercise)} serie</b></div><div><small>DOSE</small><b>{dose}</b></div><div><small>CARICO</small><b>{load}</b></div><div><small>RECUPERO</small><b>{getRestSeconds(exercise)} sec</b></div></div>}
             <div className="exercise-guidance"><span>Indicazioni</span><p>{exercise.instructions || runner.session.coachNotes || 'Segui la prescrizione e interrompi in caso di dolore.'}</p></div>
             {canEdit && timerConfig && activeTimer && <div className={'exercise-timer ' + (timerActive ? 'is-active' : '')}><div><small>{exerciseTimerPhaseLabel(activeTimer)}</small><strong>{timerLabel}</strong><span>Serie {activeTimer.set}/{timerConfig.sets}{timerConfig.repetitions > 1 ? ` · Rip. ${activeTimer.repetition}/${timerConfig.repetitions}` : ''}</span></div><button className="exercise-timer__control" onClick={() => toggleTimer(exercise)} aria-label={timerActive && timerState?.running ? `Metti in pausa il timer di ${exercise.name}` : `Avvia il timer di ${exercise.name}`}>{timerActive && timerState?.running ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}<span>{timerActive && timerState?.running ? 'Pausa' : timerActive && timerState?.phase !== 'complete' ? 'Riprendi' : timerActive ? 'Ricomincia' : 'Avvia'}</span></button><button className="exercise-timer__reset" onClick={() => resetTimer(exercise)} aria-label={`Reimposta il timer di ${exercise.name}`}><TimerReset size={17} /></button></div>}
+            {canEdit && !exercise.progress?.completed && (
+              <div className="exercise-entry">
+                <div className="exercise-entry__fields">
+                  <label>
+                    <span>RPE esercizio</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="10"
+                      step="0.5"
+                      value={exerciseInput.rpe}
+                      onChange={event =>
+                        updateExerciseInput(
+                          exercise.id,
+                          {
+                            rpe:
+                              event.target.value,
+                          },
+                        )
+                      }
+                      placeholder="0-10"
+                    />
+                  </label>
+
+                  <label>
+                    <span>Note esercizio</span>
+                    <textarea
+                      value={exerciseInput.notes}
+                      onChange={event =>
+                        updateExerciseInput(
+                          exercise.id,
+                          {
+                            notes:
+                              event.target.value,
+                          },
+                        )
+                      }
+                      placeholder="Carico reale, sensazioni, dolore, adattamenti..."
+                    />
+                  </label>
+                </div>
+
+                <div className="exercise-entry__actions">
+                  <span>
+                    {exerciseSaveState === 'queued'
+                      ? 'Salvato sul dispositivo: sincronizzazione in attesa.'
+                      : exerciseSaveState === 'error'
+                        ? 'Controlla i dati e riprova.'
+                        : 'RPE e note sono facoltativi.'}
+                  </span>
+
+                  <button
+                    className="button button--primary"
+                    disabled={
+                      exerciseSaveState === 'saving'
+                    }
+                    onClick={() =>
+                      void recordExercise(exercise)
+                    }
+                  >
+                    <Save size={16} />
+                    {exerciseSaveState === 'saving'
+                      ? 'Salvataggio...'
+                      : 'Registra esercizio'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {exercise.progress?.completed && (
+              <div className="exercise-recorded-detail">
+                <Check size={17} />
+                <div>
+                  <b>
+                    {exercise.progress.syncState === 'queued'
+                      ? 'Registrazione in coda offline'
+                      : 'Esercizio registrato'}
+                  </b>
+
+                  <span>
+                    {[
+                      exercise.progress.rpe !== null
+                        ? `RPE ${exercise.progress.rpe}/10`
+                        : '',
+                      exercise.progress.notes,
+                    ]
+                      .filter(Boolean)
+                      .join(' ? ') ||
+                      'Nessuna nota aggiuntiva.'}
+                  </span>
+                </div>
+              </div>
+            )}
+
           </article>
         })}
       </div>

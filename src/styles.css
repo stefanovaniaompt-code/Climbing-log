@@ -786,3 +786,116 @@ textarea {
     font-size: 14px;
   }
 }
+
+/* Athlete session: per-exercise recording */
+.session-exercise-card.is-next {
+  border-color: var(--mustard-500);
+  box-shadow:
+    0 3px 0 #dfc56c,
+    var(--widget-shadow);
+}
+
+.exercise-entry {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  background: var(--surface-raised);
+}
+
+.exercise-entry__fields {
+  display: grid;
+  grid-template-columns:
+    minmax(120px, .35fr)
+    minmax(0, 1.65fr);
+  gap: 12px;
+}
+
+.exercise-entry__fields label > span {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--purple-900);
+  font:
+    600 9px/1
+    'IBM Plex Mono',
+    monospace;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.exercise-entry__fields input,
+.exercise-entry__fields textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--line-strong);
+  background: #fff;
+  color: var(--ink);
+}
+
+.exercise-entry__fields input {
+  min-height: 43px;
+  padding: 0 11px;
+}
+
+.exercise-entry__fields textarea {
+  min-height: 68px;
+  margin: 0;
+  padding: 10px 11px;
+  resize: vertical;
+}
+
+.exercise-entry__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 11px;
+}
+
+.exercise-entry__actions > span {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.exercise-recorded-detail {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 9px;
+  align-items: center;
+  margin-top: 13px;
+  padding: 11px 12px;
+  border: 1px solid var(--success);
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.exercise-recorded-detail b,
+.exercise-recorded-detail span {
+  display: block;
+}
+
+.exercise-recorded-detail b {
+  font-size: 11px;
+}
+
+.exercise-recorded-detail span {
+  margin-top: 3px;
+  color: #355f4f;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+@media (max-width: 560px) {
+  .exercise-entry__fields {
+    grid-template-columns: 1fr;
+  }
+
+  .exercise-entry__actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .exercise-entry__actions .button {
+    width: 100%;
+  }
+}
