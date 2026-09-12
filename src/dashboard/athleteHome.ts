@@ -1,3 +1,9 @@
+export type AthleteProgram = {
+  id: string
+  name: string
+  goal: string | null
+}
+
 export type TrainingWeek = {
   id: string
   weekNumber: number
@@ -21,10 +27,23 @@ export type AthleteHomeSession = {
 
 export type AthleteHomeData = {
   source: 'demo' | 'legacy-v1'
-  program: { id: string; name: string; goal: string | null }
+  program: AthleteProgram
+  programs: AthleteProgram[]
   week: TrainingWeek
   weeks: TrainingWeek[]
   sessions: AthleteHomeSession[]
+}
+
+export function selectProgram(
+  programs: AthleteProgram[],
+  requestedProgramId?: string | null,
+): AthleteProgram | null {
+  if (programs.length === 0) return null
+  if (requestedProgramId) {
+    const requested = programs.find(program => program.id === requestedProgramId)
+    if (requested) return requested
+  }
+  return programs[0]
 }
 
 export function selectCurrentWeek(weeks: TrainingWeek[], today = new Date()): TrainingWeek | null {

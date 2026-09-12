@@ -1,13 +1,19 @@
 import { dataRuntime } from '../dataRuntime'
 import { supabase } from '../lib/supabase'
 import type { AppProfile } from '../onboarding/types'
-import { selectCurrentWeek, type AthleteHomeData, type AthleteHomeSession, type TrainingWeek } from './athleteHome'
+import { selectCurrentWeek, selectProgram, type AthleteHomeData, type AthleteHomeSession, type AthleteProgram, type TrainingWeek } from './athleteHome'
 
-type ProgramRow = { id: string; name: string; goal: string | null }
+type ProgramRow = AthleteProgram
 type WeekRow = { id: string; week_number: number; block_name: string | null; phase: string | null; start_date: string | null; status: string }
 type SessionRow = { id: string; session_order: number; scheduled_day: number; title: string; objective: string | null; duration_minutes: number | null }
 type SessionLogRow = { session_id: string; status: string; session_rpe: number | string | null }
 type SessionExerciseRow = { session_id: string }
+
+const demoProgram: AthleteProgram = {
+  id: 'demo-program',
+  name: 'Forza dita',
+  goal: 'Costruzione forza massima',
+}
 
 const demoWeeks: TrainingWeek[] = [
   { id: 'demo-week-1', weekNumber: 1, blockName: 'Ingresso', phase: 'Forza', startDate: '2026-08-17', status: 'completed' },
@@ -18,7 +24,8 @@ const demoWeeks: TrainingWeek[] = [
 
 const demo: AthleteHomeData = {
   source: 'demo',
-  program: { id: 'demo-program', name: 'Forza dita', goal: 'Costruzione forza massima' },
+  program: demoProgram,
+  programs: [demoProgram],
   week: demoWeeks[2],
   weeks: demoWeeks,
   sessions: [
@@ -28,7 +35,11 @@ const demo: AthleteHomeData = {
   ],
 }
 
-export async function loadAthleteHome(profile: AppProfile, requestedWeekId?: string | null): Promise<AthleteHomeData | null> {
+export async function loadAthleteHome(
+  profile: AppProfile,
+  requestedWeekId?: string | null,
+  requestedProgramId?: string | null,
+): Promise<AthleteHomeData | null> {
   if (!supabase || profile.userId.startsWith('00000000-') || dataRuntime.backendSchema !== 'legacy-v1') {
     if (!requestedWeekId) return demo
     const requestedWeek = demoWeeks.find(week => week.id === requestedWeekId)
@@ -42,11 +53,11 @@ export async function loadAthleteHome(profile: AppProfile, requestedWeekId?: str
     .eq('athlete_id', profile.athleteId)
     .eq('status', 'active')
     .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
   if (programError) throw programError
-  if (!programData) return null
-  const program = programData as ProgramRow
+
+  const programs = (programData ?? []) as ProgramRow[]
+  const program = selectProgram(programs, requestedProgramId)
+  if (!program) return null
 
   const { data: weekData, error: weekError } = await supabase
     .from('training_weeks')
@@ -110,5 +121,5 @@ export async function loadAthleteHome(profile: AppProfile, requestedWeekId?: str
     }
   })
 
-  return { source: 'legacy-v1', program, week, weeks, sessions }
+  return { source: 'legacy-v1', program, programs, week, weeks, sessions }
 }

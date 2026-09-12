@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { selectCurrentWeek, summarizeWeek, type AthleteHomeSession, type TrainingWeek } from './athleteHome'
+import { selectCurrentWeek, selectProgram, summarizeWeek, type AthleteHomeSession, type AthleteProgram, type TrainingWeek } from './athleteHome'
 
 const weeks: TrainingWeek[] = [
   { id: 'w1', weekNumber: 1, blockName: null, phase: null, startDate: '2026-08-24', status: 'completed' },
@@ -7,6 +7,17 @@ const weeks: TrainingWeek[] = [
 ]
 
 describe('athlete home selectors', () => {
+  it('selects the requested active program and falls back safely', () => {
+    const programs: AthleteProgram[] = [
+      { id: 'p2', name: 'Program B', goal: null },
+      { id: 'p1', name: 'Program A', goal: null },
+    ]
+
+    expect(selectProgram(programs, 'p1')?.id).toBe('p1')
+    expect(selectProgram(programs, 'missing')?.id).toBe('p2')
+    expect(selectProgram([], 'p1')).toBeNull()
+  })
+
   it('preferisce la settimana marcata current', () => {
     expect(selectCurrentWeek(weeks, new Date('2026-09-01T12:00:00Z'))?.id).toBe('w2')
   })
