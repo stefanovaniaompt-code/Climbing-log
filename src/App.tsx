@@ -48,6 +48,7 @@ import { createLibraryExercise, deleteLibraryExercise, loadExerciseLibrary, setL
 import { TestScreen } from './tests/TestScreen'
 import { Bars, ConfirmDialog, Metric, Panel, ScreenHeader, Tag } from './shared/ui'
 import { useScreenWakeLock } from './shared/hooks/useScreenWakeLock'
+import { useUpdateBlocker } from './pwa/useUpdateBlocker'
 import { SystemScreen } from './features/system/SystemScreen'
 import { MigrationScreen } from './features/migration/MigrationScreen'
 import { AccountSecurityScreen } from './features/account/AccountSecurityScreen'
@@ -1366,6 +1367,15 @@ export default function App({ profile, onSignOut, initialMode }: { profile: AppP
   const [syncing, setSyncing] = useState(false)
   const syncLock = useRef(false)
   const Screen = viewMeta[view].component
+
+  const updateUnsafeView =
+    view !== 'home' &&
+    view !== 'dashboard'
+
+  useUpdateBlocker(
+    `app-view:${profile.userId}`,
+    updateUnsafeView,
+  )
   const groups = [...new Set(roleNavItems.map(item => item.group))]
   const initials = profile.displayName.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase() || 'CC'
 
