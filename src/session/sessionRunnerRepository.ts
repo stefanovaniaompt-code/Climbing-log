@@ -311,6 +311,29 @@ export async function syncQueuedExercise(profile: AppProfile, payload: ExerciseS
   await persistExercisePayload(profile, payload)
 }
 
+export async function autosaveSessionDraft(
+  profile: AppProfile,
+  sessionLogId: string,
+  input: { rpe: number | null; notes: string },
+): Promise<void> {
+  if (!supabase || profile.userId.startsWith('00000000-')) return
+
+  const autosavedAt = new Date().toISOString()
+
+  const { error } = await supabase
+    .from('session_logs')
+    .update({
+      session_rpe: input.rpe,
+      notes: input.notes.trim() || null,
+      autosaved_at: autosavedAt,
+    })
+    .eq('id', sessionLogId)
+    .eq('athlete_id', athleteIdentity(profile))
+    .eq('status', 'in_progress')
+
+  if (error) throw error
+}
+
 export async function finishSession(profile: AppProfile, sessionLogId: string, input: { allCompleted: boolean; rpe: number | null; notes: string }) {
   const completedAt = new Date().toISOString()
   if (!supabase || profile.userId.startsWith('00000000-')) return { completedAt }

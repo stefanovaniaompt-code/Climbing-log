@@ -11,6 +11,8 @@ import {
   getVariableSeries,
   summarizeRunner,
   tickExerciseTimer,
+  elapseExerciseTimer,
+  restoreExerciseTimerSnapshot,
   type RunnerExercise,
 } from './sessionRunner'
 
@@ -91,4 +93,90 @@ describe('session runner selectors', () => {
     expect(exerciseTimerPhaseLabel(secondWork)).toBe('LAVORO')
     expect(secondWork.repetition).toBe(2)
   })
+  it('advances a running timer using real elapsed time', () => {
+    const item = exercise({
+      prescription: {
+        sets: 1,
+        timer: {
+          execution_mode: 'bilateral',
+          preparation_seconds: 0,
+          work_seconds: 10,
+          repetitions: 1,
+          set_rest_seconds: 0,
+        },
+      },
+    })
+
+    const initial = {
+      ...createExerciseTimerState(item)!,
+      running: true,
+    }
+
+    const advanced = elapseExerciseTimer(initial, 4)
+
+    expect(advanced.phase).toBe('work')
+    expect(advanced.remaining).toBe(6)
+  })
+
+  it('restores a running timer after leaving the app', () => {
+    const item = exercise({
+      prescription: {
+        sets: 1,
+        timer: {
+          execution_mode: 'bilateral',
+          preparation_seconds: 0,
+          work_seconds: 10,
+          repetitions: 1,
+          set_rest_seconds: 0,
+        },
+      },
+    })
+
+    const state = {
+      ...createExerciseTimerState(item)!,
+      running: true,
+    }
+
+    const restored = restoreExerciseTimerSnapshot(
+      {
+        state,
+        savedAt: 1000,
+      },
+      5000,
+    )
+
+    expect(restored.remaining).toBe(6)
+  })
+
+  it('does not advance a paused persisted timer', () => {
+    const item = exercise({
+      prescription: {
+        sets: 1,
+        timer: {
+          execution_mode: 'bilateral',
+          preparation_seconds: 0,
+          work_seconds: 10,
+          repetitions: 1,
+          set_rest_seconds: 0,
+        },
+      },
+    })
+
+    const state = {
+      ...createExerciseTimerState(item)!,
+      running: false,
+    }
+
+    const restored = restoreExerciseTimerSnapshot(
+      {
+        state,
+        savedAt: 1000,
+      },
+      9000,
+    )
+
+    expect(restored.remaining).toBe(10)
+    expect(restored.running).toBe(false)
+  })
+
 })

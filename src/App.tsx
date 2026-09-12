@@ -37,8 +37,8 @@ import { countPendingOperations, flushExerciseOutbox, OUTBOX_CHANGED_EVENT } fro
 import { availableModes, defaultMode, type AppProfile, type AppRole } from './onboarding/types'
 import { summarizeWeek } from './dashboard/athleteHome'
 import { loadAthleteHome } from './dashboard/athleteHomeRepository'
-import { createExerciseTimerState, exerciseTimerPhaseLabel, formatPrescription, getExerciseTimerConfig, getRestSeconds, getSetCount, getVariableSeries, summarizeRunner, tickExerciseTimer, type ExerciseTimerState, type SessionRunnerData } from './session/sessionRunner'
-import { beginSession, finishSession, loadSessionRunner, saveExerciseProgress, syncQueuedExercise } from './session/sessionRunnerRepository'
+import { createExerciseTimerState, exerciseTimerPhaseLabel, formatPrescription, getExerciseTimerConfig, getRestSeconds, getSetCount, getVariableSeries, restoreExerciseTimerSnapshot, summarizeRunner, tickExerciseTimer, type ExerciseTimerSnapshot, type ExerciseTimerState, type SessionRunnerData } from './session/sessionRunner'
+import { autosaveSessionDraft, beginSession, finishSession, loadSessionRunner, saveExerciseProgress, syncQueuedExercise } from './session/sessionRunnerRepository'
 import { loadCoachDashboard } from './coach/coachDashboardRepository'
 import type { CoachDashboardData } from './coach/coachDashboard'
 import { createManagedAthlete, decideCoachLinkRequest, inviteAthlete, loadAthleteManagement, removeAthleteRelationship, resolveInvitationEmail, revokeInvitation, setAthleteStatus, type AthleteManagementData } from './coach/athleteManagementRepository'
@@ -267,6 +267,92 @@ function HomeScreen({ openSession, profile }: { openSession: (sessionId: string)
   )
 }
 
+type SessionLocalDraft = {
+  version: 1
+  sessionId: string
+  outcome: 'completed' | 'partial' | ''
+  missedIds: string[]
+  sessionRpe: string
+  sessionNote: string
+  timer: ExerciseTimerSnapshot | null
+}
+
+function readSessionLocalDraft(
+  key: string,
+): SessionLocalDraft | null {
+  try {
+    const raw = window.localStorage.getItem(key)
+    if (!raw) return null
+
+    const parsed = JSON.parse(raw) as Partial<SessionLocalDraft>
+
+    if (
+      parsed.version !== 1 ||
+      typeof parsed.sessionId !== 'string'
+    ) {
+      return null
+    }
+
+    const timerCandidate =
+      parsed.timer &&
+      typeof parsed.timer === 'object' &&
+      typeof parsed.timer.savedAt === 'number' &&
+      parsed.timer.state &&
+      typeof parsed.timer.state.exerciseId === 'string'
+        ? parsed.timer as ExerciseTimerSnapshot
+        : null
+
+    return {
+      version: 1,
+      sessionId: parsed.sessionId,
+      outcome:
+        parsed.outcome === 'completed' ||
+        parsed.outcome === 'partial'
+          ? parsed.outcome
+          : '',
+      missedIds: Array.isArray(parsed.missedIds)
+        ? parsed.missedIds.filter(
+            (value): value is string =>
+              typeof value === 'string',
+          )
+        : [],
+      sessionRpe:
+        typeof parsed.sessionRpe === 'string'
+          ? parsed.sessionRpe
+          : '',
+      sessionNote:
+        typeof parsed.sessionNote === 'string'
+          ? parsed.sessionNote
+          : '',
+      timer: timerCandidate,
+    }
+  } catch {
+    return null
+  }
+}
+
+function writeSessionLocalDraft(
+  key: string,
+  draft: SessionLocalDraft,
+) {
+  try {
+    window.localStorage.setItem(
+      key,
+      JSON.stringify(draft),
+    )
+  } catch {
+    // Local storage can be unavailable.
+  }
+}
+
+function clearSessionLocalDraft(key: string) {
+  try {
+    window.localStorage.removeItem(key)
+  } catch {
+    // Local storage can be unavailable.
+  }
+}
+
 function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId: string }) {
   const [runner, setRunner] = useState<SessionRunnerData | null | undefined>(undefined)
   const [timerState, setTimerState] = useState<ExerciseTimerState | null>(null)
@@ -277,27 +363,235 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
   const [saveState, setSaveState] = useState<'idle' | 'starting' | 'finishing' | 'saved' | 'queued' | 'error'>('idle')
   const [error, setError] = useState('')
   const [reloadKey, setReloadKey] = useState(0)
+  const [draftReady, setDraftReady] = useState(false)
+  const draftStorageKey = `cc-v2:session-draft:${profile.userId}:${sessionId}`
   const wakeLockStatus = useScreenWakeLock(Boolean(runner && runner.session.status !== 'completed'))
 
   useEffect(() => {
     let active = true
+    setDraftReady(false)
+
     loadSessionRunner(profile, sessionId || null).then(data => {
       if (!active) return
+
       setRunner(data)
-      setSessionRpe(data?.session.sessionRpe?.toString() ?? '')
-      setSessionNote(data?.session.notes ?? '')
-      setOutcome(data?.session.completionOutcome ?? '')
+
+      if (!data) {
+        setDraftReady(true)
+        return
+      }
+
+      if (data.session.status === 'completed') {
+        clearSessionLocalDraft(draftStorageKey)
+        setTimerState(null)
+        setMissedIds([])
+        setSessionRpe(
+          data.session.sessionRpe?.toString() ?? '',
+        )
+        setSessionNote(data.session.notes ?? '')
+        setOutcome(
+          data.session.completionOutcome ?? '',
+        )
+        setDraftReady(true)
+        return
+      }
+
+      const draft =
+        readSessionLocalDraft(draftStorageKey)
+
+      if (
+        draft &&
+        draft.sessionId === data.session.id
+      ) {
+        setOutcome(draft.outcome)
+        setMissedIds(draft.missedIds)
+        setSessionRpe(draft.sessionRpe)
+        setSessionNote(draft.sessionNote)
+        setTimerState(
+          draft.timer
+            ? restoreExerciseTimerSnapshot(
+                draft.timer,
+              )
+            : null,
+        )
+      } else {
+        setOutcome(
+          data.session.completionOutcome ?? '',
+        )
+        setMissedIds([])
+        setSessionRpe(
+          data.session.sessionRpe?.toString() ?? '',
+        )
+        setSessionNote(data.session.notes ?? '')
+        setTimerState(null)
+      }
+
+      setDraftReady(true)
     }).catch(reason => {
-      if (active) setError(reason instanceof Error ? reason.message : 'Sessione non disponibile.')
+      if (active) {
+        setError(
+          reason instanceof Error
+            ? reason.message
+            : 'Session unavailable.',
+        )
+        setDraftReady(true)
+      }
     })
-    return () => { active = false }
-  }, [profile, sessionId, reloadKey])
+
+    return () => {
+      active = false
+    }
+  }, [
+    profile,
+    sessionId,
+    reloadKey,
+    draftStorageKey,
+  ])
 
   useEffect(() => {
     const refreshFromOutbox = () => setReloadKey(value => value + 1)
     window.addEventListener(OUTBOX_CHANGED_EVENT, refreshFromOutbox)
     return () => window.removeEventListener(OUTBOX_CHANGED_EVENT, refreshFromOutbox)
   }, [])
+  useEffect(() => {
+    if (
+      !draftReady ||
+      !runner ||
+      runner.session.status === 'completed'
+    ) {
+      return
+    }
+
+    writeSessionLocalDraft(
+      draftStorageKey,
+      {
+        version: 1,
+        sessionId: runner.session.id,
+        outcome,
+        missedIds,
+        sessionRpe,
+        sessionNote,
+        timer: timerState
+          ? {
+              state: timerState,
+              savedAt: Date.now(),
+            }
+          : null,
+      },
+    )
+  }, [
+    draftReady,
+    draftStorageKey,
+    missedIds,
+    outcome,
+    runner,
+    sessionNote,
+    sessionRpe,
+    timerState,
+  ])
+
+  useEffect(() => {
+    if (!draftReady) return
+
+    const reconcileTimer = () => {
+      if (
+        document.visibilityState === 'hidden'
+      ) {
+        return
+      }
+
+      const draft =
+        readSessionLocalDraft(draftStorageKey)
+
+      if (
+        !draft?.timer ||
+        draft.timer.state.phase === 'complete'
+      ) {
+        return
+      }
+
+      setTimerState(
+        restoreExerciseTimerSnapshot(
+          draft.timer,
+        ),
+      )
+    }
+
+    document.addEventListener(
+      'visibilitychange',
+      reconcileTimer,
+    )
+    window.addEventListener(
+      'focus',
+      reconcileTimer,
+    )
+
+    return () => {
+      document.removeEventListener(
+        'visibilitychange',
+        reconcileTimer,
+      )
+      window.removeEventListener(
+        'focus',
+        reconcileTimer,
+      )
+    }
+  }, [
+    draftReady,
+    draftStorageKey,
+  ])
+
+  useEffect(() => {
+    if (
+      !draftReady ||
+      !runner?.session.logId ||
+      runner.session.status !== 'in_progress'
+    ) {
+      return
+    }
+
+    const parsedRpe =
+      sessionRpe.trim()
+        ? Number(sessionRpe)
+        : null
+
+    if (
+      parsedRpe !== null &&
+      (
+        !Number.isFinite(parsedRpe) ||
+        parsedRpe < 0 ||
+        parsedRpe > 10
+      )
+    ) {
+      return
+    }
+
+    const handle = window.setTimeout(() => {
+      void autosaveSessionDraft(
+        profile,
+        runner.session.logId!,
+        {
+          rpe: parsedRpe,
+          notes: sessionNote,
+        },
+      ).catch(() => {
+        // Local draft remains the source of recovery
+        // if cloud autosave is temporarily unavailable.
+      })
+    }, 750)
+
+    return () => {
+      window.clearTimeout(handle)
+    }
+  }, [
+    draftReady,
+    profile,
+    runner?.session.logId,
+    runner?.session.status,
+    sessionNote,
+    sessionRpe,
+  ])
+
 
   useEffect(() => {
     if (!timerState?.running || timerState.phase === 'complete') return
@@ -392,6 +686,7 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
       setRunner(value => value ? { ...value, session: { ...value.session, status: 'completed', completionOutcome: outcome, completedAt: result.completedAt, notes: finalNotes } } : value)
       setSaveState('saved')
       setTimerState(null)
+      clearSessionLocalDraft(draftStorageKey)
     } catch (reason) {
       setSaveState('error')
       setError(reason instanceof Error ? reason.message : 'Chiusura non riuscita.')

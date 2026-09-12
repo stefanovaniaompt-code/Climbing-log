@@ -75,6 +75,11 @@ export type ExerciseTimerState = {
   running: boolean
 }
 
+export type ExerciseTimerSnapshot = {
+  state: ExerciseTimerState
+  savedAt: number
+}
+
 function positiveInteger(value: unknown): number | null {
   const numeric = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN
   return Number.isInteger(numeric) && numeric > 0 ? numeric : null
@@ -159,6 +164,59 @@ export function advanceExerciseTimer(state: ExerciseTimerState): ExerciseTimerSt
 export function tickExerciseTimer(state: ExerciseTimerState): ExerciseTimerState {
   if (!state.running || state.phase === 'complete') return state
   return state.remaining <= 1 ? advanceExerciseTimer(state) : { ...state, remaining: state.remaining - 1 }
+}
+
+export function elapseExerciseTimer(
+  state: ExerciseTimerState,
+  elapsedSeconds: number,
+): ExerciseTimerState {
+  let next = { ...state }
+  let elapsed = Math.max(0, Math.floor(elapsedSeconds))
+
+  while (
+    elapsed > 0 &&
+    next.running &&
+    next.phase !== 'complete'
+  ) {
+    if (next.remaining <= 0) {
+      next = advanceExerciseTimer(next)
+      continue
+    }
+
+    if (elapsed < next.remaining) {
+      return {
+        ...next,
+        remaining: next.remaining - elapsed,
+      }
+    }
+
+    elapsed -= next.remaining
+    next = advanceExerciseTimer(next)
+  }
+
+  return next
+}
+
+export function restoreExerciseTimerSnapshot(
+  snapshot: ExerciseTimerSnapshot,
+  now = Date.now(),
+): ExerciseTimerState {
+  if (
+    !snapshot.state.running ||
+    snapshot.state.phase === 'complete'
+  ) {
+    return snapshot.state
+  }
+
+  const elapsedSeconds = Math.max(
+    0,
+    Math.floor((now - snapshot.savedAt) / 1000),
+  )
+
+  return elapseExerciseTimer(
+    snapshot.state,
+    elapsedSeconds,
+  )
 }
 
 export function exerciseTimerPhaseLabel(state: ExerciseTimerState): string {
