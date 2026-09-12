@@ -3,7 +3,7 @@ name: deploy-v2-staging
 on:
   push:
     branches:
-      - v2-react
+      - v2-finalization
   workflow_dispatch:
 
 permissions:
@@ -18,6 +18,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
@@ -33,11 +34,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build React V2 staging
+      - name: Build V2 preview
         env:
           VITE_BASE_PATH: /Climbing-log/
-          VITE_SUPABASE_URL: https://xkymrvalnydxeamrajqs.supabase.co
-          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_YH6-gBiNDVAarLxMkLFFSw_056xeSKK
           VITE_BACKEND_SCHEMA: legacy-v1
         run: pnpm build
 
@@ -54,9 +53,11 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+
     runs-on: ubuntu-latest
     needs: build
+
     steps:
-      - name: Deploy staging to GitHub Pages
+      - name: Deploy V2 preview
         id: deployment
         uses: actions/deploy-pages@v4
