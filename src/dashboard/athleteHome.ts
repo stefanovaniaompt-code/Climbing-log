@@ -70,7 +70,10 @@ export function summarizeWeek(sessions: AthleteHomeSession[]) {
     exerciseCount: sessions.reduce((sum, session) => sum + session.exerciseCount, 0),
     plannedMinutes: sessions.reduce((sum, session) => sum + (session.durationMinutes ?? 0), 0),
     averageRpe,
-    nextSession: sessions.find(session => session.status !== 'completed' && session.status !== 'skipped') ?? null,
+    nextSession:
+      sessions.find(session => session.status === 'in_progress')
+      ?? sessions.find(session => session.status !== 'completed' && session.status !== 'skipped')
+      ?? null,
   }
 }
 
