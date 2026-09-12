@@ -32,6 +32,7 @@ import {
   loadTests,
 } from './testRepository'
 import { RemoteTestPanel } from './RemoteTestPanel'
+import { LiveTindeqPanel } from './LiveTindeqPanel'
 import {
   buildRetestInput,
   buildTestPresentation,
@@ -637,6 +638,16 @@ export function TestScreen({
           </strong>
         </div>
       </div>
+
+      {manageable && (
+        <LiveTindeqPanel
+          profile={profile}
+          athleteId={athleteId}
+          onHistoryChanged={() => {
+            void refresh()
+          }}
+        />
+      )}
 
       <RemoteTestPanel
         profile={profile}

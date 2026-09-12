@@ -24,6 +24,7 @@ import {
   prepareNextLiveAttempt,
   recordLiveAcquisition,
   selectLiveTestAttempt,
+  skipActiveLiveTestItem,
   type AddLiveTestItemOptions,
   type CreateLiveRunnerOptions,
   type LiveTestRunnerState,
@@ -611,6 +612,17 @@ export class LiveTestRuntime {
 
     this.updateRunner(
       completeActiveLiveTestItem(
+        this.runnerState,
+      ),
+    )
+  }
+
+  skipActiveItem() {
+    this.forceState =
+      emptyForceSnapshot()
+
+    this.updateRunner(
+      skipActiveLiveTestItem(
         this.runnerState,
       ),
     )
