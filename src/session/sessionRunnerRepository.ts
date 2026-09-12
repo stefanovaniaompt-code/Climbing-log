@@ -42,6 +42,29 @@ type ExerciseRow = {
   instructions: string | null
 }
 
+type ExerciseTestTargetRow = {
+  session_exercise_id: string
+  reference_type: string
+  test_result_id: string | null
+  metric_key: string
+  source_metric_label: string | null
+  source_value: number | string
+  source_unit: string
+  source_tested_at: string
+  source_measured_at: string | null
+  source_side: string | null
+  source_grip: string | null
+  source_body_weight_kg: number | string | null
+  source_protocol_key: string | null
+  source_protocol_version: string | null
+  source_setup: JsonRecord | null
+  source_measurement_source: string | null
+  source_quality_status: string | null
+  target_unit: string
+  set_targets: unknown[]
+  locked_at: string
+}
+
 type ExerciseLogRow = {
   id: string
   session_exercise_id: string
@@ -117,6 +140,56 @@ export async function loadSessionRunner(profile: AppProfile, requestedSessionId?
   if (logResult.error) throw logResult.error
   if (!sessionResult.data) throw new Error('La sessione selezionata non è disponibile per questo atleta.')
 
+  const exerciseRows =
+    (
+      exerciseResult.data ??
+      []
+    ) as ExerciseRow[]
+
+  const exerciseIds =
+    exerciseRows.map(
+      row => row.id,
+    )
+
+  let testTargetRows:
+    ExerciseTestTargetRow[] = []
+
+  if (exerciseIds.length) {
+    const targetResult =
+      await supabase
+        .from(
+          'exercise_test_targets',
+        )
+        .select(
+          'session_exercise_id,reference_type,test_result_id,metric_key,source_metric_label,source_value,source_unit,source_tested_at,source_measured_at,source_side,source_grip,source_body_weight_kg,source_protocol_key,source_protocol_version,source_setup,source_measurement_source,source_quality_status,target_unit,set_targets,locked_at',
+        )
+        .in(
+          'session_exercise_id',
+          exerciseIds,
+        )
+
+    if (targetResult.error) {
+      throw targetResult.error
+    }
+
+    testTargetRows =
+      (
+        targetResult.data ??
+        []
+      ) as ExerciseTestTargetRow[]
+  }
+
+  const testTargetByExercise =
+    new Map(
+      testTargetRows.map(
+        target => [
+          target
+            .session_exercise_id,
+          target,
+        ],
+      ),
+    )
+
   const session = sessionResult.data as SessionRow
   const sessionLog = logResult.data as SessionLogRow | null
   let progressRows: ExerciseLogRow[] = []
@@ -145,18 +218,69 @@ export async function loadSessionRunner(profile: AppProfile, requestedSessionId?
       })
     }
   }
-  const exercises: RunnerExercise[] = ((exerciseResult.data ?? []) as ExerciseRow[]).map(row => ({
-    id: row.id,
-    order: row.exercise_order,
-    name: row.exercise_name,
-    prescription: row.prescription ?? {},
-    calculationContext: row.calculation_context ?? {},
-    targetRpeMin: numericOrNull(row.target_rpe_min),
-    targetRpeMax: numericOrNull(row.target_rpe_max),
-    restSeconds: row.rest_seconds,
-    instructions: row.instructions,
-    progress: progressByExercise.get(row.id) ?? null,
-  }))
+  const exercises:
+    RunnerExercise[] =
+    exerciseRows.map(
+      row => {
+        const testTarget =
+          testTargetByExercise.get(
+            row.id,
+          )
+
+        return {
+          id:
+            row.id,
+
+          order:
+            row.exercise_order,
+
+          name:
+            row.exercise_name,
+
+          prescription:
+            row.prescription ??
+            {},
+
+          calculationContext: {
+            ...(
+              row.calculation_context ??
+              {}
+            ),
+
+            ...(
+              testTarget
+                ? {
+                    test_target:
+                      testTarget,
+                  }
+                : {}
+            ),
+          },
+
+          targetRpeMin:
+            numericOrNull(
+              row.target_rpe_min,
+            ),
+
+          targetRpeMax:
+            numericOrNull(
+              row.target_rpe_max,
+            ),
+
+          restSeconds:
+            row.rest_seconds,
+
+          instructions:
+            row.instructions,
+
+          progress:
+            progressByExercise.get(
+              row.id,
+            ) ??
+            null,
+        }
+      },
+    )
 
   return {
     source: 'legacy-v1',
@@ -290,7 +414,10 @@ export async function saveExerciseProgress(profile: AppProfile, sessionLogId: st
     ownerUserId: profile.userId,
     sessionLogId,
     sessionExerciseId: exercise.id,
-    actual: buildActualFromPrescription(exercise.prescription),
+    actual: buildActualFromPrescription(
+      exercise.prescription,
+      exercise.calculationContext,
+    ),
     rpe: input.rpe,
     notes: input.notes.trim(),
     completedAt,

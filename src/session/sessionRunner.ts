@@ -228,10 +228,150 @@ export function exerciseTimerPhaseLabel(state: ExerciseTimerState): string {
   return 'PREPARAZIONE'
 }
 
+export type DerivedSetPrescription = {
+  setNumber: number
+  percentage: number
+  calculatedTarget: number
+  targetUnit: string
+}
+
+export function getTestTargetSnapshot(
+  exercise: RunnerExercise,
+): JsonRecord | null {
+  const raw =
+    exercise.calculationContext
+      .test_target ??
+    exercise.calculationContext
+      .testTarget
+
+  if (
+    !raw ||
+    typeof raw !== 'object' ||
+    Array.isArray(raw)
+  ) {
+    return null
+  }
+
+  return raw as JsonRecord
+}
+
+export function getDerivedSetTargets(
+  exercise: RunnerExercise,
+): DerivedSetPrescription[] {
+  const target =
+    getTestTargetSnapshot(
+      exercise,
+    )
+
+  if (!target) {
+    return []
+  }
+
+  const rawSets =
+    target.set_targets ??
+    target.setTargets
+
+  if (
+    !Array.isArray(
+      rawSets,
+    )
+  ) {
+    return []
+  }
+
+  return rawSets.flatMap(
+    (
+      raw,
+      index,
+    ) => {
+      if (
+        !raw ||
+        typeof raw !== 'object' ||
+        Array.isArray(raw)
+      ) {
+        return []
+      }
+
+      const value =
+        raw as JsonRecord
+
+      const percentage =
+        Number(
+          value.percentage,
+        )
+
+      const calculatedTarget =
+        Number(
+          value.calculatedTarget ??
+          value.calculated_target,
+        )
+
+      const targetUnit =
+        textValue(
+          value.targetUnit ??
+          value.target_unit,
+        )
+
+      if (
+        !Number.isFinite(
+          percentage,
+        ) ||
+        !Number.isFinite(
+          calculatedTarget,
+        ) ||
+        !targetUnit
+      ) {
+        return []
+      }
+
+      return [{
+        setNumber:
+          positiveInteger(
+            value.setNumber ??
+            value.set_number,
+          ) ??
+          index + 1,
+
+        percentage,
+
+        calculatedTarget,
+
+        targetUnit,
+      }]
+    },
+  )
+}
+
 export function getSetCount(exercise: RunnerExercise): number {
-  const timer = exercise.prescription.timer
-  const timerRecord = timer && typeof timer === 'object' && !Array.isArray(timer) ? timer as JsonRecord : {}
-  return positiveInteger(exercise.prescription.sets) ?? positiveInteger(timerRecord.sets) ?? 1
+  const derived =
+    getDerivedSetTargets(
+      exercise,
+    )
+
+  if (derived.length) {
+    return derived.length
+  }
+
+  const timer =
+    exercise.prescription.timer
+
+  const timerRecord =
+    timer &&
+    typeof timer === 'object' &&
+    !Array.isArray(timer)
+      ? timer as JsonRecord
+      : {}
+
+  return (
+    positiveInteger(
+      exercise.prescription
+        .sets,
+    ) ??
+    positiveInteger(
+      timerRecord.sets,
+    ) ??
+    1
+  )
 }
 
 export function getRestSeconds(exercise: RunnerExercise): number {
@@ -257,20 +397,103 @@ export function formatPrescription(exercise: RunnerExercise): string {
   return parts.join(' · ')
 }
 
-export function getVariableSeries(exercise: RunnerExercise): string[] {
-  const dose = textValue(exercise.prescription.dose)
-  if (!dose) return []
-  const series = dose.split(/\s*[·•]\s*/).map(item => item.trim()).filter(Boolean)
-  return series.length > 1 ? series : []
+export function getVariableSeries(
+  exercise: RunnerExercise,
+): string[] {
+  const derived =
+    getDerivedSetTargets(
+      exercise,
+    )
+
+  if (derived.length) {
+    return derived.map(
+      item =>
+        String(
+          item.percentage,
+        ) +
+        '% = ' +
+        String(
+          Number(
+            item
+              .calculatedTarget
+              .toFixed(2),
+          ),
+        ) +
+        ' ' +
+        item.targetUnit,
+    )
+  }
+
+  const dose =
+    textValue(
+      exercise.prescription
+        .dose,
+    )
+
+  if (!dose) {
+    return []
+  }
+
+  const series =
+    dose
+      .split(
+        /\s*[\u00B7\u2022]\s*/,
+      )
+      .map(
+        item =>
+          item.trim(),
+      )
+      .filter(Boolean)
+
+  return series.length > 1
+    ? series
+    : []
 }
 
-export function buildActualFromPrescription(prescription: JsonRecord): JsonRecord {
-  return {
-    dose: prescription.dose ?? null,
-    load_type: prescription.load_type ?? 'none',
-    load_value: prescription.load_value ?? null,
-    unit: prescription.unit ?? null,
+export function buildActualFromPrescription(
+  prescription: JsonRecord,
+  calculationContext: JsonRecord = {},
+): JsonRecord {
+  const target =
+    calculationContext
+      .test_target ??
+    calculationContext
+      .testTarget
+
+  const actual:
+    JsonRecord = {
+      dose:
+        prescription.dose ??
+        null,
+
+      load_type:
+        prescription.load_type ??
+        'none',
+
+      load_value:
+        prescription.load_value ??
+        null,
+
+      unit:
+        prescription.unit ??
+        null,
+    }
+
+  /*
+   * Preserve the historical V1 payload exactly when
+   * the exercise has no test-derived prescription.
+   */
+  if (
+    target &&
+    typeof target ===
+      'object' &&
+    !Array.isArray(target)
+  ) {
+    actual.test_target_snapshot =
+      target
   }
+
+  return actual
 }
 
 export function firstOpenExerciseIndex(exercises: RunnerExercise[]): number {

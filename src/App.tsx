@@ -42,6 +42,7 @@ import type { CoachDashboardData } from './coach/coachDashboard'
 import { createManagedAthlete, decideCoachLinkRequest, inviteAthlete, loadAthleteManagement, removeAthleteRelationship, resolveInvitationEmail, revokeInvitation, setAthleteStatus, type AthleteManagementData } from './coach/athleteManagementRepository'
 import { canPublishProgram, prescriptionSummary, type ProgramBuilderData } from './builder/programBuilder'
 import { addExercise, createProgram, createSession, createWeek, loadProgramBuilder, publishProgram, updateExercise, updateSessionDetails, updateWeekDetails, type ExercisePatch } from './builder/programBuilderRepository'
+import { ExerciseTestTargetPanel } from './builder/ExerciseTestTargetPanel'
 import { emptyExercise, filterExercises, validateExercise, type ExerciseLibraryInput, type ExerciseLibraryItem, type LibraryStatusFilter } from './library/exerciseLibrary'
 import { createLibraryExercise, deleteLibraryExercise, loadExerciseLibrary, setLibraryExerciseArchived, updateLibraryExercise } from './library/exerciseLibraryRepository'
 import { TestScreen } from './tests/TestScreen'
@@ -1205,6 +1206,13 @@ function BuilderScreen({ profile, selectedAthleteId }: { profile: AppProfile; se
           <label><span>Recupero</span><div className="input-shell"><input type="number" min="0" step="15" value={patch.restSeconds} onChange={event => setPatch(value => ({ ...value, restSeconds: Number(event.target.value) }))} /><em>sec</em></div></label>
           <label><span>RPE target</span><div className="rpe-scale">{[6, 7, 8, 9, 10].map(value => <button className={value === patch.rpe ? 'active' : ''} key={value} onClick={() => setPatch(current => ({ ...current, rpe: value }))}>{value}</button>)}</div></label>
           <label className="inspector-notes"><span>Indicazioni</span><textarea value={patch.instructions} onChange={event => setPatch(value => ({ ...value, instructions: event.target.value }))} /></label>
+
+          <ExerciseTestTargetPanel
+            profile={profile}
+            athleteId={athleteId}
+            exerciseId={exercise.id}
+            setCount={patch.sets}
+          />
           <button className="button button--signal button--wide" disabled={state === 'saving'} onClick={saveParameters}><Save size={15} /> {state === 'saving' ? 'Salvo…' : 'Salva parametri'}</button>
         </>}
       </Panel>
