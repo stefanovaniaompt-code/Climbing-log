@@ -464,7 +464,7 @@ describe(
               'invalid',
             ),
         ).toThrow(
-          'Un tentativo non valido non puo essere selezionato.',
+          'Un tentativo non valido non può essere selezionato.',
         )
       },
     )

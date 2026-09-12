@@ -148,7 +148,7 @@ export async function loadTests(profile: AppProfile): Promise<TestData> {
 
 export async function createTest(profile: AppProfile, input: TestInput) {
   if (profile.role !== 'coach') {
-    throw new Error('Solo il coach puo registrare manualmente un test.')
+    throw new Error('Solo il coach può registrare manualmente un test.')
   }
   if (isDemo(profile)) return 'demo-new'
   const sessionResult = await supabase!.from('test_sessions').insert({ athlete_id: input.athleteId, coach_id: profile.role === 'coach' ? profile.userId : null, tested_at: input.testedAt, body_weight_kg: input.bodyWeightKg, protocol_version: input.protocolVersion.trim(), context: { ...input.context, capture_source: 'manual' }, notes: input.notes.trim() || null }).select('id').single()
@@ -166,7 +166,7 @@ export async function createTest(profile: AppProfile, input: TestInput) {
 
 export async function deleteTest(profile: AppProfile, testSessionId: string) {
   if (profile.role !== 'coach') {
-    throw new Error('Solo il coach puo eliminare una rilevazione.')
+    throw new Error('Solo il coach può eliminare una rilevazione.')
   }
   if (isDemo(profile)) return
   const result = await supabase!

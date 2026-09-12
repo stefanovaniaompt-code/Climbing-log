@@ -263,7 +263,7 @@ export function selectAttemptState(
     'INVALID'
   ) {
     throw new Error(
-      'Un tentativo non valido non puo essere selezionato.',
+      'Un tentativo non valido non può essere selezionato.',
     )
   }
 

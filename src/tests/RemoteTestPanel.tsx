@@ -649,7 +649,7 @@ export function RemoteTestPanel({
     ) => {
       if (
         !window.confirm(
-          'Confermi che questo test non verra eseguito?',
+          'Confermi che questo test non verrà eseguito?',
         )
       ) {
         return
@@ -981,7 +981,7 @@ export function RemoteTestPanel({
               0 ? (
                 <p>
                   Aggiungi i test che
-                  l'atleta dovra
+                  l'atleta dovrà
                   eseguire in autonomia.
                 </p>
               ) : (

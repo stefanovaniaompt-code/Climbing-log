@@ -41,7 +41,7 @@ implements BleTransport {
       !this.isSupported
     ) {
       throw new Error(
-        'Trasporto BLE nativo disponibile solo nell app Android/iOS.',
+        'Trasporto BLE nativo disponibile solo nell’app Android/iOS.',
       )
     }
 

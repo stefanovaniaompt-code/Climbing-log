@@ -30,7 +30,7 @@ export function friendlyAuthError(message: string) {
   }
 
   if (normalized.includes('email not confirmed')) {
-    return 'L indirizzo email non è ancora confermato.'
+    return 'L’indirizzo email non è ancora confermato.'
   }
 
   if (
@@ -44,7 +44,7 @@ export function friendlyAuthError(message: string) {
     normalized.includes('signups not allowed') ||
     normalized.includes('signup is disabled')
   ) {
-    return 'Questo account deve essere creato o invitato dal coach. Usa l invito ricevuto oppure contatta il coach.'
+    return 'Questo account deve essere creato o invitato dal coach. Usa l’invito ricevuto oppure contatta il coach.'
   }
 
   if (

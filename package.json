@@ -13,7 +13,7 @@
     "typecheck": "tsc -b --pretty false",
     "lint": "eslint .",
     "encoding:check": "node scripts/check-encoding.mjs",
-    "check": "pnpm encoding:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "check": "pnpm encoding:check && pnpm copy:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "db:start": "supabase start",
     "db:reset": "supabase db reset --local",
     "db:test": "supabase test db --local",
@@ -22,7 +22,8 @@
     "snapshot:verify": "node scripts/verify-supabase-snapshot.mjs",
     "preview": "vite preview --configLoader runner",
     "test": "vitest run --configLoader runner && node --test migration/*.test.mjs",
-    "migration:dry-run": "node migration/validate-v1.mjs migration/fixtures/legacy-v1.sample.json"
+    "migration:dry-run": "node migration/validate-v1.mjs migration/fixtures/legacy-v1.sample.json",
+    "copy:check": "node scripts/check-ui-copy.mjs"
   },
   "dependencies": {
     "@capacitor-community/bluetooth-le": "8.3.0",

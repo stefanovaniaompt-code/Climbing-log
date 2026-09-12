@@ -262,7 +262,7 @@ function MetricGroupCard({
               })}%
             </b>
             {asymmetry.weakerSide !== 'Bilanciato'
-              ? ` - lato piu debole: ${asymmetry.weakerSide}`
+              ? ` - lato più debole: ${asymmetry.weakerSide}`
               : ' - valori bilanciati'}
           </span>
         )}

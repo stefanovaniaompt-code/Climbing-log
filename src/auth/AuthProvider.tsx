@@ -188,7 +188,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (profileError) {
           throw new Error(
-            'Password aggiornata, ma lo sblocco dell account non è riuscito. Riprova con la nuova password.',
+            'Password aggiornata, ma lo sblocco dell’account non è riuscito. Riprova con la nuova password.',
           )
         }
       }

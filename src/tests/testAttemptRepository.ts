@@ -251,7 +251,7 @@ export async function selectTestAttempt(
 ) {
   if (bundle.qualityStatus === 'INVALID') {
     throw new Error(
-      'Un tentativo non valido non puo diventare risultato ufficiale.',
+      'Un tentativo non valido non può diventare risultato ufficiale.',
     )
   }
 

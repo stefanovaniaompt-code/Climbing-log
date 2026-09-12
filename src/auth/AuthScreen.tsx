@@ -100,7 +100,7 @@ export function AuthScreen() {
           <div>
             <b>Accesso collegato al tuo profilo</b>
             <span>
-              L account atleta viene creato o abilitato tramite il coach,
+              L’account atleta viene creato o abilitato tramite il coach,
               evitando profili duplicati.
             </span>
           </div>
@@ -121,9 +121,9 @@ export function AuthScreen() {
 
           <p>
             {mode === 'forgot'
-              ? 'Ti invieremo le istruzioni senza confermare se l indirizzo è registrato.'
+              ? 'Ti invieremo le istruzioni senza confermare se l’indirizzo è registrato.'
               : method === 'password'
-                ? 'Accedi con l email associata al tuo profilo e la tua password.'
+                ? 'Accedi con l’email associata al tuo profilo e la tua password.'
                 : 'Usa il link se il coach ti ha appena invitato o se non hai ancora impostato una password.'}
           </p>
 
@@ -133,7 +133,7 @@ export function AuthScreen() {
               <div>
                 <b>Nessuna registrazione separata</b>
                 <span>
-                  Se sei un nuovo atleta usa l invito ricevuto dal coach.
+                  Se sei un nuovo atleta usa l’invito ricevuto dal coach.
                   Se eri già registrato usa la stessa email di sempre:
                   programmi, allenamenti e test rimangono collegati.
                 </span>
@@ -184,8 +184,8 @@ export function AuthScreen() {
                 <b>Controlla la posta</b>
                 <span>
                   {mode === 'forgot'
-                    ? 'Se l indirizzo è associato a un account, riceverai una mail con le istruzioni.'
-                    : 'Se esiste un account già creato o invitato per questa email, riceverai il link di accesso. Aprilo sul dispositivo su cui vuoi usare l app.'}
+                    ? 'Se l’indirizzo è associato a un account, riceverai una mail con le istruzioni.'
+                    : 'Se esiste un account già creato o invitato per questa email, riceverai il link di accesso. Aprilo sul dispositivo su cui vuoi usare l’app.'}
                 </span>
               </div>
             </div>
@@ -280,7 +280,7 @@ export function AuthScreen() {
                     resetMessages()
                   }}
                 >
-                  Torna all accesso
+                  Torna all’accesso
                 </button>
               )}
             </form>
@@ -304,7 +304,7 @@ export function AuthScreen() {
 
           <small className="auth-help">
             Non hai ancora una password? Usa il link di primo accesso
-            ricevuto dopo l invito del coach. Non creare un secondo account.
+            ricevuto dopo l’invito del coach. Non creare un secondo account.
           </small>
         </div>
       </section>

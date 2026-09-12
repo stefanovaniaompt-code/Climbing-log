@@ -628,7 +628,7 @@ export function ExerciseTestTargetPanel({
         )
 
         setMessage(
-          'Target salvato. Il riferimento resta bloccato finche non scegli esplicitamente di ricalcolarlo.',
+          'Target salvato. Il riferimento resta bloccato finché non scegli esplicitamente di ricalcolarlo.',
         )
       } catch (
         reason
@@ -748,7 +748,7 @@ export function ExerciseTestTargetPanel({
         }
 
         setMessage(
-          'Target ricalcolato esplicitamente con il retest piu recente.',
+          'Target ricalcolato esplicitamente con il retest più recente.',
         )
       } catch (
         reason
@@ -1266,13 +1266,13 @@ export function ExerciseTestTargetPanel({
 
               <div>
                 <b>
-                  Retest piu recente
+                  Retest più recente
                   disponibile
                 </b>
 
                 <span>
                   Il programma resta
-                  invariato finche non
+                  invariato finché non
                   scegli di
                   ricalcolarlo.
                 </span>

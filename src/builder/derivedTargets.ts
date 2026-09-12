@@ -516,7 +516,7 @@ export function calculateDerivedSetTargets(
     'INVALID'
   ) {
     throw new Error(
-      'Un risultato INVALID non puo essere usato come riferimento.',
+      'Un risultato INVALID non può essere usato come riferimento.',
     )
   }
 

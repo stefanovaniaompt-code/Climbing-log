@@ -12,7 +12,7 @@ describe('shouldRequireLegacyAthleteOnboarding', () => {
     ).toBe(true)
   })
 
-  it('non richiede onboarding a un atleta gia completato', () => {
+  it('non richiede onboarding a un atleta già completato', () => {
     expect(
       shouldRequireLegacyAthleteOnboarding(
         'athlete',

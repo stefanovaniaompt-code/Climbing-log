@@ -572,7 +572,7 @@ export function AthleteHomeScreen({
                 home.program.name}
             </b>
             <p>
-              Apri una sessione specifica oppure riprendi quella gia in corso.
+              Apri una sessione specifica oppure riprendi quella già in corso.
             </p>
           </div>
 
