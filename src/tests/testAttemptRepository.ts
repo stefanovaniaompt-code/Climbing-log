@@ -1,6 +1,7 @@
 import { dataRuntime } from '../dataRuntime'
 import { supabase } from '../lib/supabase'
 import type { AppProfile } from '../onboarding/types'
+import type { CanonicalTestResultBundle } from './testCanonicalResults'
 import type {
   TestAttemptSyncPayload,
   TestSessionDraft,
@@ -52,9 +53,7 @@ export async function syncTestSession(
     .select('id')
     .single()
 
-  if (result.error) {
-    throw result.error
-  }
+  if (result.error) throw result.error
 
   return result.data.id as string
 }
@@ -87,9 +86,7 @@ export async function syncTestSessionItem(
     .select('id')
     .single()
 
-  if (result.error) {
-    throw result.error
-  }
+  if (result.error) throw result.error
 
   return result.data.id as string
 }
@@ -114,28 +111,37 @@ export async function syncTestAttempt(
   const rawCurvePath =
     `${payload.testSessionId}/${payload.attemptId}.json`
 
-  /*
-   * IMPORTANT:
-   * session and item must already exist.
-   * An attempt must never create its parent records.
-   */
   const attempt = await supabase!
     .from('test_attempts')
     .upsert(
       {
         id: payload.attemptId,
-        acquisition_id: payload.acquisitionId,
-        test_session_id: payload.testSessionId,
-        test_session_item_id: payload.testSessionItemId,
-        attempt_number: payload.attemptNumber,
+        acquisition_id:
+          payload.acquisitionId,
 
-        measurement_source: 'tindeq',
-        device_type: 'tindeq-progressor',
+        test_session_id:
+          payload.testSessionId,
+
+        test_session_item_id:
+          payload.testSessionItemId,
+
+        attempt_number:
+          payload.attemptNumber,
+
+        measurement_source:
+          'tindeq',
+
+        device_type:
+          'tindeq-progressor',
+
         device_info:
           payload.acquisition.deviceInfo ?? {},
 
-        side: payload.side,
-        grip: payload.grip || null,
+        side:
+          payload.side,
+
+        grip:
+          payload.grip || null,
 
         protocol_key:
           payload.protocolKey,
@@ -176,11 +182,8 @@ export async function syncTestAttempt(
         ended_at:
           payload.acquisition.endedAt,
 
-        /*
-         * VALID means usable, not selected.
-         * Selection is always explicit.
-         */
-        is_selected: false,
+        is_selected:
+          false,
 
         created_by:
           profile.userId,
@@ -199,11 +202,15 @@ export async function syncTestAttempt(
   const rawBody =
     JSON.stringify({
       version: 1,
+
       acquisitionId:
         payload.acquisitionId,
+
       unit: 'N',
+
       samples:
         payload.acquisition.samples,
+
       metadata:
         payload.acquisition.samplingMetadata,
     })
@@ -213,17 +220,21 @@ export async function syncTestAttempt(
       .from('test-acquisitions')
       .upload(
         rawCurvePath,
+
         new Blob(
           [rawBody],
           {
-            type: 'application/json',
+            type:
+              'application/json',
           },
         ),
+
         {
           contentType:
             'application/json',
 
-          upsert: true,
+          upsert:
+            true,
         },
       )
 
@@ -231,33 +242,59 @@ export async function syncTestAttempt(
     throw upload.error
   }
 
-  /*
-   * Do NOT create test_results here.
-   *
-   * An acquisition is only an attempt.
-   * Official results will be generated from the
-   * explicitly selected attempt in Push 2/8.
-   */
-
   return attempt.data.id as string
 }
 
 export async function selectTestAttempt(
   profile: AppProfile,
-  testSessionItemId: string,
-  attemptId: string,
+  bundle: CanonicalTestResultBundle,
 ) {
+  if (bundle.qualityStatus === 'INVALID') {
+    throw new Error(
+      'Un tentativo non valido non puo diventare risultato ufficiale.',
+    )
+  }
+
   if (isDemo(profile)) return
+
+  const metrics =
+    bundle.metrics.map(
+      metric => ({
+        metricKey:
+          metric.metricKey,
+
+        metricLabel:
+          metric.metricLabel,
+
+        value:
+          metric.value,
+
+        unit:
+          metric.unit,
+
+        isPrimary:
+          metric.isPrimary,
+
+        normalizeToBodyWeight:
+          metric.normalizeToBodyWeight,
+      }),
+    )
 
   const result =
     await supabase!.rpc(
-      'select_test_attempt',
+      'materialize_test_attempt_results',
       {
         p_test_session_item_id:
-          testSessionItemId,
+          bundle.testSessionItemId,
 
         p_attempt_id:
-          attemptId,
+          bundle.attemptId,
+
+        p_setup:
+          bundle.setup,
+
+        p_metrics:
+          metrics,
       },
     )
 
