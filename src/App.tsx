@@ -77,7 +77,11 @@ const navItems: NavItem[] = [
 ]
 
 function HomeScreen({ openSession, profile }: { openSession: (sessionId: string) => void; profile: AppProfile }) {
+  const programStorageKey = `cc-v2:program:${profile.userId}`
   const weekStorageKey = `cc-v2:week:${profile.userId}`
+  const [selectedProgramId, setSelectedProgramId] = useState<string>(() => {
+    try { return window.localStorage.getItem(programStorageKey) ?? '' } catch { return '' }
+  })
   const [selectedWeekId, setSelectedWeekId] = useState<string>(() => {
     try { return window.localStorage.getItem(weekStorageKey) ?? '' } catch { return '' }
   })
@@ -89,15 +93,23 @@ function HomeScreen({ openSession, profile }: { openSession: (sessionId: string)
     let active = true
     setHome(undefined)
     setError('')
-    loadAthleteHome(profile, selectedWeekId || null)
+    loadAthleteHome(profile, selectedWeekId || null, selectedProgramId || null)
       .then(value => {
         if (!active) return
         setHome(value)
+        if (value && value.program.id !== selectedProgramId) setSelectedProgramId(value.program.id)
         if (value && selectedWeekId && value.week.id !== selectedWeekId) setSelectedWeekId(value.week.id)
       })
       .catch(reason => { if (active) setError(reason instanceof Error ? reason.message : 'Programma non disponibile.') })
     return () => { active = false }
-  }, [profile, reloadKey, selectedWeekId])
+  }, [profile, reloadKey, selectedProgramId, selectedWeekId])
+
+  useEffect(() => {
+    try {
+      if (selectedProgramId) window.localStorage.setItem(programStorageKey, selectedProgramId)
+      else window.localStorage.removeItem(programStorageKey)
+    } catch { /* Storage may be unavailable. */ }
+  }, [programStorageKey, selectedProgramId])
 
   useEffect(() => {
     try {
@@ -181,6 +193,24 @@ function HomeScreen({ openSession, profile }: { openSession: (sessionId: string)
             </div>
           }
         >
+          <label className="athlete-block-select">
+            <span>Programma</span>
+            <select
+              value={home.program.id}
+              disabled={home.programs.length <= 1}
+              onChange={event => {
+                setSelectedProgramId(event.target.value)
+                setSelectedWeekId('')
+              }}
+            >
+              {home.programs.map(program => (
+                <option key={program.id} value={program.id}>
+                  {program.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
           <label className="athlete-block-select">
             <span>Blocco</span>
 
