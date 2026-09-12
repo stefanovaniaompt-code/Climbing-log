@@ -74,28 +74,61 @@ export async function createManagedAthlete(profile: AppProfile, firstName: strin
   return data as string
 }
 
-export async function inviteAthlete(profile: AppProfile, athleteId: string, rawEmail: string) {
-  if (!supabase || profile.userId.startsWith('00000000-')) return { delivered: false }
-  const email = normalizeEmail(rawEmail)
-  if (!/^\S+@\S+\.\S+$/.test(email)) throw new Error('Inserisci un indirizzo email valido.')
-  const athleteResult = await supabase.from('athletes').update({ email }).eq('id', athleteId).select('id').single()
-  if (athleteResult.error) throw athleteResult.error
-
-  const existingResult = await supabase.from('athlete_invitations').select('id,status').eq('coach_id', profile.userId).eq('email_normalized', email).maybeSingle()
-  if (existingResult.error) throw existingResult.error
-  if (existingResult.data?.status === 'accepted') throw new Error('Questo atleta ha già accettato. Riattiva la relazione dall’elenco atleti.')
-
-  if (existingResult.data) {
-    const updateResult = await supabase.from('athlete_invitations').update({ ...buildInvitationPayload(athleteId, email), accepted_at: null, invited_at: new Date().toISOString() }).eq('id', existingResult.data.id).select('id').single()
-    if (updateResult.error) throw updateResult.error
-  } else {
-    const insertResult = await supabase.from('athlete_invitations').insert({ coach_id: profile.userId, ...buildInvitationPayload(athleteId, email) }).select('id').single()
-    if (insertResult.error) throw insertResult.error
+export async function inviteAthlete(
+  profile: AppProfile,
+  athleteId: string,
+  rawEmail: string,
+) {
+  if (
+    !supabase ||
+    profile.userId.startsWith('00000000-')
+  ) {
+    return { delivered: false }
   }
 
-  const authResult = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true, emailRedirectTo: `${window.location.origin}/auth/callback` } })
-  if (authResult.error) return { delivered: false, deliveryError: authResult.error.message }
-  return { delivered: true }
+  const email = normalizeEmail(rawEmail)
+
+  if (!/^\S+@\S+\.\S+$/.test(email)) {
+    throw new Error(
+      'Inserisci un indirizzo email valido.',
+    )
+  }
+
+  const { data, error } =
+    await supabase.functions.invoke(
+      'invite-athlete',
+      {
+        body: {
+          athleteId,
+          email,
+        },
+      },
+    )
+
+  if (error) {
+    throw new Error(
+      'Invito non riuscito: ' + error.message,
+    )
+  }
+
+  const result = data as {
+    ok?: boolean
+    delivered?: boolean
+    deliveryError?: string
+  } | null
+
+  if (!result?.ok) {
+    throw new Error(
+      result?.deliveryError ||
+        'Invito non riuscito.',
+    )
+  }
+
+  return {
+    delivered: Boolean(result.delivered),
+    deliveryError:
+      result.deliveryError || undefined,
+  }
 }
 
 export async function decideCoachLinkRequest(profile: AppProfile, requestId: string, accept: boolean) {
