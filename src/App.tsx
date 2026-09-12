@@ -44,8 +44,7 @@ import { canPublishProgram, prescriptionSummary, type ProgramBuilderData } from 
 import { addExercise, createProgram, createSession, createWeek, loadProgramBuilder, publishProgram, updateExercise, updateSessionDetails, updateWeekDetails, type ExercisePatch } from './builder/programBuilderRepository'
 import { emptyExercise, filterExercises, validateExercise, type ExerciseLibraryInput, type ExerciseLibraryItem, type LibraryStatusFilter } from './library/exerciseLibrary'
 import { createLibraryExercise, deleteLibraryExercise, loadExerciseLibrary, setLibraryExerciseArchived, updateLibraryExercise } from './library/exerciseLibraryRepository'
-import { buildComparisons, calculateAsymmetry, metricHistory, validateTest, type TestData, type TestInput, type TestMetricInput, type TestSessionRecord } from './tests/testAnalytics'
-import { createTest, deleteTest, loadTests } from './tests/testRepository'
+import { TestScreen } from './tests/TestScreen'
 import { Bars, ConfirmDialog, Metric, Panel, ScreenHeader, Tag } from './shared/ui'
 import { useScreenWakeLock } from './shared/hooks/useScreenWakeLock'
 import { SystemScreen } from './features/system/SystemScreen'
@@ -1303,82 +1302,6 @@ function LibraryScreen({ profile }: { profile: AppProfile }) {
     </div>
     {message && <div className="completion-banner"><ShieldCheck size={19} /><div><b>Libreria aggiornata</b><span>{message}</span></div></div>}
     {deleteTarget && <ConfirmDialog title={`Eliminare ${deleteTarget.name}?`} text={`${deleteTarget.usageCount ? `È usato in ${deleteTarget.usageCount} sessioni. ` : ''}La voce sparirà dalla libreria, ma le sessioni già create e i risultati registrati manterranno nome, parametri e storico.`} confirmLabel="Elimina definitivamente" busy={state === 'saving'} onCancel={() => setDeleteTarget(null)} onConfirm={() => void removeExercise()} />}
-  </div>
-}
-
-const createMetricInput = (side: TestMetricInput['side'] = 'bilateral'): TestMetricInput => ({ metricKey: 'peak_force', metricLabel: 'Forza picco', value: Number.NaN, unit: 'kg', side, grip: '20 mm', normalizeToBodyWeight: true, setup: {}, notes: '' })
-const createTestInput = (athleteId = ''): TestInput => ({ athleteId, testedAt: new Date().toISOString().slice(0, 10), bodyWeightKg: null, protocolVersion: 'BLOCK-LIFT-20-V1', context: { posture: 'seated' }, notes: '', metrics: [createMetricInput('right'), createMetricInput('left')] })
-
-function TestScreen({ profile, selectedAthleteId }: { profile: AppProfile; selectedAthleteId: string }) {
-  const [data, setData] = useState<TestData | null>(null)
-  const [athleteId, setAthleteId] = useState(profile.role === 'athlete' ? profile.athleteId ?? '' : selectedAthleteId)
-  const [formOpen, setFormOpen] = useState(false)
-  const [input, setInput] = useState<TestInput>(() => createTestInput(profile.role === 'athlete' ? profile.athleteId ?? '' : ''))
-  const [state, setState] = useState<'loading' | 'idle' | 'saving'>('loading')
-  const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
-  const [deleteTarget, setDeleteTarget] = useState<TestSessionRecord | null>(null)
-
-  const refresh = async () => {
-    const next = await loadTests(profile)
-    setData(next)
-    return next
-  }
-  useEffect(() => { refresh().then(next => setAthleteId(current => selectedAthleteId && next.athletes.some(athlete => athlete.id === selectedAthleteId) ? selectedAthleteId : current || next.athletes[0]?.id || '')).catch(reason => setError(reason instanceof Error ? reason.message : 'Test non caricati.')).finally(() => setState('idle')) }, [profile.userId, selectedAthleteId])
-  useEffect(() => { setInput(value => ({ ...value, athleteId })) }, [athleteId])
-
-  const comparisons = data ? buildComparisons(data, athleteId) : []
-  const asymmetries = calculateAsymmetry(comparisons)
-  const athleteSessions = data?.sessions.filter(session => session.athleteId === athleteId).sort((a, b) => b.testedAt.localeCompare(a.testedAt)) ?? []
-  const athleteName = data?.athletes.find(athlete => athlete.id === athleteId)?.name ?? 'Atleta'
-
-  const updateMetric = (index: number, patch: Partial<TestMetricInput>) => setInput(value => ({ ...value, metrics: value.metrics.map((metric, metricIndex) => metricIndex === index ? { ...metric, ...patch } : metric) }))
-  const submit = async (event: FormEvent) => {
-    event.preventDefault()
-    const validationError = validateTest(input)
-    if (validationError) { setError(validationError); return }
-    setState('saving'); setError(''); setMessage('')
-    try {
-      await createTest(profile, input)
-      await refresh()
-      setInput(createTestInput(athleteId)); setFormOpen(false)
-      setMessage('Test registrato. I confronti sono stati ricalcolati senza modificare i risultati precedenti.')
-    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Test non registrato.') } finally { setState('idle') }
-  }
-
-  const removeTest = async () => {
-    if (!deleteTarget) return
-    setState('saving'); setError(''); setMessage('')
-    try {
-      await deleteTest(profile, deleteTarget.id)
-      await refresh()
-      setDeleteTarget(null)
-      setMessage('Rilevazione eliminata. Analytics, trend e confronti sono stati ricalcolati sui test rimanenti.')
-    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Test non eliminato.') } finally { setState('idle') }
-  }
-
-  return <div className="screen">
-    <ScreenHeader eyebrow="TEST / RETEST / ANALYTICS" title={athleteSessions.length ? `Progressi di ${athleteName}.` : 'Costruisci la prima baseline.'} text="Ogni risultato resta immutato. Delta, normalizzazione e asimmetria compaiono solo quando protocollo e setup sono confrontabili." action={<div className="header-actions"><Tag tone={data?.source === 'legacy-v1' ? 'success' : 'neutral'}>{data?.source === 'legacy-v1' ? 'DATI LIVE' : 'DEMO'}</Tag><button className="button button--signal" disabled={!athleteId} onClick={() => { setFormOpen(value => !value); setError(''); setInput(createTestInput(athleteId)) }}><Plus size={16} /> {formOpen ? 'Chiudi' : 'Registra test'}</button></div>} />
-    <div className="test-toolbar"><label><span>Atleta</span><select value={athleteId} onChange={event => setAthleteId(event.target.value)} disabled={profile.role === 'athlete'}>{data?.athletes.map(athlete => <option value={athlete.id} key={athlete.id}>{athlete.name}</option>)}</select></label><div><small>TEST REGISTRATI</small><strong>{String(athleteSessions.length).padStart(2, '0')}</strong></div><div><small>SERIE MISURATE</small><strong>{String(comparisons.length).padStart(2, '0')}</strong></div><div><small>CONFRONTABILI</small><strong>{String(comparisons.filter(item => item.comparable).length).padStart(2, '0')}</strong></div></div>
-    {formOpen && <Panel className="test-entry-panel" title="Nuova rilevazione" index="00" action={<Tag tone="signal">Nuovo record</Tag>}>
-      <form onSubmit={submit}>
-        <div className="test-meta-form"><label><span>Data</span><input type="date" value={input.testedAt} onChange={event => setInput(value => ({ ...value, testedAt: event.target.value }))} required /></label><label><span>Peso corporeo</span><div className="input-shell"><input type="number" min="1" step="0.1" value={input.bodyWeightKg ?? ''} onChange={event => setInput(value => ({ ...value, bodyWeightKg: event.target.value ? Number(event.target.value) : null }))} /><em>kg</em></div></label><label><span>Protocollo</span><input value={input.protocolVersion} onChange={event => setInput(value => ({ ...value, protocolVersion: event.target.value }))} required /></label><label><span>Setup generale</span><input value={String(input.context.posture ?? '')} onChange={event => setInput(value => ({ ...value, context: { ...value.context, posture: event.target.value } }))} placeholder="Es. seated" /></label></div>
-        <div className="test-metric-editor"><div className="test-metric-head"><b>Misure</b><button type="button" className="text-button" onClick={() => setInput(value => ({ ...value, metrics: [...value.metrics, createMetricInput()] }))}><Plus size={14} /> Aggiungi misura</button></div>{input.metrics.map((metric, index) => <div className="test-metric-row" key={`${index}-${metric.side}`}><label><span>Metrica</span><input value={metric.metricLabel} onChange={event => updateMetric(index, { metricLabel: event.target.value, metricKey: event.target.value.toLocaleLowerCase('it').trim().replace(/[^a-z0-9]+/g, '_') })} /></label><label><span>Lato</span><select value={metric.side ?? ''} onChange={event => updateMetric(index, { side: (event.target.value || null) as TestMetricInput['side'] })}><option value="bilateral">Bilaterale</option><option value="right">Destra</option><option value="left">Sinistra</option><option value="">Nessuno</option></select></label><label><span>Valore</span><input type="number" step="0.01" value={Number.isFinite(metric.value) ? metric.value : ''} onChange={event => updateMetric(index, { value: event.target.value === '' ? Number.NaN : Number(event.target.value) })} required /></label><label><span>Unità</span><input value={metric.unit} onChange={event => updateMetric(index, { unit: event.target.value })} /></label><label><span>Presa</span><input value={metric.grip} onChange={event => updateMetric(index, { grip: event.target.value })} /></label><label className="test-normalize"><input type="checkbox" checked={metric.normalizeToBodyWeight} onChange={event => updateMetric(index, { normalizeToBodyWeight: event.target.checked })} /><span>Normalizza BW</span></label>{input.metrics.length > 1 && <button type="button" className="text-button test-remove" onClick={() => setInput(value => ({ ...value, metrics: value.metrics.filter((_, metricIndex) => metricIndex !== index) }))}>Rimuovi</button>}</div>)}</div>
-        <label className="test-notes"><span>Note</span><textarea value={input.notes} onChange={event => setInput(value => ({ ...value, notes: event.target.value }))} placeholder="Condizioni, dolore, osservazioni…" /></label>
-        {error && <p className="form-error form-error--box" role="alert">{error}</p>}
-        <button className="button button--primary" disabled={state === 'saving'}><Save size={16} /> {state === 'saving' ? 'Registro…' : 'Registra e calcola'}</button>
-      </form>
-    </Panel>}
-    {state === 'loading' && <div className="skeleton-stack"><span /><span /><span /></div>}
-    {!formOpen && error && <div className="completion-banner completion-banner--error"><TriangleAlert size={19} /><div><b>Operazione non completata</b><span>{error}</span></div></div>}
-    {message && <div className="completion-banner"><ShieldCheck size={19} /><div><b>Analytics aggiornate</b><span>{message}</span></div></div>}
-    {!athleteSessions.length && state !== 'loading' && <Panel title="Nessun test" index="01"><div className="empty-state"><TestTube2 size={22} /><b>Registra la baseline</b><span>Il primo test crea il riferimento; dal secondo iniziano delta e trend.</span></div></Panel>}
-    {!!comparisons.length && <div className="test-analytics-grid">
-      {comparisons.map((item, index) => { const history = data ? metricHistory(data, athleteId, item.key) : []; const maximum = Math.max(...history.map(point => Math.abs(point.value)), 1); return <Panel className="test-metric-card" title={`${item.label}${item.side ? ` · ${item.side === 'right' ? 'DX' : item.side === 'left' ? 'SX' : 'BI'}` : ''}`} index={String(index + 1).padStart(2, '0')} action={<Tag tone={item.comparable ? 'success' : 'warning'}>{item.comparable ? 'Coerente' : 'Non confrontabile'}</Tag>} key={item.key}><div className="test-current"><strong>{item.latest.toLocaleString('it-IT', { maximumFractionDigits: 2 })}<small> {item.unit}</small></strong>{item.delta !== null && <span className={item.delta >= 0 ? 'positive' : 'negative'}>{item.delta >= 0 ? '+' : ''}{item.delta.toLocaleString('it-IT', { maximumFractionDigits: 2 })} · {item.percent?.toLocaleString('it-IT', { maximumFractionDigits: 1 })}%</span>}</div><div className="test-trend" aria-label={`Storico ${item.label}`}>{history.map(point => <i key={point.date} style={{ height: `${Math.max(8, Math.abs(point.value) / maximum * 100)}%` }} title={`${point.date}: ${point.value} ${item.unit}`} />)}</div><div className="test-card-meta"><span>{item.grip || 'Presa n/d'}</span>{item.normalized !== null && <span>{item.normalized.toLocaleString('it-IT', { maximumFractionDigits: 2 })} × BW</span>}<span>{item.reason ?? `${history.length} rilevazioni`}</span></div></Panel> })}
-      {asymmetries.map(item => <Panel className="asymmetry" title={`Asimmetria · ${item.label}`} index="Δ" key={item.key}><div className="asymmetry__value">{item.percent.toLocaleString('it-IT', { maximumFractionDigits: 1 })}<span>%</span></div><div className="asymmetry__track"><i style={{ left: `${Math.min(100, item.percent * 5)}%` }} /></div><p>{item.weakerSide === 'Bilanciato' ? 'Valori bilanciati.' : `Lato più debole: ${item.weakerSide}.`} {item.percent <= 7 ? 'Entro la soglia operativa del 7%.' : 'Sopra la soglia operativa del 7%.'}</p><Tag tone={item.percent <= 7 ? 'success' : 'warning'}>{item.percent <= 7 ? 'Bilanciato' : 'Da monitorare'}</Tag></Panel>)}
-    </div>}
-    {!!athleteSessions.length && <Panel title="Storico test" index="H"><div className="test-history"><div><b>Data</b><b>Protocollo</b><b>Peso</b><b>Misure</b><b>Note</b><b>Azioni</b></div>{athleteSessions.map(session => <div key={session.id}><span>{new Intl.DateTimeFormat('it-IT', { dateStyle: 'medium' }).format(new Date(`${session.testedAt}T12:00:00`))}</span><span>{session.protocolVersion || 'Non indicato'}</span><span>{session.bodyWeightKg ? `${session.bodyWeightKg.toLocaleString('it-IT')} kg` : '—'}</span><span>{data?.results.filter(result => result.testSessionId === session.id).length ?? 0}</span><span>{session.notes || '—'}</span><button className="test-delete-button" disabled={state === 'saving'} onClick={() => setDeleteTarget(session)}><Trash2 size={14} /> Elimina</button></div>)}</div></Panel>}
-    {deleteTarget && <ConfirmDialog title={`Eliminare il test del ${new Intl.DateTimeFormat('it-IT', { dateStyle: 'long' }).format(new Date(`${deleteTarget.testedAt}T12:00:00`))}?`} text={`Verranno eliminati definitivamente la rilevazione e le sue ${data?.results.filter(result => result.testSessionId === deleteTarget.id).length ?? 0} misure. Gli altri test, gli atleti e gli allenamenti non saranno modificati.`} confirmLabel="Elimina test" busy={state === 'saving'} onCancel={() => setDeleteTarget(null)} onConfirm={() => void removeTest()} />}
   </div>
 }
 

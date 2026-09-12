@@ -7,6 +7,7 @@ export type TestInput = { athleteId: string; testedAt: string; bodyWeightKg: num
 
 export type MetricComparison = {
   key: string
+  metricKey: string
   label: string
   side: TestResultRecord['side']
   grip: string
@@ -59,7 +60,7 @@ export function buildComparisons(data: TestData, athleteId: string): MetricCompa
     const comparable = Boolean(previous && previousSession && latestSession.protocolVersion === previousSession.protocolVersion && stableJson(latest.setup) === stableJson(previous.setup))
     const delta = comparable && previous ? latest.value - previous.value : null
     return {
-      key, label: latest.metricLabel, side: latest.side, grip: latest.grip, unit: latest.unit,
+      key, metricKey: latest.metricKey, label: latest.metricLabel, side: latest.side, grip: latest.grip, unit: latest.unit,
       latest: latest.value, previous: previous?.value ?? null, delta,
       percent: delta !== null && previous && previous.value !== 0 ? delta / Math.abs(previous.value) * 100 : null,
       normalized: latest.normalizeToBodyWeight && latestSession.bodyWeightKg ? latest.value / latestSession.bodyWeightKg : null,

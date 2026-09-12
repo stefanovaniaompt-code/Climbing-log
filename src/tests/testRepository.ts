@@ -51,8 +51,11 @@ export async function loadTests(profile: AppProfile): Promise<TestData> {
 }
 
 export async function createTest(profile: AppProfile, input: TestInput) {
+  if (profile.role !== 'coach') {
+    throw new Error('Solo il coach puo registrare manualmente un test.')
+  }
   if (isDemo(profile)) return 'demo-new'
-  const sessionResult = await supabase!.from('test_sessions').insert({ athlete_id: input.athleteId, coach_id: profile.role === 'coach' ? profile.userId : null, tested_at: input.testedAt, body_weight_kg: input.bodyWeightKg, protocol_version: input.protocolVersion.trim(), context: input.context, notes: input.notes.trim() || null }).select('id').single()
+  const sessionResult = await supabase!.from('test_sessions').insert({ athlete_id: input.athleteId, coach_id: profile.role === 'coach' ? profile.userId : null, tested_at: input.testedAt, body_weight_kg: input.bodyWeightKg, protocol_version: input.protocolVersion.trim(), context: { ...input.context, capture_source: 'manual' }, notes: input.notes.trim() || null }).select('id').single()
   if (sessionResult.error) throw sessionResult.error
   const testSessionId = sessionResult.data.id as string
   const rows = input.metrics.map(metric => ({ test_session_id: testSessionId, metric_key: metric.metricKey.trim(), metric_label: metric.metricLabel.trim(), value: metric.value, unit: metric.unit.trim(), side: metric.side, grip: metric.grip.trim() || null, normalize_to_body_weight: metric.normalizeToBodyWeight, setup: { ...input.context, ...metric.setup }, notes: metric.notes.trim() || null }))
@@ -66,6 +69,9 @@ export async function createTest(profile: AppProfile, input: TestInput) {
 }
 
 export async function deleteTest(profile: AppProfile, testSessionId: string) {
+  if (profile.role !== 'coach') {
+    throw new Error('Solo il coach puo eliminare una rilevazione.')
+  }
   if (isDemo(profile)) return
   const result = await supabase!
     .from('test_sessions')
