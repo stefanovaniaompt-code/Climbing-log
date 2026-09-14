@@ -8,7 +8,7 @@ import {
   TriangleAlert,
 } from 'lucide-react'
 import type { AppProfile } from '../onboarding/types'
-import { Bars, Metric, Panel, ScreenHeader, Tag } from '../shared/ui'
+import { Metric, Panel, ScreenHeader, Tag } from '../shared/ui'
 import { selectCurrentWeek, summarizeWeek } from './athleteHome'
 import { loadAthleteHome } from './athleteHomeRepository'
 import {
@@ -564,7 +564,7 @@ export function AthleteHomeScreen({
         index="03"
         action={<Tag tone="purple">{home.week.status}</Tag>}
       >
-        <div className="trend-panel">
+        <div className="athlete-week-overview">
           <div>
             <b>
               {home.week.blockName ||
@@ -576,52 +576,53 @@ export function AthleteHomeScreen({
             </p>
           </div>
 
-          <Bars
-            values={stageValues.length > 0 ? stageValues : [8]}
-            accentAt={nextIndex}
-          />
+          {home.sessions.length === 0 ? (
+            <div className="empty-state empty-state--compact">
+              <ClipboardCheck size={20} />
+              <b>Nessuna sessione in questa settimana</b>
+              <span>
+                Puoi scegliere un'altra settimana o attendere un aggiornamento del coach.
+              </span>
+            </div>
+          ) : (
+            <div className="athlete-week-workouts">
+              {home.sessions.map((session, index) => (
+                <div className="athlete-week-workout" key={session.id}>
+                  <div className="athlete-week-workout__bar" aria-hidden="true">
+                    <i
+                      className={index === nextIndex ? 'is-next' : ''}
+                      style={{ height: `${stageValues[index]}%` }}
+                    />
+                  </div>
+                  <button
+                    className={`button ${
+                      session.status === 'in_progress'
+                        ? 'button--signal'
+                        : 'button--secondary'
+                    }`}
+                    disabled={session.status === 'skipped'}
+                    onClick={() => openSession(session.id)}
+                    title={
+                      session.status === 'skipped'
+                        ? 'Sessione marcata come saltata'
+                        : undefined
+                    }
+                  >
+                    <span>
+                      <small>
+                        D{String(session.scheduledDay).padStart(2, '0')} · {statusLabel(session.status)}
+                      </small>
+                      <b>{session.title}</b>
+                    </span>
+                    {session.status !== 'skipped' && (
+                      <ArrowRight size={16} />
+                    )}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-
-        {home.sessions.length === 0 ? (
-          <div className="empty-state empty-state--compact">
-            <ClipboardCheck size={20} />
-            <b>Nessuna sessione in questa settimana</b>
-            <span>
-              Puoi scegliere un'altra settimana o attendere un aggiornamento del coach.
-            </span>
-          </div>
-        ) : (
-          <div className="component-row">
-            {home.sessions.map(session => (
-              <button
-                key={session.id}
-                className={`button ${
-                  session.status === 'in_progress'
-                    ? 'button--signal'
-                    : 'button--secondary'
-                }`}
-                disabled={session.status === 'skipped'}
-                onClick={() => openSession(session.id)}
-                title={
-                  session.status === 'skipped'
-                    ? 'Sessione marcata come saltata'
-                    : undefined
-                }
-              >
-                <span>
-                  D{String(session.scheduledDay).padStart(2, '0')}
-                  {' - '}
-                  {session.title}
-                  {' - '}
-                  {statusLabel(session.status)}
-                </span>
-                {session.status !== 'skipped' && (
-                  <ArrowRight size={16} />
-                )}
-              </button>
-            ))}
-          </div>
-        )}
       </Panel>
     </div>
   )

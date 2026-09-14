@@ -222,11 +222,14 @@ Deno.serve(async (req) => {
       throw relationshipError;
     }
 
-    if (!relationship) {
+    if (
+      !relationship ||
+      relationship.status !== "active"
+    ) {
       return json(
         {
           error:
-            "Questo atleta non appartiene al coach corrente.",
+            "Questo atleta non e attivo per il coach corrente.",
         },
         403,
       );

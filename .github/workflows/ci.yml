@@ -31,6 +31,8 @@ jobs:
       - uses: supabase/setup-cli@v1
         with:
           version: 2.116.0
+      - name: Stage canonical migrations after the production baseline
+        run: node scripts/stage-ci-migrations.mjs
       - name: Start isolated Supabase stack
         run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
       - name: Rebuild database from production baseline

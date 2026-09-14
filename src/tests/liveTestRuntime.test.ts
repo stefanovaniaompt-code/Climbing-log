@@ -383,6 +383,17 @@ describe(
             480,
         })
 
+        expect(
+          runtime.snapshot.curve,
+        ).toEqual([
+          { elapsedSeconds: 0, forceN: 0 },
+          { elapsedSeconds: 0.1, forceN: 80 },
+          { elapsedSeconds: 0.2, forceN: 180 },
+          { elapsedSeconds: 0.3, forceN: 300 },
+          { elapsedSeconds: 0.4, forceN: 400 },
+          { elapsedSeconds: 0.5, forceN: 480 },
+        ])
+
         await runtime
           .stopAcquisition()
 

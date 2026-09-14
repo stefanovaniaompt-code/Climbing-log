@@ -51,6 +51,13 @@ import {
   persistOfficialLiveAttempt,
 } from './liveTestPersistence'
 
+import { LiveForceChart } from './LiveForceChart'
+
+import {
+  loadLiveTestDraft,
+  saveLiveTestDraft,
+} from './liveTestDraftStorage'
+
 type LiveSide =
   | 'left'
   | 'right'
@@ -239,9 +246,14 @@ export function LiveTindeqPanel({
   ] = useState('')
 
   const [
-    targetN,
-    setTargetN,
+    maximumForceN,
+    setMaximumForceN,
   ] = useState('')
+
+  const [
+    targetPercent,
+    setTargetPercent,
+  ] = useState('60')
 
   const [
     rfdWindowMs,
@@ -281,6 +293,34 @@ export function LiveTindeqPanel({
           .activeItemId,
     ) ??
     null
+
+  const activeDefinition =
+    activeItem
+      ? getTestDefinition(
+          activeItem.item.protocolKey,
+        )
+      : null
+
+  const activeTargetN =
+    activeItem &&
+    typeof activeItem.item.config.targetN === 'number' &&
+    Number.isFinite(activeItem.item.config.targetN)
+      ? activeItem.item.config.targetN
+      : null
+
+  const activeTargetTolerance =
+    activeItem &&
+    typeof activeItem.item.config.targetTolerancePercent === 'number'
+      ? activeItem.item.config.targetTolerancePercent
+      : 0.1
+
+  const activeAverageForce =
+    snapshot?.curve.length
+      ? snapshot.curve.reduce(
+          (sum, point) => sum + point.forceN,
+          0,
+        ) / snapshot.curve.length
+      : null
 
   const closedCount =
     snapshot?.runner.items.filter(
@@ -355,18 +395,34 @@ export function LiveTindeqPanel({
       }
     }
 
+  const attachRuntimeHandle = (
+    handle: ProgressorLiveRuntimeHandle,
+  ) => {
+    handleRef.current = handle
+    persistedAttemptsRef.current.clear()
+    setTransport(handle.transportKind)
+    setSupported(handle.supported)
+
+    unsubscribeRef.current =
+      handle.runtime.subscribe(next => {
+        setSnapshot(next)
+        saveLiveTestDraft(
+          profile.userId,
+          athleteId,
+          next.runner,
+        )
+        persistNewAttempts(next)
+      })
+  }
+
   const cleanupRuntime =
     async () => {
       const current =
         handleRef.current
 
-      unsubscribeRef
-        .current?.()
-
-      unsubscribeRef.current =
-        null
-
       if (!current) {
+        unsubscribeRef.current?.()
+        unsubscribeRef.current = null
         setSnapshot(null)
         return
       }
@@ -382,6 +438,12 @@ export function LiveTindeqPanel({
             )
         }
 
+        saveLiveTestDraft(
+          profile.userId,
+          athleteId,
+          current.runtime.snapshot.runner,
+        )
+
         await flushLiveTestSession(
           profile,
           current.runtime
@@ -394,6 +456,10 @@ export function LiveTindeqPanel({
          * if network persistence fails.
          */
       }
+
+
+      unsubscribeRef.current?.()
+      unsubscribeRef.current = null
 
       try {
         if (
@@ -427,6 +493,30 @@ export function LiveTindeqPanel({
 
   useEffect(
     () => {
+      const restored = loadLiveTestDraft(
+        profile.userId,
+        athleteId,
+      )
+
+      if (restored) {
+        try {
+          attachRuntimeHandle(
+            createProgressorLiveTestRuntime(
+              profile,
+              athleteId,
+              { runner: restored },
+            ),
+          )
+          setMessage(
+            'Sessione Tindeq provvisoria ripristinata.',
+          )
+        } catch {
+          setError(
+            'La sessione Tindeq provvisoria non può essere ripristinata.',
+          )
+        }
+      }
+
       return () => {
         void cleanupRuntime()
       }
@@ -485,34 +575,7 @@ export function LiveTindeqPanel({
             },
           )
 
-        handleRef.current =
-          handle
-
-        persistedAttemptsRef
-          .current
-          .clear()
-
-        setTransport(
-          handle.transportKind,
-        )
-
-        setSupported(
-          handle.supported,
-        )
-
-        unsubscribeRef.current =
-          handle.runtime
-            .subscribe(
-              next => {
-                setSnapshot(
-                  next,
-                )
-
-                persistNewAttempts(
-                  next,
-                )
-              },
-            )
+        attachRuntimeHandle(handle)
 
         await persistLiveRunnerState(
           profile,
@@ -700,22 +763,38 @@ export function LiveTindeqPanel({
             protocolKey,
           )
         ) {
-          const target =
-            Number(targetN)
+          const maximum =
+            Number(maximumForceN)
+
+          const percentage =
+            Number(targetPercent)
 
           if (
             !Number.isFinite(
-              target,
+              maximum,
             ) ||
-            target <= 0
+            maximum <= 0
           ) {
             throw new Error(
-              'Inserisci il target di forza in N.',
+              'Inserisci il massimale di forza in N.',
             )
           }
 
+          if (
+            !Number.isFinite(percentage) ||
+            percentage <= 0 ||
+            percentage > 100
+          ) {
+            throw new Error(
+              'La percentuale target deve essere compresa tra 1 e 100.',
+            )
+          }
+
+          config.maximumForceN = maximum
+          config.targetPercent = percentage
+          config.targetTolerancePercent = 0.1
           config.targetN =
-            target
+            maximum * percentage / 100
         }
 
         runtime.addItem(
@@ -936,6 +1015,43 @@ export function LiveTindeqPanel({
       setError('')
 
       try {
+        const current =
+          runtime.snapshot.runner
+
+        const currentItem =
+          current.items.find(
+            entry =>
+              entry.item.id ===
+              current.activeItemId,
+          )
+
+        const selectable =
+          currentItem?.selectedAttemptId ??
+          [...(currentItem?.attempts ?? [])]
+            .reverse()
+            .find(
+              record =>
+                record.canonical.qualityStatus !== 'INVALID',
+            )?.attempt.attemptId ??
+          null
+
+        if (!currentItem || !selectable) {
+          throw new Error(
+            'Non esiste un tentativo valido da confermare.',
+          )
+        }
+
+        if (!currentItem.selectedAttemptId) {
+          runtime.selectAttempt(selectable)
+        }
+
+        await persistOfficialLiveAttempt(
+          profile,
+          runtime.snapshot.runner,
+          currentItem.item.id,
+          selectable,
+        )
+
         runtime.completeActiveItem()
 
         await persistLiveRunnerState(
@@ -1314,7 +1430,8 @@ export function LiveTindeqPanel({
                             setGrip('')
                           }
 
-                          setTargetN('')
+                          setMaximumForceN('')
+                          setTargetPercent('60')
                         }
                       }
                     >
@@ -1397,32 +1514,63 @@ export function LiveTindeqPanel({
                     .has(
                       protocolKey,
                     ) && (
-                    <label>
-                      <span>
-                        Target forza
-                      </span>
+                    <>
+                      <label>
+                        <span>
+                          Massimale MVC
+                        </span>
 
-                      <div className="input-shell">
-                        <input
-                          type="number"
-                          min="1"
-                          step="1"
-                          value={
-                            targetN
-                          }
-                          onChange={
-                            event =>
-                              setTargetN(
-                                event
-                                  .target
-                                  .value,
-                              )
-                          }
-                        />
+                        <div className="input-shell">
+                          <input
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={maximumForceN}
+                            onChange={event =>
+                              setMaximumForceN(event.target.value)
+                            }
+                            placeholder="es. 400"
+                          />
 
-                        <em>N</em>
+                          <em>N</em>
+                        </div>
+                      </label>
+
+                      <label>
+                        <span>
+                          Target del massimale
+                        </span>
+
+                        <div className="input-shell">
+                          <input
+                            type="number"
+                            min="1"
+                            max="100"
+                            step="1"
+                            value={targetPercent}
+                            onChange={event =>
+                              setTargetPercent(event.target.value)
+                            }
+                          />
+
+                          <em>%</em>
+                        </div>
+                      </label>
+
+                      <div className="live-tindeq__target-preview">
+                        <small>ZONA LIVE ±10%</small>
+                        <b>
+                          {Number(maximumForceN) > 0 &&
+                          Number(targetPercent) > 0
+                            ? `${(
+                                Number(maximumForceN) *
+                                Number(targetPercent) /
+                                100
+                              ).toFixed(1)} N`
+                            : '—'}
+                        </b>
                       </div>
-                    </label>
+                    </>
                   )}
 
                   {protocolKey ===
@@ -1473,8 +1621,9 @@ export function LiveTindeqPanel({
             )}
 
           <Panel
-            title="Sessione live"
-            index="L3"
+            className={activeItem ? 'live-tindeq__test-page' : undefined}
+            title={activeDefinition?.name ?? 'Sessione live'}
+            index={activeItem ? `T${activeItem.item.itemOrder}` : 'L3'}
             action={
               <Tag tone="purple">
                 {
@@ -1494,6 +1643,7 @@ export function LiveTindeqPanel({
               </p>
             )}
 
+            {!activeItem && (
             <div className="live-tindeq__items">
               {snapshot.runner
                 .items
@@ -1720,29 +1870,38 @@ export function LiveTindeqPanel({
                   },
                 )}
             </div>
+            )}
 
             {activeItem && (
               <div className="live-tindeq__active">
+                <div className="live-tindeq__test-page-head">
+                  <div>
+                    <small>TEST IN ESECUZIONE</small>
+                    <h2>{activeDefinition?.name ?? 'Test Tindeq'}</h2>
+                    <p>
+                      {[activeItem.item.grip,
+                        activeItem.item.side === 'right'
+                          ? 'DX'
+                          : activeItem.item.side === 'left'
+                            ? 'SX'
+                            : activeItem.item.side === 'bilateral'
+                              ? 'Bilaterale'
+                              : '']
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </p>
+                  </div>
+                  {activeTargetN !== null && (
+                    <Tag tone="success">
+                      TARGET {activeTargetN.toFixed(1)} N
+                    </Tag>
+                  )}
+                </div>
+
                 <div className="live-tindeq__force">
                   <div>
                     <small>
-                      FORZA ATTUALE
-                    </small>
-
-                    <strong>
-                      {formatForce(
-                        snapshot.force
-                          .currentForceN,
-                      )}
-                      <span>
-                        {' '}N
-                      </span>
-                    </strong>
-                  </div>
-
-                  <div>
-                    <small>
-                      PICCO LIVE
+                      MASSIMO
                     </small>
 
                     <strong>
@@ -1758,17 +1917,42 @@ export function LiveTindeqPanel({
 
                   <div>
                     <small>
-                      CAMPIONI
+                      MEDIA
                     </small>
 
                     <strong>
-                      {
-                        snapshot.force
-                          .sampleCount
-                      }
+                      {formatForce(
+                        activeAverageForce,
+                      )}
+                      <span>
+                        {' '}N
+                      </span>
+                    </strong>
+                  </div>
+
+                  <div>
+                    <small>
+                      ATTUALE
+                    </small>
+
+                    <strong>
+                      {formatForce(
+                        snapshot.force.currentForceN,
+                      )}
+                      <span>{' '}N</span>
                     </strong>
                   </div>
                 </div>
+
+                <LiveForceChart
+                  points={snapshot.curve}
+                  targetN={activeTargetN}
+                  tolerancePercent={activeTargetTolerance}
+                />
+
+                <p className="live-tindeq__sample-count">
+                  {snapshot.force.sampleCount} campioni acquisiti
+                </p>
 
                 <div className="live-tindeq__actions">
                   {snapshot.runner
@@ -1871,8 +2055,10 @@ export function LiveTindeqPanel({
                         className="button button--signal"
                         disabled={
                           busy ||
-                          !activeItem
-                            .selectedAttemptId
+                          activeItem.attempts.every(
+                            record =>
+                              record.canonical.qualityStatus === 'INVALID',
+                          )
                         }
                         onClick={() =>
                           void completeItem()

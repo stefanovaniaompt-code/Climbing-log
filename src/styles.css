@@ -511,34 +511,77 @@ textarea { width: calc(100% - 36px); min-height: 76px; padding: 10px; resize: ve
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
 
-/* WEEK SESSION ALIGNMENT FIX
-   Le barre e i pulsanti delle sessioni condividono
-   esattamente larghezza, gap e punto di partenza. */
-.trend-panel + .component-row {
-  margin-left: 236px;
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 5px;
+/* WEEK SESSION ALIGNMENT */
+.athlete-week-overview {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: 28px;
   align-items: stretch;
 }
 
-.trend-panel + .component-row > .button {
-  flex: 1 1 0;
-  min-width: 0;
-  justify-content: space-between;
-  overflow: hidden;
+.athlete-week-overview > div:first-child > b { font-size: 14px; }
+.athlete-week-overview > div:first-child > p {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
-.trend-panel + .component-row > .button > span {
+.athlete-week-workouts {
   min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+.athlete-week-workout {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: 92px auto;
+  gap: 8px;
+}
+
+.athlete-week-workout__bar {
+  display: flex;
+  align-items: flex-end;
+  border-bottom: 1px solid var(--line-strong);
+  background: repeating-linear-gradient(to bottom, transparent 0, transparent 29px, rgba(141,135,144,.16) 30px);
+}
+
+.athlete-week-workout__bar i {
+  width: 100%;
+  min-height: 5px;
+  background: var(--purple-700);
+}
+
+.athlete-week-workout__bar i.is-next { background: var(--mustard-500); }
+.athlete-week-workout .button {
+  width: 100%;
+  min-width: 0;
+  min-height: 66px;
+  justify-content: space-between;
+  padding: 10px;
   overflow: hidden;
+}
+.athlete-week-workout .button > span { min-width: 0; text-align: left; }
+.athlete-week-workout .button small,
+.athlete-week-workout .button b { display: block; }
+.athlete-week-workout .button small {
+  margin-bottom: 6px;
+  color: var(--muted);
+  font: 600 8px/1.2 'IBM Plex Mono', monospace;
+}
+.athlete-week-workout .button b {
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 1.25;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 @media (max-width: 560px) {
-  .trend-panel + .component-row {
-    margin-left: 0;
+  .athlete-week-overview { grid-template-columns: 1fr; gap: 15px; }
+  .athlete-week-workouts {
+    grid-template-columns: repeat(auto-fit, minmax(115px, 1fr));
   }
 }
 
@@ -1573,6 +1616,26 @@ textarea {
   min-height: 42px;
 }
 
+.live-tindeq__target-preview {
+  min-height: 42px;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  padding: 7px 11px;
+  border: 1px solid var(--mustard-500);
+  background: var(--warning-bg);
+}
+
+.live-tindeq__target-preview small {
+  color: var(--muted);
+  font: 600 8px/1 'IBM Plex Mono', monospace;
+}
+
+.live-tindeq__target-preview b {
+  color: var(--purple-900);
+  font: 600 16px/1 'IBM Plex Mono', monospace;
+}
+
 .live-tindeq__items {
   display: grid;
   gap: 10px;
@@ -1620,6 +1683,37 @@ textarea {
   border-top: 1px solid var(--border);
 }
 
+.live-tindeq__test-page {
+  border-color: var(--purple-700);
+  box-shadow: 0 4px 0 #cfc2d5, 0 18px 40px rgba(44,16,58,.14);
+}
+
+.live-tindeq__test-page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.live-tindeq__test-page-head small {
+  color: var(--purple-500);
+  font: 600 9px/1 'IBM Plex Mono', monospace;
+  letter-spacing: .1em;
+}
+
+.live-tindeq__test-page-head h2 {
+  margin: 7px 0 0;
+  color: var(--purple-900);
+  font-size: clamp(24px, 4vw, 38px);
+  line-height: 1;
+}
+
+.live-tindeq__test-page-head p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .live-tindeq__force {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1641,6 +1735,45 @@ textarea {
   font-size: .75rem;
   font-weight: 600;
   opacity: .6;
+}
+
+.live-force-chart {
+  overflow: hidden;
+  border: 1px solid #493b50;
+  background: #140d18;
+  color: #f7f1e8;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.03);
+}
+
+.live-force-chart__labels {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 12px;
+  color: #b9aebd;
+  font: 600 9px/1 'IBM Plex Mono', monospace;
+}
+
+.live-force-chart__labels strong { color: var(--mustard-500); }
+.live-force-chart.is-in-target .live-force-chart__labels strong { color: #78ddb0; }
+.live-force-chart svg { width: 100%; height: clamp(220px, 42vw, 380px); display: block; }
+.live-force-chart svg > line { stroke: rgba(255,255,255,.1); stroke-width: 1; }
+.live-force-chart__target { fill: rgba(201,58,50,.32); }
+.live-force-chart.is-in-target .live-force-chart__target { fill: rgba(49,160,111,.35); }
+.live-force-chart__line {
+  fill: none;
+  stroke: var(--mustard-500);
+  stroke-width: 3;
+  vector-effect: non-scaling-stroke;
+}
+
+.live-tindeq__sample-count {
+  margin: -6px 0 0;
+  color: var(--muted);
+  text-align: right;
+  font: 600 9px/1 'IBM Plex Mono', monospace;
 }
 
 .live-tindeq__finish {
@@ -1674,6 +1807,8 @@ textarea {
     align-items: flex-start;
     flex-direction: column;
   }
+
+  .live-tindeq__test-page-head { flex-direction: column; }
 
   .live-tindeq__attempts > div {
     grid-template-columns: 1fr auto;

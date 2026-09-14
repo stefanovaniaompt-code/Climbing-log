@@ -10,6 +10,7 @@ import {
 import {
   createLiveTestRunner,
   type CreateLiveRunnerOptions,
+  type LiveTestRunnerState,
 } from './liveTestRunner'
 
 import {
@@ -22,6 +23,7 @@ type IdFactory =
 export type ProgressorLiveRuntimeOptions =
   CreateLiveRunnerOptions & {
     idFactory?: IdFactory
+    runner?: LiveTestRunnerState
   }
 
 export type ProgressorLiveRuntimeHandle = {
@@ -39,18 +41,28 @@ export function createProgressorLiveTestRuntime(
 ): ProgressorLiveRuntimeHandle {
   const {
     idFactory,
+    runner: restoredRunner,
     ...runnerOptions
   } = options
 
   const selection =
     createProgressorDevice()
 
-  const runner =
+  const runner = restoredRunner ??
     createLiveTestRunner(
       profile,
       athleteId,
       runnerOptions,
     )
+
+  if (
+    runner.session.athleteId !== athleteId ||
+    runner.session.coachId !== profile.userId
+  ) {
+    throw new Error(
+      'La sessione Tindeq salvata appartiene a un altro profilo.',
+    )
+  }
 
   const runtime =
     new LiveTestRuntime(

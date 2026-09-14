@@ -42,11 +42,17 @@ export type LiveForceSnapshot = {
   peakForceN: number | null
 }
 
+export type LiveForceCurvePoint = {
+  elapsedSeconds: number
+  forceN: number
+}
+
 export type LiveTestRuntimeSnapshot = {
   runner: LiveTestRunnerState
   connectionState: DeviceConnectionState
   deviceInfo: MeasurementDeviceInfo | null
   force: LiveForceSnapshot
+  curve: LiveForceCurvePoint[]
 }
 
 export type LiveTestRuntimeListener = (
@@ -178,6 +184,12 @@ export class LiveTestRuntime {
     LiveForceSnapshot =
       emptyForceSnapshot()
 
+  private curveState:
+    LiveForceCurvePoint[] = []
+
+  private curveStartMicros:
+    number | null = null
+
   private readonly listeners =
     new Set<
       LiveTestRuntimeListener
@@ -255,6 +267,11 @@ export class LiveTestRuntime {
 
       force:
         { ...this.forceState },
+
+      curve:
+        this.curveState.map(
+          point => ({ ...point }),
+        ),
     }
   }
 
@@ -462,6 +479,9 @@ export class LiveTestRuntime {
     this.forceState =
       emptyForceSnapshot()
 
+    this.curveState = []
+    this.curveStartMicros = null
+
     this.runnerState =
       markLiveAcquisitionStarted(
         this.runnerState,
@@ -512,6 +532,48 @@ export class LiveTestRuntime {
               sample.forceN,
             )
     }
+
+    const startMicros =
+      this.curveStartMicros ??
+      samples[0].timestampMicros
+
+    this.curveStartMicros =
+      startMicros
+
+    const nextCurve = [
+      ...this.curveState,
+    ]
+
+    for (const sample of samples) {
+      const previous =
+        nextCurve.at(-1)
+
+      const elapsedSeconds =
+        Math.max(
+          0,
+          (sample.timestampMicros -
+            startMicros) /
+            1_000_000,
+        )
+
+      if (
+        previous &&
+        elapsedSeconds -
+          previous.elapsedSeconds <
+          0.099 &&
+        sample !== samples.at(-1)
+      ) {
+        continue
+      }
+
+      nextCurve.push({
+        elapsedSeconds,
+        forceN: sample.forceN,
+      })
+    }
+
+    this.curveState =
+      nextCurve.slice(-900)
 
     this.forceState = {
       sampleCount:
@@ -599,6 +661,9 @@ export class LiveTestRuntime {
     this.forceState =
       emptyForceSnapshot()
 
+    this.curveState = []
+    this.curveStartMicros = null
+
     this.updateRunner(
       prepareNextLiveAttempt(
         this.runnerState,
@@ -610,6 +675,9 @@ export class LiveTestRuntime {
     this.forceState =
       emptyForceSnapshot()
 
+    this.curveState = []
+    this.curveStartMicros = null
+
     this.updateRunner(
       completeActiveLiveTestItem(
         this.runnerState,
@@ -620,6 +688,9 @@ export class LiveTestRuntime {
   skipActiveItem() {
     this.forceState =
       emptyForceSnapshot()
+
+    this.curveState = []
+    this.curveStartMicros = null
 
     this.updateRunner(
       skipActiveLiveTestItem(
