@@ -758,7 +758,7 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
 
   return (
     <div className="screen screen--session">
-      <ScreenHeader eyebrow="SESSIONE / PANORAMICA" title={runner.session.title} text={[runner.session.objective, runner.session.durationMinutes ? String(runner.session.durationMinutes) + ' min' : ''].filter(Boolean).join(' · ')} action={<div className="header-actions"><Tag tone={runner.source === 'legacy-v1' ? 'success' : 'neutral'}>{runner.source === 'legacy-v1' ? 'DATI LIVE' : 'DEMO'}</Tag>{wakeLockStatus === 'active' && <Tag tone="success">SCHERMO ATTIVO</Tag>}</div>} />
+      <ScreenHeader eyebrow="SESSIONE / PANORAMICA" title={runner.session.title} text={[runner.session.objective, runner.session.durationMinutes ? String(runner.session.durationMinutes) + ' min' : ''].filter(Boolean).join(' · ')} action={<div className="header-actions"><Tag tone={runner.source === 'legacy-v1' ? 'success' : 'neutral'}>{runner.source === 'legacy-v1' ? 'ONLINE' : 'DEMO'}</Tag>{wakeLockStatus === 'active' && <Tag tone="success">SCHERMO ATTIVO</Tag>}</div>} />
       <div className="session-status session-status--compact">
         <div className="session-status__progress"><span>ESERCIZI DELLA SESSIONE</span><b>{String(runner.exercises.length).padStart(2, '0')} · {summary.completed} registrati</b><div className="progress-line"><i style={{ width: String(summary.percentage) + '%' }} /></div></div>
       </div>
@@ -943,13 +943,13 @@ function DashboardScreen({ profile, goTo, openAthlete }: { profile: AppProfile; 
   }, [profile])
 
   if (error) return <div className="screen"><ScreenHeader eyebrow="COACH / PORTAFOGLIO" title="Dati coach non disponibili." text={error} action={<button className="button button--secondary" onClick={() => window.location.reload()}>Riprova</button>} /></div>
-  if (!data) return <div className="screen"><ScreenHeader eyebrow="COACH / PORTAFOGLIO" title="Sto leggendo il lavoro degli atleti." text="Programmi, sessioni e test vengono ricomposti dal backend." /><Panel title="Caricamento" index="01"><div className="skeleton-stack"><span /><span /><span /></div></Panel></div>
+  if (!data) return <div className="screen"><ScreenHeader eyebrow="COACH / DASHBOARD" title="Caricamento dashboard" text="Aggiornamento dati in corso." /><Panel title="Caricamento" index="01"><div className="skeleton-stack"><span /><span /><span /></div></Panel></div>
 
   const totalRelationships = data.relationshipDistribution.active + data.relationshipDistribution.inactive + data.relationshipDistribution.pending
   const activeShare = totalRelationships ? Math.round(data.relationshipDistribution.active / totalRelationships * 100) : 0
   return (
     <div className="screen">
-      <ScreenHeader eyebrow="COACH / PORTAFOGLIO" title={`${data.activeAthletes} ${data.activeAthletes === 1 ? 'atleta attivo' : 'atleti attivi'}, ${data.needsReview} da rivedere.`} text="La dashboard mette prima eccezioni e aderenza, leggendo programmi, sessioni e test aggiornati." action={<div className="header-actions"><Tag tone={data.source === 'legacy-v1' ? 'success' : 'neutral'}>{data.source === 'legacy-v1' ? 'DATI LIVE' : 'DEMO'}</Tag><button className="button button--primary" onClick={() => goTo('athletes')}><Users size={16} /> Gestisci atleti</button></div>} />
+      <ScreenHeader eyebrow="COACH / DASHBOARD" title={`${data.activeAthletes} ${data.activeAthletes === 1 ? 'atleta attivo' : 'atleti attivi'}, ${data.needsReview} da rivedere`} text="Programmi, sessioni e test aggiornati." action={<div className="header-actions"><Tag tone={data.source === 'legacy-v1' ? 'success' : 'neutral'}>{data.source === 'legacy-v1' ? 'ONLINE' : 'DEMO'}</Tag><button className="button button--primary" onClick={() => goTo('athletes')}><Users size={16} /> Gestisci atleti</button></div>} />
       <div className="coach-summary">
         <Metric label="Atleti attivi" value={String(data.activeAthletes).padStart(2, '0')} />
         <Metric label="Aderenza media" value={data.averageAdherence === null ? '—' : String(data.averageAdherence)} unit={data.averageAdherence === null ? undefined : '%'} />
@@ -1053,7 +1053,7 @@ function AthleteManagementScreen({ profile, selectedAthleteId, setSelectedAthlet
 
   if (selectedAthlete) return <div className="screen athlete-detail-screen">
     <button className="back-button" onClick={() => { setSelectedAthleteId(''); goTo('dashboard') }}><ArrowLeft size={17} /> Torna alla dashboard coach</button>
-    <ScreenHeader eyebrow="COACH / DETTAGLIO ATLETA" title={selectedAthlete.name} text="Da qui apri il programma, consulta o registra i test e gestisci il collegamento con il coach." action={<Tag tone={selectedAthlete.status === 'active' ? 'success' : 'warning'}>{selectedAthlete.status}</Tag>} />
+    <ScreenHeader eyebrow="COACH / DETTAGLIO ATLETA" title={selectedAthlete.name} text="Programma, test e accesso atleta." action={<Tag tone={selectedAthlete.status === 'active' ? 'success' : 'warning'}>{selectedAthlete.status}</Tag>} />
     <div className="athlete-detail-grid">
       <button className="athlete-action-card" onClick={() => goToAthlete('builder', selectedAthlete.id)}><SlidersHorizontal size={22} /><span><b>Programma di esercizi</b><small>Apri schede, settimane, sessioni e parametri.</small></span><ArrowRight size={18} /></button>
       <button className="athlete-action-card" onClick={() => goToAthlete('test', selectedAthlete.id)}><TestTube2 size={22} /><span><b>Test e progressi</b><small>Consulta lo storico o registra una nuova rilevazione.</small></span><ArrowRight size={18} /></button>
@@ -1066,7 +1066,7 @@ function AthleteManagementScreen({ profile, selectedAthleteId, setSelectedAthlet
   </div>
 
   return <div className="screen">
-    <ScreenHeader eyebrow="COACH / ATLETI" title="Crea l’atleta, poi lavora subito." text="L’account app è facoltativo e può essere collegato in seguito senza cambiare atleta o perdere lo storico." action={data && <Tag tone={data.source === 'legacy-v1' ? 'success' : 'neutral'}>{data.source === 'legacy-v1' ? 'DATI LIVE' : 'DEMO'}</Tag>} />
+    <ScreenHeader eyebrow="COACH / ATLETI" title="Atleti" text="Crea i profili e gestisci gli accessi." action={data && <Tag tone={data.source === 'legacy-v1' ? 'success' : 'neutral'}>{data.source === 'legacy-v1' ? 'ONLINE' : 'DEMO'}</Tag>} />
     <div className="grid grid--2-1">
       <Panel title="Atleti collegati" index="01">
         {state === 'loading' && !data && <div className="skeleton-stack"><span /><span /><span /></div>}
@@ -1170,10 +1170,10 @@ function BuilderScreen({ profile, selectedAthleteId }: { profile: AppProfile; se
     void run(() => publishProgram(profile, program.id, program.athleteId), 'Programma pubblicato. Il precedente resta archiviato e consultabile.')
   }
 
-  if (state === 'loading' && !data) return <div className="screen"><ScreenHeader eyebrow="PROGRAM BUILDER" title="Carico la programmazione…" text="Recupero atleti, programmi e libreria esercizi." /><div className="skeleton-stack"><span /><span /><span /></div></div>
+  if (state === 'loading' && !data) return <div className="screen"><ScreenHeader eyebrow="PROGRAMMA" title="Caricamento programma" text="Aggiornamento dati in corso." /><div className="skeleton-stack"><span /><span /><span /></div></div>
 
   return <div className="screen">
-    <ScreenHeader eyebrow="PROGRAM BUILDER / LIVE" title={program?.name ?? 'Nuovo programma'} text="Costruisci la scheda per livelli. Ogni salvataggio è verificato dal database e lo storico non viene eliminato." action={<div className="header-actions"><Tag tone={data?.source === 'legacy-v1' ? 'success' : 'neutral'}>{data?.source === 'legacy-v1' ? 'DATI LIVE' : 'DEMO'}</Tag><button className="button button--primary" disabled={!program || state === 'saving' || program.status === 'active'} onClick={publish}><Save size={16} /> {program?.status === 'active' ? 'Pubblicato' : 'Pubblica'}</button></div>} />
+    <ScreenHeader eyebrow="PROGRAMMA" title={program?.name ?? 'Nuovo programma'} text="Modifica settimane, sessioni ed esercizi." action={<div className="header-actions"><Tag tone={data?.source === 'legacy-v1' ? 'success' : 'neutral'}>{data?.source === 'legacy-v1' ? 'ONLINE' : 'DEMO'}</Tag><button className="button button--primary" disabled={!program || state === 'saving' || program.status === 'active'} onClick={publish}><Save size={16} /> {program?.status === 'active' ? 'Pubblicato' : 'Pubblica'}</button></div>} />
     <div className="builder-toolbar">
       <label><span>Atleta</span><select value={athleteId} onChange={event => setAthleteId(event.target.value)} disabled={state === 'saving'}>{data?.athletes.map(athlete => <option key={athlete.id} value={athlete.id}>{athlete.name}</option>)}</select></label>
       <label><span>Programma</span><select value={programId} onChange={event => setProgramId(event.target.value)} disabled={state === 'saving'}><option value="">Nuova bozza…</option>{athletePrograms.map(item => <option key={item.id} value={item.id}>{item.name} · {item.status}</option>)}</select></label>
@@ -1292,7 +1292,7 @@ function LibraryScreen({ profile }: { profile: AppProfile }) {
   }
 
   return <div className="screen">
-    <ScreenHeader eyebrow="LIBRERIA / ESERCIZI" title="Un esercizio, una definizione chiara." text="Crea prescrizioni riutilizzabili nei programmi. L’eliminazione richiede conferma e non modifica le sessioni o lo storico già registrati." action={<div className="header-actions"><Tag tone={source === 'legacy-v1' ? 'success' : 'neutral'}>{source === 'legacy-v1' ? 'DATI LIVE' : 'DEMO'}</Tag><button className="button button--signal" onClick={() => { setSelectedId(''); setInput(emptyExercise()); setError(''); setMessage('') }}><Plus size={16} /> Nuovo esercizio</button></div>} />
+    <ScreenHeader eyebrow="LIBRERIA / ESERCIZI" title="Libreria esercizi" text="Crea e modifica gli esercizi dei programmi." action={<div className="header-actions"><Tag tone={source === 'legacy-v1' ? 'success' : 'neutral'}>{source === 'legacy-v1' ? 'ONLINE' : 'DEMO'}</Tag><button className="button button--signal" onClick={() => { setSelectedId(''); setInput(emptyExercise()); setError(''); setMessage('') }}><Plus size={16} /> Nuovo esercizio</button></div>} />
     <div className="library-summary"><Metric label="Esercizi totali" value={String(items.length).padStart(2, '0')} /><Metric label="In uso" value={String(usedCount).padStart(2, '0')} /><Metric label="Archivio precedente" value={String(items.filter(item => item.archived).length).padStart(2, '0')} /></div>
     <div className="library-layout">
       <Panel className="library-catalog" title="Catalogo" index="01">

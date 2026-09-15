@@ -141,7 +141,7 @@ export function AthleteHomeScreen({
         <ScreenHeader
           eyebrow={`ATLETA / ${today}`}
           title={`Ciao, ${profile.displayName.split(' ')[0]}.`}
-          text="Non riesco a leggere il programma in questo momento; nessun dato e stato modificato."
+          text="Il programma non è disponibile. Riprova tra poco."
         />
 
         <Panel
@@ -167,8 +167,8 @@ export function AthleteHomeScreen({
       <div className="screen">
         <ScreenHeader
           eyebrow={`ATLETA / ${today}`}
-          title={`Ciao, ${profile.displayName.split(' ')[0]}.`}
-          text="Sto preparando il tuo programma di allenamento."
+          title="Caricamento programma"
+          text="Aggiornamento in corso."
         />
 
         <Panel
@@ -191,8 +191,8 @@ export function AthleteHomeScreen({
       <div className="screen">
         <ScreenHeader
           eyebrow={`ATLETA / ${today}`}
-          title={`Ciao, ${profile.displayName.split(' ')[0]}.`}
-          text="Il tuo storico resta disponibile; al momento non risulta un programma attivo."
+          title="Nessun programma attivo"
+          text="Contatta il coach per verificare la programmazione."
         />
 
         <Panel
@@ -202,8 +202,7 @@ export function AthleteHomeScreen({
         >
           <ClipboardCheck size={25} />
           <p>
-            Quando il coach pubblichera un programma attivo,
-            comparira qui senza perdere allenamenti o test precedenti.
+            Le nuove settimane compariranno qui dopo la pubblicazione del coach.
           </p>
         </Panel>
       </div>
@@ -276,19 +275,19 @@ export function AthleteHomeScreen({
       <ScreenHeader
         eyebrow={`ATLETA / ${today}`}
         title={`Ciao, ${profile.displayName.split(' ')[0]}.`}
-        text="Programma, blocco, settimana e sessione sono sempre navigabili dallo stesso punto."
+        text="Seleziona blocco e settimana per aprire una sessione."
         action={
           <Tag tone={home.source === 'legacy-v1' ? 'success' : 'neutral'}>
-            {home.source === 'legacy-v1' ? 'DATI LIVE' : 'DEMO'}
+            {home.source === 'legacy-v1' ? 'ONLINE' : 'DEMO'}
           </Tag>
         }
       />
 
       <div className="readiness-strip">
-        <div>
+        <div className="readiness-strip__week">
           <span>SETTIMANA</span>
           <strong>{String(home.week.weekNumber).padStart(2, '0')}</strong>
-          <em>/{home.program.name}</em>
+          <em>{home.program.name}</em>
         </div>
 
         <p>
@@ -562,7 +561,11 @@ export function AthleteHomeScreen({
       <Panel
         title="Sessioni della settimana"
         index="03"
-        action={<Tag tone="purple">{home.week.status}</Tag>}
+        action={
+          <Tag tone={isCurrentWeek ? 'signal' : 'purple'}>
+            {isCurrentWeek ? 'SETTIMANA CORRENTE' : `SETTIMANA ${home.week.weekNumber}`}
+          </Tag>
+        }
       >
         <div className="athlete-week-overview">
           <div>
@@ -587,11 +590,16 @@ export function AthleteHomeScreen({
           ) : (
             <div className="athlete-week-workouts">
               {home.sessions.map((session, index) => (
-                <div className="athlete-week-workout" key={session.id}>
+                <div
+                  className={`athlete-week-workout is-${session.status}${
+                    index === nextIndex ? ' is-next' : ''
+                  }`}
+                  key={session.id}
+                >
                   <div className="athlete-week-workout__bar" aria-hidden="true">
                     <i
                       className={index === nextIndex ? 'is-next' : ''}
-                      style={{ height: `${stageValues[index]}%` }}
+                      style={{ width: `${stageValues[index]}%` }}
                     />
                   </div>
                   <button
@@ -610,7 +618,8 @@ export function AthleteHomeScreen({
                   >
                     <span>
                       <small>
-                        D{String(session.scheduledDay).padStart(2, '0')} · {statusLabel(session.status)}
+                        GIORNO {String(session.scheduledDay).padStart(2, '0')}
+                        <em>{statusLabel(session.status)}</em>
                       </small>
                       <b>{session.title}</b>
                     </span>

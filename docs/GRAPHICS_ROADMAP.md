@@ -9,8 +9,18 @@ alterare i flussi di allenamento e test già validati.
 - workout della settimana accoppiato direttamente alla propria barra e label;
 - pagina di esecuzione dedicata per ogni test Tindeq;
 - curva live comune a tutti i protocolli;
-- fascia target endurance calcolata da MVC e percentuale, con tolleranza ±10%;
+- fascia target endurance calcolata da MVC e percentuale, con tolleranza ±5%;
 - conferma test autosufficiente e ripristino delle sessioni provvisorie.
+
+## Iterazione 1 — leggibilità atleta (completata localmente)
+
+- ripuliti titoli, stati di caricamento e descrizioni troppo tecniche;
+- corretto l'accostamento tra numero settimana e nome programma su smartphone;
+- trasformate le sessioni settimanali in card compatte con giorno, stato e titolo
+  sempre associati allo stesso indicatore;
+- tradotto lo stato della settimana e resa evidente quella corrente;
+- mantenuti viola/prugna, senape, fondo caldo, geometrie nette e dettagli mono
+  ispirati a Nothing OS.
 
 ## Fase 1 — fondamenta visuali
 
