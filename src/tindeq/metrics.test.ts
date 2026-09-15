@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { asymmetryPercent, criticalForce, detectOnset, detectRepeaters, forceUnits, impulse, peakForce, rfdMetrics, selectBestValidAttempt, timeToTaskFailure } from './metrics'
+import { asymmetryPercent, criticalForce, detectOnset, detectRepeaters, forceUnits, impulse, peakForce, rfdMetrics, selectBestValidAttempt, timeToTargetFailure, timeToTaskFailure } from './metrics'
 
 const curve = (forces: number[], stepMs = 50) => forces.map((forceN, index) => ({ forceN, timestampMicros: index * stepMs * 1000 }))
 
@@ -25,6 +25,20 @@ describe('Tindeq metrics engine', () => {
   it('calculates time-to-failure after the grace window', () => {
     const points = curve([100, 100, 70, 70, 70, 70], 500)
     expect(timeToTaskFailure(points, 100, 0.8, 1000)).toBe(1)
+  })
+
+  it('resets the endurance grace period after returning inside the target zone', () => {
+    const points = curve([100, 80, 80, 100, 80, 80, 80, 80, 80], 1000)
+    expect(timeToTargetFailure(points, 100, 0.05, 3000)).toBe(8)
+  })
+
+  it('calculates clinical RFD from actual onset to peak and ignores idle time', () => {
+    const points = curve([0, 0, 0, 0, 0, 0, 30, 40, 50, 60, 70, 80, 90, 98.0665], 100)
+    const result = rfdMetrics(points)
+    expect(result.onsetTimestampMicros).toBe(600_000)
+    expect(result.peakTimestampMicros).toBe(1_300_000)
+    expect(result.timeToPeakSeconds).toBeCloseTo(0.7)
+    expect(result.averageRfdKgfPerSecond).toBeCloseTo(10 / 0.7)
   })
 
   it('recognises repeater contractions and their validity', () => {

@@ -1,5 +1,6 @@
 import type { LiveForceCurvePoint } from './liveTestRuntime'
 import { buildLiveForceChart } from './liveForceChartModel'
+import { forceUnits } from '../tindeq/metrics'
 
 const WIDTH = 600
 const HEIGHT = 240
@@ -8,14 +9,24 @@ export function LiveForceChart({
   points,
   targetN,
   tolerancePercent = 0.1,
+  displayUnit = 'N',
+  variant = 'default',
 }: {
   points: readonly LiveForceCurvePoint[]
   targetN: number | null
   tolerancePercent?: number
+  displayUnit?: 'N' | 'kg'
+  variant?: 'default' | 'endurance'
 }) {
+  const displayPoints = displayUnit === 'kg'
+    ? points.map(point => ({ ...point, forceN: forceUnits.newtonsToKgf(point.forceN) }))
+    : points
+  const displayTarget = displayUnit === 'kg' && targetN !== null
+    ? forceUnits.newtonsToKgf(targetN)
+    : targetN
   const chart = buildLiveForceChart(
-    points,
-    targetN,
+    displayPoints,
+    displayTarget,
     tolerancePercent,
     WIDTH,
     HEIGHT,
@@ -40,14 +51,14 @@ export function LiveForceChart({
 
   return (
     <div
-      className={`live-force-chart${chart.inTarget ? ' is-in-target' : ''}`}
+      className={`live-force-chart live-force-chart--${variant}${chart.inTarget ? ' is-in-target' : ''}`}
       aria-label="Curva di forza live"
     >
       <div className="live-force-chart__labels">
-        <span>{chart.maxForceN.toFixed(0)} N</span>
+        <span>{chart.maxForceN.toFixed(1)} {displayUnit}</span>
         {chart.targetN !== null && (
           <strong>
-            Target {chart.targetN.toFixed(1)} N · zona ±{Math.round(tolerancePercent * 100)}%
+            Target {chart.targetN.toFixed(1)} {displayUnit} · zona ±{Math.round(tolerancePercent * 100)}%
           </strong>
         )}
         <span>{chart.durationSeconds.toFixed(1)} s</span>

@@ -13,6 +13,7 @@ import {
   meanForce,
   peakForce,
   rfdMetrics,
+  timeToTargetFailure,
   timeToTaskFailure,
   type QualityStatus,
 } from './metrics'
@@ -24,12 +25,22 @@ import type {
 import type {
   TestProtocolKey,
 } from '../tests/testCatalog'
+import {
+  ENDURANCE_OUT_OF_RANGE_GRACE_MS,
+  LIVE_TARGET_TOLERANCE,
+  REPEATER_WORK_MS,
+} from './liveClinicalConfig'
 
 export type AcquisitionConfig = {
   protocolKey: TestProtocolKey
   protocolVersion: string
   bodyWeightKg: number | null
   targetN?: number
+  targetKg?: number
+  mvcUsedKg?: number
+  targetTolerancePercent?: number
+  enduranceFailureGraceMs?: number
+  repeaterWorkMs?: number
   rfdWindowMs?: number
   side: 'left' | 'right' | 'bilateral' | null
   grip: string
@@ -161,6 +172,74 @@ function acquisitionMetrics(
       fatigue_slope:
         fatigueSlope(points),
     }
+
+  if (config.protocolKey.startsWith('live_mvc_')) {
+    const mvcKg = forceUnits.newtonsToKgf(peak.value)
+    return {
+      key: 'mvc_kg',
+      value: mvcKg,
+      unit: 'kg',
+      metrics: { ...common, mvc_kg: mvcKg },
+    }
+  }
+
+  if (config.protocolKey.startsWith('live_rfd_')) {
+    return {
+      key: 'rfd_average_kg_s',
+      value: rfd.averageRfdKgfPerSecond,
+      unit: 'kg/s',
+      metrics: {
+        ...common,
+        rfd_average_kg_s: rfd.averageRfdKgfPerSecond,
+        time_to_peak_seconds: rfd.timeToPeakSeconds,
+        force_onset_timestamp_micros: rfd.onsetTimestampMicros,
+        peak_timestamp_micros: rfd.peakTimestampMicros,
+      },
+    }
+  }
+
+  if (config.protocolKey.startsWith('live_endurance_')) {
+    const target = config.targetN ?? 0
+    const ttf = timeToTargetFailure(
+      points,
+      target,
+      config.targetTolerancePercent ?? LIVE_TARGET_TOLERANCE,
+      config.enduranceFailureGraceMs ?? ENDURANCE_OUT_OF_RANGE_GRACE_MS,
+    )
+    return {
+      key: 'time_to_failure',
+      value: ttf,
+      unit: 's',
+      metrics: {
+        ...common,
+        time_to_failure: ttf,
+        mvc_used_kg: config.mvcUsedKg ?? null,
+        target_kg: config.targetKg ?? null,
+        target_force: target,
+      },
+    }
+  }
+
+  if (config.protocolKey.startsWith('live_repeaters_')) {
+    const reps = detectRepeaters(points, config.targetN ?? 0, {
+      minimumWorkMs: config.repeaterWorkMs ?? REPEATER_WORK_MS,
+      targetTolerancePercent: config.targetTolerancePercent ?? LIVE_TARGET_TOLERANCE,
+    })
+    const valid = reps.filter(rep => rep.valid)
+    return {
+      key: 'valid_repetitions',
+      value: valid.length,
+      unit: 'rep',
+      metrics: {
+        ...common,
+        valid_repetitions: valid.length,
+        mvc_used_kg: config.mvcUsedKg ?? null,
+        target_kg: config.targetKg ?? null,
+        total_impulse: reps.reduce((sum, rep) => sum + rep.impulseNs, 0),
+        reps_in_target: reps.length ? valid.length / reps.length * 100 : 0,
+      },
+    }
+  }
 
   if (
     config.protocolKey ===

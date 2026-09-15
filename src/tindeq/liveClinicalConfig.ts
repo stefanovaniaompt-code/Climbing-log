@@ -1,0 +1,5 @@
+export const LIVE_TARGET_FRACTION = 0.6
+export const LIVE_TARGET_TOLERANCE = 0.05
+export const ENDURANCE_OUT_OF_RANGE_GRACE_MS = 3000
+export const REPEATER_WORK_MS = 7000
+export const REPEATER_REST_MS = 3000

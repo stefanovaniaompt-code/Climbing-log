@@ -19,6 +19,7 @@ import type {
   TestSessionItemDraft,
   TestSide,
 } from './testAttemptTypes'
+import { withSessionMvcDependency } from './liveTestProtocol'
 
 export type LiveTestRunnerPhase =
   | 'setup'
@@ -249,10 +250,12 @@ export function activateLiveTestItem(
     )
   }
 
+  const configuredItem = withSessionMvcDependency(state, target.item)
+
   const updated: LiveTestRunnerItem = {
     ...target,
     item: {
-      ...target.item,
+      ...configuredItem,
       status: 'in_progress',
     },
   }

@@ -19,15 +19,22 @@ export function peakForce(points: ForcePoint[]) {
 
 export type OnsetOptions = { baselineDurationMs?: number; minimumForceN?: number; standardDeviations?: number; sustainedMs?: number }
 
+export const DEFAULT_ONSET_OPTIONS: Required<OnsetOptions> = {
+  baselineDurationMs: 500,
+  minimumForceN: 20,
+  standardDeviations: 5,
+  sustainedMs: 50,
+}
+
 export function detectOnset(points: ForcePoint[], options: OnsetOptions = {}): number | null {
   if (points.length < 2) return null
-  const baselineEnd = points[0].timestampMicros + (options.baselineDurationMs ?? 500) * 1000
+  const baselineEnd = points[0].timestampMicros + (options.baselineDurationMs ?? DEFAULT_ONSET_OPTIONS.baselineDurationMs) * 1000
   const baseline = points.filter(point => point.timestampMicros <= baselineEnd)
   const values = (baseline.length >= 3 ? baseline : points.slice(0, Math.min(3, points.length))).map(point => point.forceN)
   const mean = values.reduce((sum, value) => sum + value, 0) / values.length
   const variance = values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / values.length
-  const threshold = Math.max(options.minimumForceN ?? 20, mean + (options.standardDeviations ?? 5) * Math.sqrt(variance))
-  const sustainedMicros = (options.sustainedMs ?? 50) * 1000
+  const threshold = Math.max(options.minimumForceN ?? DEFAULT_ONSET_OPTIONS.minimumForceN, mean + (options.standardDeviations ?? DEFAULT_ONSET_OPTIONS.standardDeviations) * Math.sqrt(variance))
+  const sustainedMicros = (options.sustainedMs ?? DEFAULT_ONSET_OPTIONS.sustainedMs) * 1000
   for (let index = 0; index < points.length; index += 1) {
     if (points[index].forceN < threshold) continue
     let end = index
@@ -58,12 +65,21 @@ export function calculateRfd(points: ForcePoint[], onsetIndex: number, windowMs:
 
 export function rfdMetrics(points: ForcePoint[], options: OnsetOptions = {}, windowsMs = [50, 100, 150, 200, 250]) {
   const onsetIndex = detectOnset(points, options)
-  const peak = peakForce(points)
-  if (onsetIndex === null) return { onsetIndex: null, peakN: peak.value, timeToPeakMs: null, byWindow: Object.fromEntries(windowsMs.map(window => [window, null])) as Record<number, number | null> }
+  const globalPeak = peakForce(points)
+  if (onsetIndex === null) return { onsetIndex: null, onsetTimestampMicros: null, peakTimestampMicros: globalPeak.timestampMicros, peakN: globalPeak.value, timeToPeakMs: null, timeToPeakSeconds: null, averageRfdKgfPerSecond: null, byWindow: Object.fromEntries(windowsMs.map(window => [window, null])) as Record<number, number | null> }
+  const relativePeak = peakForce(points.slice(onsetIndex))
+  const peakIndex = onsetIndex + relativePeak.index
+  const peak = points[peakIndex]
+  const timeToPeakSeconds = (peak.timestampMicros - points[onsetIndex].timestampMicros) / 1_000_000
+  const peakKgf = forceUnits.newtonsToKgf(peak.forceN)
   return {
     onsetIndex,
-    peakN: peak.value,
-    timeToPeakMs: (peak.timestampMicros - points[onsetIndex].timestampMicros) / 1000,
+    onsetTimestampMicros: points[onsetIndex].timestampMicros,
+    peakTimestampMicros: peak.timestampMicros,
+    peakN: peak.forceN,
+    timeToPeakMs: timeToPeakSeconds * 1000,
+    timeToPeakSeconds,
+    averageRfdKgfPerSecond: timeToPeakSeconds > 0 ? peakKgf / timeToPeakSeconds : null,
     byWindow: Object.fromEntries(windowsMs.map(window => [window, calculateRfd(points, onsetIndex, window)])) as Record<number, number | null>,
   }
 }
@@ -95,6 +111,29 @@ export function timeToTaskFailure(points: ForcePoint[], targetN: number, minimum
     else belowSince = null
     if (belowSince !== null && point.timestampMicros - belowSince >= graceMs * 1000) return (belowSince - points[0].timestampMicros) / 1_000_000
   }
+  return (points.at(-1)!.timestampMicros - points[0].timestampMicros) / 1_000_000
+}
+
+export function timeToTargetFailure(
+  points: ForcePoint[],
+  targetN: number,
+  tolerancePercent: number,
+  graceMs: number,
+): number | null {
+  if (!points.length || targetN <= 0 || tolerancePercent < 0 || graceMs < 0) return null
+  const low = targetN * (1 - tolerancePercent)
+  const high = targetN * (1 + tolerancePercent)
+  let outsideSince: number | null = null
+
+  for (const point of points) {
+    if (point.forceN < low || point.forceN > high) outsideSince ??= point.timestampMicros
+    else outsideSince = null
+
+    if (outsideSince !== null && point.timestampMicros - outsideSince > graceMs * 1000) {
+      return (point.timestampMicros - points[0].timestampMicros) / 1_000_000
+    }
+  }
+
   return (points.at(-1)!.timestampMicros - points[0].timestampMicros) / 1_000_000
 }
 

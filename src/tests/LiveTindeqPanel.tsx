@@ -27,9 +27,11 @@ import {
 
 import {
   getTestDefinition,
-  TEST_CATALOG,
   type TestProtocolKey,
 } from './testCatalog'
+import { forceUnits } from '../tindeq/metrics'
+import { REPEATER_REST_MS, REPEATER_WORK_MS } from '../tindeq/liveClinicalConfig'
+import { getLiveTestTemplate, LIVE_TEST_TEMPLATES, liveGripLabel } from './liveTestTemplates'
 
 import {
   createProgressorLiveTestRuntime,
@@ -61,32 +63,6 @@ import {
 type LiveSide =
   | 'left'
   | 'right'
-  | 'bilateral'
-
-const TARGET_PROTOCOLS =
-  new Set<TestProtocolKey>([
-    'finger_endurance_60mvc',
-    'repeaters_7_3',
-    'endurance',
-    'repeaters',
-  ])
-
-const liveDefinitions =
-  TEST_CATALOG.filter(
-    definition =>
-      definition.sources.includes(
-        'tindeq',
-      ) &&
-      definition.metrics.length >
-        0 &&
-      /*
-       * Critical Force is a multi-interval
-       * protocol and needs its own guided
-       * workflow rather than one acquisition.
-       */
-      definition.key !==
-        'critical_force',
-  )
 
 function transportLabel(
   value:
@@ -198,6 +174,10 @@ export function LiveTindeqPanel({
     useRef(
       new Set<string>(),
     )
+  const pendingAttemptsRef = useRef(new Map<string, Promise<void>>())
+  const repeaterStartedAtRef = useRef<number | null>(null)
+  const repeaterPhaseRef = useRef<'work' | 'rest' | null>(null)
+  const audioContextRef = useRef<AudioContext | null>(null)
 
   const [
     snapshot,
@@ -223,7 +203,7 @@ export function LiveTindeqPanel({
     protocolKey,
     setProtocolKey,
   ] = useState<TestProtocolKey>(
-    'peak_force',
+    LIVE_TEST_TEMPLATES[0].protocolKey,
   )
 
   const [
@@ -234,31 +214,9 @@ export function LiveTindeqPanel({
   )
 
   const [
-    grip,
-    setGrip,
-  ] = useState(
-    '20 mm',
-  )
-
-  const [
     bodyWeight,
     setBodyWeight,
   ] = useState('')
-
-  const [
-    maximumForceN,
-    setMaximumForceN,
-  ] = useState('')
-
-  const [
-    targetPercent,
-    setTargetPercent,
-  ] = useState('60')
-
-  const [
-    rfdWindowMs,
-    setRfdWindowMs,
-  ] = useState('200')
 
   const [
     busy,
@@ -274,11 +232,17 @@ export function LiveTindeqPanel({
     message,
     setMessage,
   ] = useState('')
+  const [repeaterClock, setRepeaterClock] = useState<{
+    phase: 'work' | 'rest'
+    seconds: number
+    repetition: number
+  } | null>(null)
 
   const definition =
     getTestDefinition(
       protocolKey,
     )
+  const selectedTemplate = getLiveTestTemplate(protocolKey)
 
   const runtime =
     handleRef.current
@@ -300,6 +264,7 @@ export function LiveTindeqPanel({
           activeItem.item.protocolKey,
         )
       : null
+  const activeTemplate = activeItem ? getLiveTestTemplate(activeItem.item.protocolKey) : null
 
   const activeTargetN =
     activeItem &&
@@ -321,6 +286,53 @@ export function LiveTindeqPanel({
           0,
         ) / snapshot.curve.length
       : null
+  const displayKg = (value: number | null) => value === null ? null : forceUnits.newtonsToKgf(value)
+
+  useEffect(() => {
+    if (snapshot?.runner.phase !== 'acquiring' || activeTemplate?.kind !== 'repeaters') {
+      repeaterStartedAtRef.current = null
+      repeaterPhaseRef.current = null
+      setRepeaterClock(null)
+      return
+    }
+
+    repeaterStartedAtRef.current ??= performance.now()
+    const update = () => {
+      const elapsed = performance.now() - repeaterStartedAtRef.current!
+      const cycleMs = REPEATER_WORK_MS + REPEATER_REST_MS
+      const withinCycle = elapsed % cycleMs
+      const phase = withinCycle < REPEATER_WORK_MS ? 'work' : 'rest'
+      const remainingMs = phase === 'work'
+        ? REPEATER_WORK_MS - withinCycle
+        : cycleMs - withinCycle
+
+      if (repeaterPhaseRef.current !== phase) {
+        repeaterPhaseRef.current = phase
+        try {
+          const context = audioContextRef.current ?? new AudioContext()
+          audioContextRef.current = context
+          const oscillator = context.createOscillator()
+          const gain = context.createGain()
+          oscillator.frequency.value = phase === 'work' ? 880 : 440
+          gain.gain.value = 0.08
+          oscillator.connect(gain)
+          gain.connect(context.destination)
+          oscillator.start()
+          oscillator.stop(context.currentTime + (phase === 'work' ? 0.16 : 0.28))
+        } catch { /* il timer visivo resta disponibile */ }
+      }
+
+      setRepeaterClock({
+        phase,
+        seconds: Math.max(1, Math.ceil(remainingMs / 1000)),
+        repetition: Math.floor(elapsed / cycleMs) + 1,
+      })
+    }
+
+    update()
+    const intervalId = window.setInterval(update, 100)
+    return () => window.clearInterval(intervalId)
+  }, [snapshot?.runner.phase, activeTemplate?.kind])
 
   const closedCount =
     snapshot?.runner.items.filter(
@@ -361,28 +373,21 @@ export function LiveTindeqPanel({
           if (
             persistedAttemptsRef
               .current
-              .has(attemptId)
+              .has(attemptId) ||
+            pendingAttemptsRef.current.has(attemptId)
           ) {
             continue
           }
 
-          persistedAttemptsRef
-            .current
-            .add(attemptId)
-
-          void persistLiveAttemptRecord(
+          const pending = persistLiveAttemptRecord(
             profile,
             next.runner,
             entry.item.id,
             attemptId,
-          ).catch(
+          ).then(() => {
+            persistedAttemptsRef.current.add(attemptId)
+          }).catch(
             reason => {
-              persistedAttemptsRef
-                .current
-                .delete(
-                  attemptId,
-                )
-
               setError(
                 reason instanceof
                   Error
@@ -390,7 +395,9 @@ export function LiveTindeqPanel({
                   : 'Tentativo Tindeq non salvato.',
               )
             },
-          )
+          ).finally(() => pendingAttemptsRef.current.delete(attemptId))
+
+          pendingAttemptsRef.current.set(attemptId, pending)
         }
       }
     }
@@ -400,6 +407,7 @@ export function LiveTindeqPanel({
   ) => {
     handleRef.current = handle
     persistedAttemptsRef.current.clear()
+    pendingAttemptsRef.current.clear()
     setTransport(handle.transportKind)
     setSupported(handle.supported)
 
@@ -734,68 +742,10 @@ export function LiveTindeqPanel({
                 .primaryMetricKey,
         }
 
-        if (
-          protocolKey ===
-            'rfd'
-        ) {
-          const window =
-            Number(
-              rfdWindowMs,
-            )
-
-          if (
-            !Number.isFinite(
-              window,
-            ) ||
-            window <= 0
-          ) {
-            throw new Error(
-              'La finestra RFD deve essere maggiore di zero.',
-            )
-          }
-
-          config.rfdWindowMs =
-            window
+        if (!selectedTemplate) {
+          throw new Error('Protocollo Tindeq non valido.')
         }
-
-        if (
-          TARGET_PROTOCOLS.has(
-            protocolKey,
-          )
-        ) {
-          const maximum =
-            Number(maximumForceN)
-
-          const percentage =
-            Number(targetPercent)
-
-          if (
-            !Number.isFinite(
-              maximum,
-            ) ||
-            maximum <= 0
-          ) {
-            throw new Error(
-              'Inserisci il massimale di forza in N.',
-            )
-          }
-
-          if (
-            !Number.isFinite(percentage) ||
-            percentage <= 0 ||
-            percentage > 100
-          ) {
-            throw new Error(
-              'La percentuale target deve essere compresa tra 1 e 100.',
-            )
-          }
-
-          config.maximumForceN = maximum
-          config.targetPercent = percentage
-          config.targetTolerancePercent = 0.1
-          config.targetN =
-            maximum * percentage / 100
-        }
+        config.liveClinicalKind = selectedTemplate.kind
 
         runtime.addItem(
           protocolKey,
@@ -809,7 +759,7 @@ export function LiveTindeqPanel({
             grip:
               definition
                 .gripApplicable
-                ? grip.trim()
+                ? selectedTemplate.grip
                 : '',
 
             config,
@@ -924,6 +874,11 @@ export function LiveTindeqPanel({
         await runtime
           .stopAcquisition()
 
+        const attemptId = runtime.snapshot.runner.items
+          .find(entry => entry.item.id === runtime.snapshot.runner.activeItemId)
+          ?.attempts.at(-1)?.attempt.attemptId
+        if (attemptId) await pendingAttemptsRef.current.get(attemptId)
+
         setMessage(
           'Acquisizione terminata. Controlla il tentativo.',
         )
@@ -956,6 +911,8 @@ export function LiveTindeqPanel({
         runtime.selectAttempt(
           attemptId,
         )
+
+        await pendingAttemptsRef.current.get(attemptId)
 
         await persistOfficialLiveAttempt(
           profile,
@@ -1044,6 +1001,8 @@ export function LiveTindeqPanel({
         if (!currentItem.selectedAttemptId) {
           runtime.selectAttempt(selectable)
         }
+
+        await pendingAttemptsRef.current.get(selectable)
 
         await persistOfficialLiveAttempt(
           profile,
@@ -1417,32 +1376,17 @@ export function LiveTindeqPanel({
                           setProtocolKey(
                             next,
                           )
-
-                          const nextDefinition =
-                            getTestDefinition(
-                              next,
-                            )
-
-                          if (
-                            !nextDefinition
-                              ?.gripApplicable
-                          ) {
-                            setGrip('')
-                          }
-
-                          setMaximumForceN('')
-                          setTargetPercent('60')
                         }
                       }
                     >
-                      {liveDefinitions.map(
+                      {LIVE_TEST_TEMPLATES.map(
                         item => (
                           <option
                             key={
-                              item.key
+                              item.protocolKey
                             }
                             value={
-                              item.key
+                              item.protocolKey
                             }
                           >
                             {
@@ -1481,126 +1425,15 @@ export function LiveTindeqPanel({
                           SX
                         </option>
 
-                        <option value="bilateral">
-                          Bilaterale
-                        </option>
                       </select>
                     </label>
                   )}
 
-                  {definition
-                    ?.gripApplicable && (
-                    <label>
-                      <span>
-                        Presa / setup
-                      </span>
-
-                      <input
-                        value={grip}
-                        onChange={
-                          event =>
-                            setGrip(
-                              event
-                                .target
-                                .value,
-                            )
-                        }
-                        placeholder="es. 20 mm"
-                      />
-                    </label>
-                  )}
-
-                  {TARGET_PROTOCOLS
-                    .has(
-                      protocolKey,
-                    ) && (
-                    <>
-                      <label>
-                        <span>
-                          Massimale MVC
-                        </span>
-
-                        <div className="input-shell">
-                          <input
-                            type="number"
-                            min="1"
-                            step="1"
-                            value={maximumForceN}
-                            onChange={event =>
-                              setMaximumForceN(event.target.value)
-                            }
-                            placeholder="es. 400"
-                          />
-
-                          <em>N</em>
-                        </div>
-                      </label>
-
-                      <label>
-                        <span>
-                          Target del massimale
-                        </span>
-
-                        <div className="input-shell">
-                          <input
-                            type="number"
-                            min="1"
-                            max="100"
-                            step="1"
-                            value={targetPercent}
-                            onChange={event =>
-                              setTargetPercent(event.target.value)
-                            }
-                          />
-
-                          <em>%</em>
-                        </div>
-                      </label>
-
-                      <div className="live-tindeq__target-preview">
-                        <small>ZONA LIVE ±10%</small>
-                        <b>
-                          {Number(maximumForceN) > 0 &&
-                          Number(targetPercent) > 0
-                            ? `${(
-                                Number(maximumForceN) *
-                                Number(targetPercent) /
-                                100
-                              ).toFixed(1)} N`
-                            : '—'}
-                        </b>
-                      </div>
-                    </>
-                  )}
-
-                  {protocolKey ===
-                    'rfd' && (
-                    <label>
-                      <span>
-                        Finestra RFD
-                      </span>
-
-                      <div className="input-shell">
-                        <input
-                          type="number"
-                          min="1"
-                          step="50"
-                          value={
-                            rfdWindowMs
-                          }
-                          onChange={
-                            event =>
-                              setRfdWindowMs(
-                                event
-                                  .target
-                                  .value,
-                              )
-                          }
-                        />
-
-                        <em>ms</em>
-                      </div>
-                    </label>
+                  {selectedTemplate && (
+                    <div className="live-tindeq__target-preview">
+                      <small>PRESA DEL PROTOCOLLO</small>
+                      <b>{liveGripLabel(selectedTemplate.grip)}</b>
+                    </div>
                   )}
 
                   <button
@@ -1709,8 +1542,7 @@ export function LiveTindeqPanel({
                                       ? 'Bilaterale'
                                       : '',
 
-                                entry.item
-                                  .grip,
+                                liveGripLabel(entry.item.grip),
                               ]
                                 .filter(
                                   Boolean,
@@ -1879,7 +1711,7 @@ export function LiveTindeqPanel({
                     <small>TEST IN ESECUZIONE</small>
                     <h2>{activeDefinition?.name ?? 'Test Tindeq'}</h2>
                     <p>
-                      {[activeItem.item.grip,
+                      {[liveGripLabel(activeItem.item.grip),
                         activeItem.item.side === 'right'
                           ? 'DX'
                           : activeItem.item.side === 'left'
@@ -1893,10 +1725,18 @@ export function LiveTindeqPanel({
                   </div>
                   {activeTargetN !== null && (
                     <Tag tone="success">
-                      TARGET {activeTargetN.toFixed(1)} N
+                      TARGET {forceUnits.newtonsToKgf(activeTargetN).toFixed(1)} kg
                     </Tag>
                   )}
                 </div>
+
+                {repeaterClock && (
+                  <div className={`live-tindeq__repeater-clock is-${repeaterClock.phase}`}>
+                    <small>RIPETIZIONE {repeaterClock.repetition}</small>
+                    <strong>{repeaterClock.phase === 'work' ? 'LAVORO' : 'RECUPERO'}</strong>
+                    <b>{repeaterClock.seconds}</b>
+                  </div>
+                )}
 
                 <div className="live-tindeq__force">
                   <div>
@@ -1906,11 +1746,10 @@ export function LiveTindeqPanel({
 
                     <strong>
                       {formatForce(
-                        snapshot.force
-                          .peakForceN,
+                        displayKg(snapshot.force.peakForceN),
                       )}
                       <span>
-                        {' '}N
+                        {' '}kg
                       </span>
                     </strong>
                   </div>
@@ -1922,10 +1761,10 @@ export function LiveTindeqPanel({
 
                     <strong>
                       {formatForce(
-                        activeAverageForce,
+                        displayKg(activeAverageForce),
                       )}
                       <span>
-                        {' '}N
+                        {' '}kg
                       </span>
                     </strong>
                   </div>
@@ -1937,9 +1776,9 @@ export function LiveTindeqPanel({
 
                     <strong>
                       {formatForce(
-                        snapshot.force.currentForceN,
+                        displayKg(snapshot.force.currentForceN),
                       )}
-                      <span>{' '}N</span>
+                      <span>{' '}kg</span>
                     </strong>
                   </div>
                 </div>
@@ -1948,7 +1787,15 @@ export function LiveTindeqPanel({
                   points={snapshot.curve}
                   targetN={activeTargetN}
                   tolerancePercent={activeTargetTolerance}
+                  displayUnit="kg"
+                  variant={activeTemplate?.kind === 'endurance' ? 'endurance' : 'default'}
                 />
+
+                {snapshot.autoStopReason === 'target-failure' && (
+                  <div className="live-tindeq__notice">
+                    Test arrestato: forza fuori dalla zona target per più di 3 secondi consecutivi.
+                  </div>
+                )}
 
                 <p className="live-tindeq__sample-count">
                   {snapshot.force.sampleCount} campioni acquisiti

@@ -12,6 +12,12 @@ import type {
 import { MockTindeqDevice } from '../tindeq/mock'
 import type { TindeqForceSample } from '../tindeq/protocol'
 import type { TestProtocolKey } from './testCatalog'
+import { getLiveTestTemplate } from './liveTestTemplates'
+import {
+  ENDURANCE_OUT_OF_RANGE_GRACE_MS,
+  LIVE_TARGET_TOLERANCE,
+  REPEATER_WORK_MS,
+} from '../tindeq/liveClinicalConfig'
 import {
   activateLiveTestItem,
   addLiveTestItem,
@@ -53,6 +59,7 @@ export type LiveTestRuntimeSnapshot = {
   deviceInfo: MeasurementDeviceInfo | null
   force: LiveForceSnapshot
   curve: LiveForceCurvePoint[]
+  autoStopReason: 'target-failure' | null
 }
 
 export type LiveTestRuntimeListener = (
@@ -144,6 +151,12 @@ export function buildLiveAcquisitionConfig(
         item.config.targetN,
       ),
 
+    targetKg: finiteNumber(item.config.targetKg),
+    mvcUsedKg: finiteNumber(item.config.mvcUsedKg),
+    targetTolerancePercent: finiteNumber(item.config.targetTolerancePercent),
+    enduranceFailureGraceMs: ENDURANCE_OUT_OF_RANGE_GRACE_MS,
+    repeaterWorkMs: REPEATER_WORK_MS,
+
     rfdWindowMs:
       finiteNumber(
         item.config.rfdWindowMs,
@@ -189,6 +202,10 @@ export class LiveTestRuntime {
 
   private curveStartMicros:
     number | null = null
+
+  private outsideTargetSinceMicros: number | null = null
+  private autoStopRequested = false
+  private autoStopReason: 'target-failure' | null = null
 
   private readonly listeners =
     new Set<
@@ -272,6 +289,7 @@ export class LiveTestRuntime {
         this.curveState.map(
           point => ({ ...point }),
         ),
+      autoStopReason: this.autoStopReason,
     }
   }
 
@@ -481,11 +499,16 @@ export class LiveTestRuntime {
 
     this.curveState = []
     this.curveStartMicros = null
+    this.outsideTargetSinceMicros = null
+    this.autoStopRequested = false
+    this.autoStopReason = null
 
     this.runnerState =
       markLiveAcquisitionStarted(
         this.runnerState,
       )
+
+    this.acquisition = acquisition
 
     this.publish()
 
@@ -498,9 +521,8 @@ export class LiveTestRuntime {
         },
       )
 
-      this.acquisition =
-        acquisition
     } catch (reason) {
+      this.acquisition = null
       this.runnerState =
         previousRunner
 
@@ -545,6 +567,8 @@ export class LiveTestRuntime {
     ]
 
     for (const sample of samples) {
+      this.checkEnduranceTarget(sample)
+
       const previous =
         nextCurve.at(-1)
 
@@ -591,6 +615,27 @@ export class LiveTestRuntime {
     }
 
     this.publish()
+  }
+
+  private checkEnduranceTarget(sample: TindeqForceSample) {
+    const active = this.runnerState.items.find(entry => entry.item.id === this.runnerState.activeItemId)
+    if (getLiveTestTemplate(active?.item.protocolKey ?? '')?.kind !== 'endurance') return
+    const targetN = finiteNumber(active?.item.config.targetN)
+    if (!targetN || this.autoStopRequested) return
+    const tolerance = finiteNumber(active?.item.config.targetTolerancePercent) ?? LIVE_TARGET_TOLERANCE
+    const outside = sample.forceN < targetN * (1 - tolerance) || sample.forceN > targetN * (1 + tolerance)
+    if (!outside) {
+      this.outsideTargetSinceMicros = null
+      return
+    }
+    this.outsideTargetSinceMicros ??= sample.timestampMicros
+    if (sample.timestampMicros - this.outsideTargetSinceMicros > ENDURANCE_OUT_OF_RANGE_GRACE_MS * 1000) {
+      this.autoStopRequested = true
+      this.autoStopReason = 'target-failure'
+      void this.stopAcquisition().catch(() => {
+        this.autoStopRequested = false
+      })
+    }
   }
 
   async stopAcquisition():
@@ -663,6 +708,9 @@ export class LiveTestRuntime {
 
     this.curveState = []
     this.curveStartMicros = null
+    this.outsideTargetSinceMicros = null
+    this.autoStopRequested = false
+    this.autoStopReason = null
 
     this.updateRunner(
       prepareNextLiveAttempt(
@@ -677,6 +725,7 @@ export class LiveTestRuntime {
 
     this.curveState = []
     this.curveStartMicros = null
+    this.autoStopReason = null
 
     this.updateRunner(
       completeActiveLiveTestItem(
@@ -691,6 +740,7 @@ export class LiveTestRuntime {
 
     this.curveState = []
     this.curveStartMicros = null
+    this.autoStopReason = null
 
     this.updateRunner(
       skipActiveLiveTestItem(

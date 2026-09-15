@@ -70,9 +70,16 @@ Non è stata eseguita una nuova prova mutante in produzione.
 - Onboarding invitato e riconciliazione Auth/scheda: presenti nello schema live.
 - Programma coach e visualizzazione atleta: presenti e collegate al backend V1.
 - Test manuali, remoti e Tindeq: presenti con persistenza e test unitari.
-- Ogni test Tindeq attivo usa una vista di esecuzione dedicata con curva live;
-  i protocolli a target calcolano la fascia da MVC e percentuale e mostrano la
-  tolleranza ±10% con feedback cromatico.
+- La nuova batteria Tindeq Live espone 11 protocolli clinici indipendenti per
+  presa e lato. Ogni test usa una vista dedicata con curva live e valori in kg.
+- Endurance e Repeaters usano esclusivamente la MVC completata nella stessa
+  sessione, presa e lato: target 60%, tolleranza ±5%. L'Endurance si arresta
+  dopo più di 3 secondi consecutivi fuori zona; Repeaters usa timer 7:3 e due
+  segnali sonori distinti.
+- La RFD primaria è espressa in kg/s dal reale onset al picco; onset, picco,
+  tempo al picco, metriche storiche e curva grezza in Newton restano salvati.
+- Il salvataggio ufficiale attende la persistenza del tentativo provvisorio,
+  evitando la precedente concorrenza che poteva bloccare “Conferma test”.
 - Le sessioni Tindeq non concluse vengono conservate localmente per
   coach–atleta e ripristinate al rientro nell'app.
 - Timer, outbox e aggiornamenti PWA: presenti con persistenza locale e policy di
@@ -85,12 +92,12 @@ Non è stata eseguita una nuova prova mutante in produzione.
 
 - Test migrazione mirati: 3/3 superati.
 - Test mirati gestione atleti, onboarding e routing: 10/10 superati.
-- Gate generale `pnpm check`: superato.
-  - encoding: 390 file controllati;
+- Gate generale `pnpm check`: superato il 15 settembre 2026.
+  - encoding: 401 file controllati;
   - copy check, ESLint e TypeScript: superati;
-  - Vitest: 39 file, 187 test superati;
-  - test Node/migrazioni: 36 test superati;
-  - build Vite produzione: completata, 1.714 moduli trasformati.
+  - Vitest: 43 file, 201 test superati;
+  - test Node/migrazioni: 40 test superati;
+  - build Vite produzione: completata, 1.719 moduli trasformati.
 - Confronto Edge Function: il file locale coincide riga per riga con la versione
   6 distribuita.
 
