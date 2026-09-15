@@ -18,11 +18,18 @@ import type {
   TestSide,
 } from './testAttemptTypes'
 
+import {
+  remoteOutputSchemaFromConfig,
+  resolveRemoteOutputSchema,
+  type RemoteTestTemplate,
+} from './remoteTestTemplates'
+
 export type RemoteManualValue = {
   metricKey: string
   metricLabel: string
   value: number
   unit: string
+  side?: 'right' | 'left'
 }
 
 export type RemoteTestItem = {
@@ -30,6 +37,7 @@ export type RemoteTestItem = {
   values: RemoteManualValue[]
   notes: string
   completedAt: string | null
+  template?: RemoteTestTemplate | null
 }
 
 export type RemoteTestAssignmentState = {
@@ -52,6 +60,9 @@ export type AddRemoteTestItemOptions = {
   side?: TestSide
   grip?: string
   config?: Record<string, unknown>
+  template?: RemoteTestTemplate
+  beam?: 'high' | 'low'
+  laterality?: 'right_left' | 'bilateral'
 }
 
 function assertCoach(
@@ -222,6 +233,12 @@ export function addRemoteTestItem(
     )
   }
 
+  const template = options.template
+
+  if (template && template.protocolKey !== protocolKey) {
+    throw new Error('Il template non corrisponde al protocollo selezionato.')
+  }
+
   /*
    * Remote testing is deliberately MANUAL ONLY.
    *
@@ -265,6 +282,9 @@ export function addRemoteTestItem(
         id:
           options.itemId,
 
+        testLibraryId:
+          template?.id ?? null,
+
         protocolVersion:
           options.protocolVersion ??
           definition.version,
@@ -284,7 +304,20 @@ export function addRemoteTestItem(
 
         config: {
           primaryMetricKey:
-            definition.primaryMetricKey,
+            template
+              ? resolveRemoteOutputSchema(template, options.laterality)[0]?.key ?? null
+              : definition.primaryMetricKey,
+
+          ...(template
+            ? {
+                remoteMode: 'manual',
+                templateName: template.name,
+                instruction: template.instruction,
+                beam: options.beam,
+                laterality: options.laterality,
+                outputSchema: resolveRemoteOutputSchema(template, options.laterality),
+              }
+            : {}),
 
           ...(options.config ?? {}),
         },
@@ -301,6 +334,7 @@ export function addRemoteTestItem(
         values: [],
         notes: '',
         completedAt: null,
+        template: template ?? null,
       },
     ],
   }
@@ -537,17 +571,24 @@ export function setRemoteManualMetric(
       target.item.protocolKey,
     )
 
-  const metric =
-    definition?.metrics.find(
-      candidate =>
-        candidate.key ===
-        metricKey,
-    )
+  const remoteSchema = remoteOutputSchemaFromConfig(target.item.config)
+  const schemaMetric = remoteSchema.find(candidate => candidate.key === metricKey)
+  const catalogMetric = definition?.metrics.find(candidate => candidate.key === metricKey)
+  const metric = schemaMetric ?? catalogMetric
 
   if (!metric) {
     throw new Error(
       'Metric is not defined for this remote test.',
     )
+  }
+
+
+  if (schemaMetric && value < schemaMetric.min) {
+    throw new Error('Il risultato non può essere negativo.')
+  }
+
+  if (schemaMetric?.type === 'integer' && !Number.isInteger(value)) {
+    throw new Error('Inserisci un numero intero di ripetizioni.')
   }
 
   const updatedValue:
@@ -562,6 +603,8 @@ export function setRemoteManualMetric(
 
       unit:
         metric.unit,
+
+      ...('side' in metric && metric.side ? { side: metric.side } : {}),
     }
 
   const values =
@@ -711,10 +754,19 @@ export function completeRemoteTestItem(
    * The checkmark means "I actually performed this
    * test and entered at least one measured value".
    */
+  const outputSchema = remoteOutputSchemaFromConfig(target.item.config)
+  const missingRequired = outputSchema.some(
+    field => field.required && !target.values.some(value => value.metricKey === field.key),
+  )
+
   if (!target.values.length) {
     throw new Error(
       'Enter the test result before marking it as completed.',
     )
+  }
+
+  if (missingRequired) {
+    throw new Error('Compila tutti i risultati richiesti prima di completare il test.')
   }
 
   const next =

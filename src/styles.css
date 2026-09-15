@@ -1264,6 +1264,10 @@ textarea {
   width: 100%;
 }
 
+.remote-test-builder__video-url {
+  grid-column: span 2;
+}
+
 .remote-test-builder__items,
 .remote-assignment__coach-list,
 .remote-assignment__items {
@@ -1290,6 +1294,13 @@ textarea {
 .remote-assignment__item header span {
   font-size: .82rem;
   opacity: .65;
+}
+
+.remote-assignment__result {
+  display: block;
+  margin-top: 3px;
+  color: var(--signal);
+  font-size: .9rem;
 }
 
 .remote-tests__icon-button {
@@ -1324,6 +1335,38 @@ textarea {
 .remote-assignment__item {
   border: 1px solid var(--border);
   padding: 14px;
+}
+
+.remote-assignment__test-page {
+  display: grid;
+  gap: 16px;
+}
+
+.remote-assignment__video {
+  display: grid;
+  gap: 8px;
+}
+
+.remote-assignment__video > small {
+  letter-spacing: .12em;
+  opacity: .65;
+}
+
+.remote-assignment__video iframe,
+.remote-assignment__video video {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--border);
+  background: #09080b;
+}
+
+.remote-assignment__video p,
+.remote-assignment__instruction {
+  margin: 0;
+  padding: 12px;
+  border-left: 3px solid var(--signal);
+  background: color-mix(in srgb, var(--signal) 9%, transparent);
+  line-height: 1.55;
 }
 
 .remote-assignment__item > header {
@@ -1380,6 +1423,10 @@ textarea {
 
   .remote-test-builder__controls {
     grid-template-columns: 1fr;
+  }
+
+  .remote-test-builder__video-url {
+    grid-column: auto;
   }
 
   .remote-assignment__progress strong {

@@ -100,6 +100,7 @@ export function createTestSessionDraft(
 
 type CreateItemOptions = {
   id?: string
+  testLibraryId?: string | null
   protocolVersion?: string
   side?: TestSide
   grip?: string
@@ -129,6 +130,9 @@ export function createTestSessionItemDraft(
 
     testSessionId:
       session.id,
+
+    testLibraryId:
+      options.testLibraryId ?? null,
 
     itemOrder,
 

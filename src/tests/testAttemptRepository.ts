@@ -70,6 +70,7 @@ export async function syncTestSessionItem(
       {
         id: item.id,
         test_session_id: item.testSessionId,
+        test_library_id: item.testLibraryId ?? null,
         item_order: item.itemOrder,
         protocol_key: item.protocolKey,
         protocol_version: item.protocolVersion,

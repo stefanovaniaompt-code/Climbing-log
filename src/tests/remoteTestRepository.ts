@@ -29,6 +29,9 @@ import type {
   TestSide,
 } from './testAttemptTypes'
 
+import { loadRemoteTemplatesByIds } from './remoteTestLibraryRepository'
+import type { RemoteTestTemplate } from './remoteTestTemplates'
+
 const isDemo = (
   profile: AppProfile,
 ) =>
@@ -56,6 +59,7 @@ type SessionRow = {
 type ItemRow = {
   id: string
   test_session_id: string
+  test_library_id: string | null
   item_order: number
   protocol_key: TestSessionItemDraft['protocolKey']
   protocol_version: string
@@ -116,6 +120,7 @@ function sessionFromRow(
 
 function itemFromRow(
   row: ItemRow,
+  templates: Map<string, RemoteTestTemplate>,
 ): RemoteTestItem {
   return {
     item: {
@@ -124,6 +129,9 @@ function itemFromRow(
 
       testSessionId:
         row.test_session_id,
+
+      testLibraryId:
+        row.test_library_id,
 
       itemOrder:
         row.item_order,
@@ -162,6 +170,11 @@ function itemFromRow(
 
     completedAt:
       row.completed_at,
+
+    template:
+      row.test_library_id
+        ? templates.get(row.test_library_id) ?? null
+        : null,
   }
 }
 
@@ -299,7 +312,7 @@ export async function loadRemoteAssignments(
         'test_session_items',
       )
       .select(
-        'id,test_session_id,item_order,protocol_key,protocol_version,side,grip,source,config,status,draft_values,athlete_notes,completed_at',
+        'id,test_session_id,test_library_id,item_order,protocol_key,protocol_version,side,grip,source,config,status,draft_values,athlete_notes,completed_at',
       )
       .in(
         'test_session_id',
@@ -324,6 +337,11 @@ export async function loadRemoteAssignments(
       []
     ) as ItemRow[]
 
+  const templates = await loadRemoteTemplatesByIds(
+    profile,
+    [...new Set(items.map(item => item.test_library_id).filter((id): id is string => Boolean(id)))],
+  )
+
   return sessionRows.map(
     sessionRow => ({
       session:
@@ -339,9 +357,7 @@ export async function loadRemoteAssignments(
                 .test_session_id ===
               sessionRow.id,
           )
-          .map(
-            itemFromRow,
-          ),
+          .map(item => itemFromRow(item, templates)),
 
       activeItemId:
         null,

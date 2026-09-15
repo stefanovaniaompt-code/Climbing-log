@@ -10,6 +10,7 @@ import {
   Plus,
   Save,
   Send,
+  Video,
   Trash2,
   X,
 } from 'lucide-react'
@@ -23,11 +24,7 @@ import {
   Tag,
 } from '../shared/ui'
 
-import {
-  TEST_CATALOG,
-  getTestDefinition,
-  type TestProtocolKey,
-} from './testCatalog'
+import { getTestDefinition } from './testCatalog'
 
 import {
   addRemoteTestItem,
@@ -56,18 +53,16 @@ import {
   startRemoteAssignmentRecord,
 } from './remoteTestRepository'
 
-import type {
-  TestSide,
-} from './testAttemptTypes'
+import {
+  ensureRemoteTestLibrary,
+  updateRemoteTemplateVideo,
+} from './remoteTestLibraryRepository'
 
-const remoteDefinitions =
-  TEST_CATALOG.filter(
-    definition =>
-      definition.sources.includes(
-        'manual',
-      ) &&
-      definition.metrics.length > 0,
-  )
+import {
+  remoteOutputSchemaFromConfig,
+  type RemoteOutputField,
+  type RemoteTestTemplate,
+} from './remoteTestTemplates'
 
 function statusLabel(
   status:
@@ -108,7 +103,7 @@ function itemStatusLabel(
 }
 
 function sideLabel(
-  side: TestSide,
+  side: 'left' | 'right' | 'bilateral' | null,
 ) {
   if (side === 'right') {
     return 'DX'
@@ -123,6 +118,67 @@ function sideLabel(
   }
 
   return ''
+}
+
+function configLabel(config: Record<string, unknown>) {
+  const labels: string[] = []
+  if (config.beam === 'high') labels.push('Trave alto')
+  if (config.beam === 'low') labels.push('Trave basso')
+  if (config.laterality === 'right_left') labels.push('DX + SX')
+  if (config.laterality === 'bilateral') labels.push('Bilaterale')
+  return labels.join(' · ')
+}
+
+function itemName(entry: RemoteTestAssignmentState['items'][number]) {
+  return entry.template?.name ??
+    (typeof entry.item.config.templateName === 'string' ? entry.item.config.templateName : null) ??
+    getTestDefinition(entry.item.protocolKey)?.name ??
+    'Test a distanza'
+}
+
+function itemFields(entry: RemoteTestAssignmentState['items'][number]): RemoteOutputField[] {
+  const configured = remoteOutputSchemaFromConfig(entry.item.config)
+  if (configured.length) return configured
+
+  const definition = getTestDefinition(entry.item.protocolKey)
+  const legacyMetrics = definition?.metrics.filter(metric =>
+    metric.key === definition.primaryMetricKey,
+  ) ?? []
+
+  return legacyMetrics.map(metric => ({
+    key: metric.key,
+    label: metric.label,
+    type: metric.dimension === 'count' ? 'integer' : 'number',
+    unit: metric.unit as RemoteOutputField['unit'],
+    min: Number.NEGATIVE_INFINITY,
+    required: false,
+  }))
+}
+
+function embedVideoUrl(url: string) {
+  try {
+    const parsed = new URL(url)
+    if (parsed.hostname.includes('youtube.com')) {
+      const id = parsed.searchParams.get('v')
+      return id ? `https://www.youtube.com/embed/${id}` : url
+    }
+    if (parsed.hostname === 'youtu.be') return `https://www.youtube.com/embed/${parsed.pathname.slice(1)}`
+    if (parsed.hostname.includes('vimeo.com')) return `https://player.vimeo.com/video/${parsed.pathname.split('/').filter(Boolean).at(-1)}`
+  } catch {
+    return url
+  }
+  return url
+}
+
+function usesVideoEmbed(url: string) {
+  return /(?:youtube\.com|youtu\.be|vimeo\.com)/i.test(url)
+}
+
+function hasRequiredValues(entry: RemoteTestAssignmentState['items'][number]) {
+  const required = itemFields(entry).filter(field => field.required)
+  return required.length
+    ? required.every(field => entry.values.some(value => value.metricKey === field.key))
+    : entry.values.length > 0
 }
 
 function replaceAssignment(
@@ -192,24 +248,13 @@ export function RemoteTestPanel({
     RemoteTestAssignmentState | null
   >(null)
 
-  const [
-    protocolKey,
-    setProtocolKey,
-  ] = useState<TestProtocolKey>(
-    'pullup_max',
-  )
-
-  const [
-    side,
-    setSide,
-  ] = useState<
-    Exclude<TestSide, null>
-  >('right')
-
-  const [
-    grip,
-    setGrip,
-  ] = useState('')
+  const [templates, setTemplates] = useState<RemoteTestTemplate[]>([])
+  const [selectedTemplateId, setSelectedTemplateId] = useState('')
+  const [beam, setBeam] = useState<'high' | 'low'>('high')
+  const [laterality, setLaterality] = useState<'right_left' | 'bilateral'>('right_left')
+  const [showVideoLibrary, setShowVideoLibrary] = useState(false)
+  const [videoTemplateId, setVideoTemplateId] = useState('')
+  const [videoUrl, setVideoUrl] = useState('')
 
   const [
     busy,
@@ -226,14 +271,15 @@ export function RemoteTestPanel({
     setMessage,
   ] = useState('')
 
-  const selectedDefinition =
-    useMemo(
-      () =>
-        getTestDefinition(
-          protocolKey,
-        ),
-      [protocolKey],
-    )
+  const selectedTemplate = useMemo(
+    () => templates.find(template => template.id === selectedTemplateId) ?? null,
+    [selectedTemplateId, templates],
+  )
+
+  const videoTemplate = useMemo(
+    () => templates.find(template => template.id === videoTemplateId) ?? null,
+    [templates, videoTemplateId],
+  )
 
   const reload =
     async () => {
@@ -297,6 +343,30 @@ export function RemoteTestPanel({
     targetAthleteId,
   ])
 
+  useEffect(() => {
+    if (profile.role !== 'coach') return
+    let active = true
+
+    ensureRemoteTestLibrary(profile)
+      .then(next => {
+        if (!active) return
+        setTemplates(next)
+        setSelectedTemplateId(current => current || next[0]?.id || '')
+        setVideoTemplateId(current => current || next[0]?.id || '')
+      })
+      .catch(reason => {
+        if (active) setError(reason instanceof Error ? reason.message : 'Libreria test non caricata.')
+      })
+
+    return () => {
+      active = false
+    }
+  }, [profile])
+
+  useEffect(() => {
+    setVideoUrl(videoTemplate?.videoUrl ?? '')
+  }, [videoTemplate])
+
   const applyAssignment =
     (
       next:
@@ -345,7 +415,7 @@ export function RemoteTestPanel({
     () => {
       if (
         !coachDraft ||
-        !selectedDefinition
+        !selectedTemplate
       ) {
         return
       }
@@ -355,27 +425,18 @@ export function RemoteTestPanel({
           addRemoteTestItem(
             profile,
             coachDraft,
-            protocolKey,
+            selectedTemplate.protocolKey,
             {
               itemId:
                 crypto.randomUUID(),
 
-              side:
-                selectedDefinition
-                  .sideApplicable
-                  ? side
-                  : null,
-
-              grip:
-                selectedDefinition
-                  .gripApplicable
-                  ? grip.trim()
-                  : '',
+              template: selectedTemplate,
+              beam: selectedTemplate.availableSettings.beam ? beam : undefined,
+              laterality: selectedTemplate.availableSettings.laterality ? laterality : undefined,
             },
           )
 
         setCoachDraft(next)
-        setGrip('')
         setError('')
       } catch (reason) {
         setError(
@@ -385,6 +446,23 @@ export function RemoteTestPanel({
         )
       }
     }
+
+  const saveTemplateVideo = async () => {
+    if (!videoTemplate) return
+    setBusy(true)
+    setError('')
+    try {
+      const normalized = await updateRemoteTemplateVideo(profile, videoTemplate.id, videoUrl)
+      setTemplates(current => current.map(template =>
+        template.id === videoTemplate.id ? { ...template, videoUrl: normalized } : template,
+      ))
+      setMessage('Video tutorial aggiornato nella libreria.')
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Video tutorial non aggiornato.')
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const assignCoachDraft =
     async () => {
@@ -811,20 +889,20 @@ export function RemoteTestPanel({
           </h3>
         </div>
 
-        {profile.role ===
-          'coach' &&
-          !coachDraft && (
-            <button
-              className="button button--signal"
-              disabled={busy}
-              onClick={
-                createCoachDraft
-              }
-            >
-              <Plus size={16} />
-              Nuova batteria
+        {profile.role === 'coach' && (
+          <div className="remote-tests__actions">
+            <button className="button" type="button" onClick={() => setShowVideoLibrary(current => !current)}>
+              <Video size={16} />
+              Video tutorial
             </button>
-          )}
+            {!coachDraft && (
+              <button className="button button--signal" disabled={busy} onClick={createCoachDraft}>
+                <Plus size={16} />
+                Nuova batteria
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {error && (
@@ -837,6 +915,28 @@ export function RemoteTestPanel({
         <div className="remote-tests__notice">
           {message}
         </div>
+      )}
+
+      {profile.role === 'coach' && showVideoLibrary && (
+        <Panel className="remote-test-builder" title="Video tutorial della libreria" index="V">
+          <p>Il video viene associato al template una sola volta e recuperato automaticamente in ogni assegnazione.</p>
+          <div className="remote-test-builder__controls">
+            <label>
+              <span>Template</span>
+              <select value={videoTemplateId} onChange={event => setVideoTemplateId(event.target.value)}>
+                {templates.map(template => <option key={template.id} value={template.id}>{template.name}</option>)}
+              </select>
+            </label>
+            <label className="remote-test-builder__video-url">
+              <span>Video URL</span>
+              <input type="url" value={videoUrl} placeholder="https://…" onChange={event => setVideoUrl(event.target.value)} />
+            </label>
+            <button className="button button--signal" type="button" disabled={busy || !videoTemplate} onClick={() => void saveTemplateVideo()}>
+              <Save size={15} />
+              Salva video
+            </button>
+          </div>
+        </Panel>
       )}
 
       {profile.role ===
@@ -857,112 +957,39 @@ export function RemoteTestPanel({
                 <span>Test</span>
 
                 <select
-                  value={
-                    protocolKey
-                  }
-                  onChange={
-                    event => {
-                      const next =
-                        event
-                          .target
-                          .value as
-                          TestProtocolKey
-
-                      setProtocolKey(
-                        next,
-                      )
-
-                      const definition =
-                        getTestDefinition(
-                          next,
-                        )
-
-                      if (
-                        !definition
-                          ?.sideApplicable
-                      ) {
-                        setSide(
-                          'right',
-                        )
-                      }
-
-                      setGrip('')
-                    }
-                  }
+                  value={selectedTemplateId}
+                  onChange={event => setSelectedTemplateId(event.target.value)}
                 >
-                  {remoteDefinitions.map(
-                    definition => (
+                  {templates.map(
+                    template => (
                       <option
-                        key={
-                          definition.key
-                        }
-                        value={
-                          definition.key
-                        }
+                        key={template.id}
+                        value={template.id}
                       >
-                        {
-                          definition.name
-                        }
+                        {template.name}
                       </option>
                     ),
                   )}
                 </select>
               </label>
 
-              {selectedDefinition
-                ?.sideApplicable && (
+              {selectedTemplate?.availableSettings.beam && (
                 <label>
-                  <span>Lato</span>
-
-                  <select
-                    value={side}
-                    onChange={
-                      event =>
-                        setSide(
-                          event
-                            .target
-                            .value as
-                            Exclude<
-                              TestSide,
-                              null
-                            >,
-                        )
-                    }
-                  >
-                    <option value="right">
-                      DX
-                    </option>
-
-                    <option value="left">
-                      SX
-                    </option>
-
-                    <option value="bilateral">
-                      Bilaterale
-                    </option>
+                  <span>Trave</span>
+                  <select value={beam} onChange={event => setBeam(event.target.value as 'high' | 'low')}>
+                    <option value="high">Alto</option>
+                    <option value="low">Basso</option>
                   </select>
                 </label>
               )}
 
-              {selectedDefinition
-                ?.gripApplicable && (
+              {selectedTemplate?.availableSettings.laterality && (
                 <label>
-                  <span>
-                    Presa / setup
-                  </span>
-
-                  <input
-                    value={grip}
-                    placeholder="es. barra"
-                    onChange={
-                      event =>
-                        setGrip(
-                          event
-                            .target
-                            .value,
-                        )
-                    }
-                  />
+                  <span>Modalità</span>
+                  <select value={laterality} onChange={event => setLaterality(event.target.value as 'right_left' | 'bilateral')}>
+                    <option value="right_left">DX + SX</option>
+                    <option value="bilateral">Bilaterale</option>
+                  </select>
                 </label>
               )}
 
@@ -987,12 +1014,6 @@ export function RemoteTestPanel({
               ) : (
                 coachDraft.items.map(
                   entry => {
-                    const definition =
-                      getTestDefinition(
-                        entry.item
-                          .protocolKey,
-                      )
-
                     return (
                       <div
                         className="remote-test-builder__item"
@@ -1002,22 +1023,11 @@ export function RemoteTestPanel({
                       >
                         <div>
                           <b>
-                            {
-                              definition
-                                ?.name
-                            }
+                            {itemName(entry)}
                           </b>
 
                           <span>
-                            {sideLabel(
-                              entry.item
-                                .side,
-                            )}
-
-                            {entry.item
-                              .grip
-                              ? ` - ${entry.item.grip}`
-                              : ''}
+                            {configLabel(entry.item.config)}
                           </span>
                         </div>
 
@@ -1168,12 +1178,6 @@ export function RemoteTestPanel({
                     <div className="remote-assignment__coach-list">
                       {assignment.items.map(
                         entry => {
-                          const definition =
-                            getTestDefinition(
-                              entry.item
-                                .protocolKey,
-                            )
-
                           return (
                             <div
                               key={
@@ -1182,24 +1186,17 @@ export function RemoteTestPanel({
                               }
                             >
                               <div>
-                                <b>
-                                  {
-                                    definition
-                                      ?.name
-                                  }
-                                </b>
+                                <b>{itemName(entry)}</b>
 
                                 <span>
-                                  {sideLabel(
-                                    entry.item
-                                      .side,
-                                  )}
-
-                                  {entry.item
-                                    .grip
-                                    ? ` - ${entry.item.grip}`
-                                    : ''}
+                                  {configLabel(entry.item.config) || sideLabel(entry.item.side)}
                                 </span>
+
+                                {entry.item.status === 'completed' && entry.values.map(value => (
+                                  <strong className="remote-assignment__result" key={value.metricKey}>
+                                    {value.metricLabel}: {value.value} {value.unit}
+                                  </strong>
+                                ))}
                               </div>
 
                               <Tag
@@ -1279,25 +1276,20 @@ export function RemoteTestPanel({
                     'in_progress' && (
                     <>
                       <div className="remote-assignment__items">
-                        {assignment.items.map(
+                        {assignment.items
+                          .filter(entry => entry.item.status !== 'completed' && entry.item.status !== 'skipped')
+                          .slice(0, 1)
+                          .map(
                           entry => {
-                            const definition =
-                              getTestDefinition(
-                                entry.item
-                                  .protocolKey,
-                              )
-
-                            const closed =
-                              entry.item
-                                .status ===
-                                'completed' ||
-                              entry.item
-                                .status ===
-                                'skipped'
+                            const fields = itemFields(entry)
+                            const video = entry.template?.videoUrl ?? ''
+                            const instruction = typeof entry.item.config.instruction === 'string'
+                              ? entry.item.config.instruction
+                              : entry.template?.instruction ?? ''
 
                             return (
                               <article
-                                className="remote-assignment__item"
+                                className="remote-assignment__item remote-assignment__test-page"
                                 key={
                                   entry.item
                                     .id
@@ -1314,25 +1306,10 @@ export function RemoteTestPanel({
                                       }
                                     </small>
 
-                                    <h4>
-                                      {
-                                        definition
-                                          ?.name
-                                      }
-                                    </h4>
+                                    <h4>{itemName(entry)}</h4>
 
                                     <span>
-                                      {sideLabel(
-                                        entry
-                                          .item
-                                          .side,
-                                      )}
-
-                                      {entry
-                                        .item
-                                        .grip
-                                        ? ` - ${entry.item.grip}`
-                                        : ''}
+                                      {configLabel(entry.item.config) || sideLabel(entry.item.side)}
                                     </span>
                                   </div>
 
@@ -1352,61 +1329,43 @@ export function RemoteTestPanel({
                                   </Tag>
                                 </header>
 
-                                {!closed && (
-                                  <div className="remote-assignment__metric-grid">
-                                    {definition?.metrics.map(
-                                      metric => (
-                                        <label
-                                          key={
-                                            metric.key
-                                          }
-                                        >
-                                          <span>
-                                            {
-                                              metric.label
-                                            }
-                                          </span>
+                                <section className="remote-assignment__video">
+                                  <small>VIDEO TUTORIAL</small>
+                                  {video ? (
+                                    usesVideoEmbed(video) ? (
+                                      <iframe src={embedVideoUrl(video)} title={`Video ${itemName(entry)}`} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+                                    ) : (
+                                      <video src={video} controls preload="metadata" />
+                                    )
+                                  ) : (
+                                    <p>Video tutorial non ancora disponibile. Contatta il coach prima di eseguire il test.</p>
+                                  )}
+                                </section>
 
-                                          <div className="remote-assignment__metric-input">
-                                            <input
-                                              type="number"
-                                              step="any"
-                                              value={metricValue(
-                                                assignment,
-                                                entry
-                                                  .item
-                                                  .id,
-                                                metric.key,
-                                              )}
-                                              onChange={
-                                                event =>
-                                                  updateMetric(
-                                                    assignment,
-                                                    entry
-                                                      .item
-                                                      .id,
-                                                    metric.key,
-                                                    event
-                                                      .target
-                                                      .value,
-                                                  )
-                                              }
-                                            />
+                                {instruction && <p className="remote-assignment__instruction">{instruction}</p>}
 
-                                            <b>
-                                              {
-                                                metric.unit
-                                              }
-                                            </b>
-                                          </div>
-                                        </label>
-                                      ),
-                                    )}
-                                  </div>
-                                )}
+                                <div className="remote-assignment__metric-grid">
+                                  {fields.map(
+                                    metric => (
+                                      <label key={metric.key}>
+                                        <span>{metric.label}</span>
+                                        <div className="remote-assignment__metric-input">
+                                          <input
+                                            type="number"
+                                            min={Number.isFinite(metric.min) ? metric.min : undefined}
+                                            step={metric.type === 'integer' ? 1 : 'any'}
+                                            inputMode="decimal"
+                                            value={metricValue(assignment, entry.item.id, metric.key)}
+                                            onChange={event => updateMetric(assignment, entry.item.id, metric.key, event.target.value)}
+                                          />
+                                          <b>{metric.unit}</b>
+                                        </div>
+                                      </label>
+                                    ),
+                                  )}
+                                </div>
 
-                                {!closed && (
-                                  <label className="remote-assignment__notes">
+                                <label className="remote-assignment__notes">
                                     <span>
                                       Note
                                       facoltative
@@ -1430,19 +1389,15 @@ export function RemoteTestPanel({
                                       }
                                       placeholder="Eventuali note sull'esecuzione"
                                     />
-                                  </label>
-                                )}
+                                </label>
 
-                                {!closed && (
-                                  <div className="remote-tests__actions">
+                                <div className="remote-tests__actions">
                                     <button
                                       className="button button--signal"
                                       type="button"
                                       disabled={
                                         busy ||
-                                        !entry
-                                          .values
-                                          .length
+                                        !hasRequiredValues(entry)
                                       }
                                       onClick={() =>
                                         void completeItem(
@@ -1456,7 +1411,7 @@ export function RemoteTestPanel({
                                       <Check
                                         size={15}
                                       />
-                                      Test eseguito
+                                      Completa test
                                     </button>
 
                                     <button
@@ -1476,37 +1431,7 @@ export function RemoteTestPanel({
                                     >
                                       Non eseguito
                                     </button>
-                                  </div>
-                                )}
-
-                                {closed && (
-                                  <div className="remote-assignment__closed">
-                                    {entry.item
-                                      .status ===
-                                    'completed' ? (
-                                      <>
-                                        <Check
-                                          size={16}
-                                        />
-                                        Test eseguito
-                                        {entry.completedAt
-                                          ? ` - ${new Date(
-                                              entry.completedAt,
-                                            ).toLocaleDateString(
-                                              'it-IT',
-                                            )}`
-                                          : ''}
-                                      </>
-                                    ) : (
-                                      <>
-                                        <X
-                                          size={16}
-                                        />
-                                        Test non eseguito
-                                      </>
-                                    )}
-                                  </div>
-                                )}
+                                </div>
                               </article>
                             )
                           },

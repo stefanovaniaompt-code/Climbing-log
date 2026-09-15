@@ -45,6 +45,7 @@ export type TestSessionDraft = {
 export type TestSessionItemDraft = {
   id: string
   testSessionId: string
+  testLibraryId?: string | null
   itemOrder: number
   protocolKey: TestProtocolKey
   protocolVersion: string
