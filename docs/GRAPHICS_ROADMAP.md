@@ -61,7 +61,7 @@ quando il tentativo è valido.
 
 ## Iterazione 2 — runner sessione atleta (completata localmente)
 
-- timer attivo fissato in primo piano con cifre leggibili a distanza;
+- timer con cifre leggibili a distanza, integrato nella card del singolo esercizio;
 - fase corrente, serie e ripetizione visibili durante tutto l'esercizio;
 - segnali audio forti e distinti per countdown, lavoro, recupero e fine;
 - vibrazione sui cambi di fase compatibili e controllo audio sempre raggiungibile;
