@@ -59,6 +59,14 @@ workout e stato delle sessioni.
 **Uscita:** ogni protocollo comunica chiaramente cosa fare, cosa sta misurando e
 quando il tentativo è valido.
 
+## Iterazione 2 — runner sessione atleta (completata localmente)
+
+- timer attivo fissato in primo piano con cifre leggibili a distanza;
+- fase corrente, serie e ripetizione visibili durante tutto l'esercizio;
+- segnali audio forti e distinti per countdown, lavoro, recupero e fine;
+- vibrazione sui cambi di fase compatibili e controllo audio sempre raggiungibile;
+- timer compatto ingrandito prima dell'avvio e resa smartphone verificata.
+
 ## Fase 4 — accessibilità e qualità percepita
 
 - contrasto WCAG, focus visibile, navigazione tastiera e annunci screen reader;

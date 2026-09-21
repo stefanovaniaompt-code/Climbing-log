@@ -109,7 +109,7 @@ const demo: SessionRunnerData = {
     notes: '',
   },
   exercises: [
-    { id: 'demo-ex-1', order: 1, name: 'Block lift · 20 mm', prescription: { sets: 4, dose: '5 sec', load_type: 'external', load_value: '32.5', unit: 'kg', timer: { set_rest_seconds: 102 } }, calculationContext: {}, targetRpeMin: 7, targetRpeMax: 8, restSeconds: 102, instructions: 'Presa attiva e spalla bassa.', progress: null },
+    { id: 'demo-ex-1', order: 1, name: 'Block lift · 20 mm', prescription: { sets: 4, dose: '5 sec', load_type: 'external', load_value: '32.5', unit: 'kg', timer: { execution_mode: 'bilateral', preparation_seconds: 5, work_seconds: 5, repetitions: 1, set_rest_seconds: 102 } }, calculationContext: {}, targetRpeMin: 7, targetRpeMax: 8, restSeconds: 102, instructions: 'Presa attiva e spalla bassa.', progress: null },
     { id: 'demo-ex-2', order: 2, name: 'Pull-up zavorrato', prescription: { sets: 5, dose: '3 rep', load_type: 'external', load_value: '27.5', unit: 'kg' }, calculationContext: {}, targetRpeMin: 7, targetRpeMax: 8, restSeconds: 150, instructions: null, progress: null },
   ],
 }

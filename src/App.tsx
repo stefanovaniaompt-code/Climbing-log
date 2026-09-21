@@ -29,6 +29,8 @@ import {
   Trash2,
   TriangleAlert,
   Users,
+  Volume2,
+  VolumeX,
   type LucideIcon,
 } from 'lucide-react'
 import { dataRuntime } from './dataRuntime'
@@ -48,6 +50,7 @@ import { createLibraryExercise, deleteLibraryExercise, loadExerciseLibrary, setL
 import { TestScreen } from './tests/TestScreen'
 import { Bars, ConfirmDialog, Metric, Panel, ScreenHeader, Tag } from './shared/ui'
 import { useScreenWakeLock } from './shared/hooks/useScreenWakeLock'
+import { playTimerAudioCue, timerAudioCueForTransition } from './session/timerAudio'
 import { useUpdateBlocker } from './pwa/useUpdateBlocker'
 import { SystemScreen } from './features/system/SystemScreen'
 import { MigrationScreen } from './features/migration/MigrationScreen'
@@ -230,6 +233,10 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
   const [error, setError] = useState('')
   const [reloadKey, setReloadKey] = useState(0)
   const [draftReady, setDraftReady] = useState(false)
+  const [soundEnabled, setSoundEnabled] = useState(true)
+  const audioContextRef = useRef<AudioContext | null>(null)
+  const audioArmedRef = useRef(false)
+  const previousTimerStateRef = useRef<ExerciseTimerState | null>(null)
   const draftStorageKey = `cc-v2:session-draft:${profile.userId}:${sessionId}`
   const wakeLockStatus = useScreenWakeLock(Boolean(runner && runner.session.status !== 'completed'))
 
@@ -474,6 +481,31 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
   }, [timerState?.running, timerState?.phase])
 
   useEffect(() => {
+    const previous = previousTimerStateRef.current
+    previousTimerStateRef.current = timerState
+
+    if (
+      !timerState ||
+      !soundEnabled ||
+      !audioArmedRef.current ||
+      !audioContextRef.current
+    ) return
+
+    const cue = timerAudioCueForTransition(previous, timerState)
+    if (!cue) return
+
+    playTimerAudioCue(audioContextRef.current, cue)
+
+    if ('vibrate' in navigator && cue !== 'countdown') {
+      navigator.vibrate(cue === 'complete' ? [90, 70, 140] : 90)
+    }
+  }, [soundEnabled, timerState])
+
+  useEffect(() => () => {
+    void audioContextRef.current?.close()
+  }, [])
+
+  useEffect(() => {
     if (
       !draftReady ||
       !runner ||
@@ -526,6 +558,11 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
     !nextOpenExercise.progress?.completed
       ? nextOpenExercise.id
       : null
+  const activeTimerExercise = timerState
+    ? runner.exercises.find(exercise => exercise.id === timerState.exerciseId) ?? null
+    : null
+  const activeTimerSeconds = timerState?.remaining ?? 0
+  const activeTimerLabel = `${String(Math.floor(activeTimerSeconds / 60)).padStart(2, '0')}:${String(activeTimerSeconds % 60).padStart(2, '0')}`
 
   const startCurrentSession = async () => {
     setSaveState('starting')
@@ -540,7 +577,31 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
     }
   }
 
+  const armAudioFeedback = () => {
+    if (!soundEnabled) return
+
+    audioArmedRef.current = true
+    const context = audioContextRef.current ?? new AudioContext()
+    audioContextRef.current = context
+
+    if (context.state === 'suspended') void context.resume()
+  }
+
+  const toggleSound = () => {
+    if (soundEnabled) {
+      setSoundEnabled(false)
+      return
+    }
+
+    setSoundEnabled(true)
+    audioArmedRef.current = true
+    const context = audioContextRef.current ?? new AudioContext()
+    audioContextRef.current = context
+    void context.resume().then(() => playTimerAudioCue(context, 'countdown'))
+  }
+
   const toggleTimer = (exercise: SessionRunnerData['exercises'][number]) => {
+    armAudioFeedback()
     setTimerState(current => {
       if (current?.exerciseId === exercise.id) {
         if (current.phase === 'complete') {
@@ -761,7 +822,14 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
       <ScreenHeader eyebrow="SESSIONE / PANORAMICA" title={runner.session.title} text={[runner.session.objective, runner.session.durationMinutes ? String(runner.session.durationMinutes) + ' min' : ''].filter(Boolean).join(' · ')} action={<div className="header-actions"><Tag tone={runner.source === 'legacy-v1' ? 'success' : 'neutral'}>{runner.source === 'legacy-v1' ? 'ONLINE' : 'DEMO'}</Tag>{wakeLockStatus === 'active' && <Tag tone="success">SCHERMO ATTIVO</Tag>}</div>} />
       <div className="session-status session-status--compact">
         <div className="session-status__progress"><span>ESERCIZI DELLA SESSIONE</span><b>{String(runner.exercises.length).padStart(2, '0')} · {summary.completed} registrati</b><div className="progress-line"><i style={{ width: String(summary.percentage) + '%' }} /></div></div>
+        {canEdit && <button className={`session-sound-toggle ${soundEnabled ? 'is-on' : ''}`} onClick={toggleSound} aria-pressed={soundEnabled}>{soundEnabled ? <Volume2 size={22} /> : <VolumeX size={22} />}<span>{soundEnabled ? 'SEGNALI AUDIO FORTI' : 'AUDIO DISATTIVATO'}</span></button>}
       </div>
+
+      {canEdit && timerState && activeTimerExercise && <section className={`session-focus-timer is-${timerState.phase}${timerState.running ? ' is-running' : ''}`} aria-label={`Timer ${activeTimerExercise.name}`}>
+        <div className="session-focus-timer__head"><span>TIMER ATTIVO</span><b>{activeTimerExercise.name}</b></div>
+        <div className="session-focus-timer__display"><small aria-live="assertive">{exerciseTimerPhaseLabel(timerState)}</small><strong>{activeTimerLabel}</strong><div><span>SERIE {timerState.set}/{timerState.config.sets}</span>{timerState.config.repetitions > 1 && <span>RIPETIZIONE {timerState.repetition}/{timerState.config.repetitions}</span>}</div></div>
+        <div className="session-focus-timer__actions"><button className="session-focus-timer__control" onClick={() => toggleTimer(activeTimerExercise)}>{timerState.running ? <Pause size={25} fill="currentColor" /> : <Play size={25} fill="currentColor" />}<span>{timerState.running ? 'PAUSA' : timerState.phase === 'complete' ? 'RICOMINCIA' : 'RIPRENDI'}</span></button><button className="session-focus-timer__reset" onClick={() => resetTimer(activeTimerExercise)}><TimerReset size={21} /><span>REIMPOSTA</span></button></div>
+      </section>}
 
       <div className="session-exercise-list">
         {runner.exercises.map(exercise => {
