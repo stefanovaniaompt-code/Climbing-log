@@ -1196,7 +1196,7 @@ textarea {
     .7fr
     .55fr
     1.25fr
-    170px;
+    250px;
 }
 
 .test-history-v2--readonly > div {
@@ -1212,6 +1212,7 @@ textarea {
 
 .test-history-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
   gap: 7px;
@@ -1222,6 +1223,44 @@ textarea {
   gap: 4px;
 }
 
+.test-session-items-manager {
+  margin: 14px 16px 16px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+}
+
+.test-session-items-manager > header,
+.test-session-items-manager > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.test-session-items-manager > div:last-child {
+  border-bottom: 0;
+}
+
+.test-session-items-manager header div,
+.test-session-items-manager > div > span {
+  display: grid;
+  gap: 3px;
+}
+
+.test-session-items-manager small {
+  color: var(--muted);
+  font: 600 10px/1.35 'IBM Plex Mono', monospace;
+}
+
+.live-tindeq__item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
 @media (max-width: 860px) {
   .test-paired-grid {
     grid-template-columns: 1fr;
@@ -1229,6 +1268,15 @@ textarea {
 }
 
 @media (max-width: 560px) {
+  .test-session-items-manager > div {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .test-session-items-manager .test-delete-button {
+    align-self: flex-start;
+  }
+
   .test-paired-values {
     grid-template-columns: 1fr 1fr;
   }

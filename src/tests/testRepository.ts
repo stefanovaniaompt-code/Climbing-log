@@ -41,7 +41,7 @@ export async function loadTests(profile: AppProfile): Promise<TestData> {
   const sessionsResult = await supabase!.from('test_sessions').select('id,athlete_id,coach_id,tested_at,created_at,body_weight_kg,protocol_version,context,notes,mode,status').in('athlete_id', athleteIds).order('tested_at', { ascending: false }).order('created_at', { ascending: false }).limit(200)
   if (sessionsResult.error) throw sessionsResult.error
   const sessionIds = (sessionsResult.data ?? []).map(row => row.id as string)
-  const resultsResult = sessionIds.length ? await supabase!.from('test_results').select('id,test_session_id,metric_key,metric_label,value,unit,side,grip,normalize_to_body_weight,setup,notes,protocol_key,protocol_version,measurement_source,quality_status,is_primary,measured_at').in('test_session_id', sessionIds) : { data: [], error: null }
+  const resultsResult = sessionIds.length ? await supabase!.from('test_results').select('id,test_session_id,attempt_id,metric_key,metric_label,value,unit,side,grip,normalize_to_body_weight,setup,notes,protocol_key,protocol_version,measurement_source,quality_status,is_primary,measured_at').in('test_session_id', sessionIds) : { data: [], error: null }
   if (resultsResult.error) throw resultsResult.error
   return {
     source: 'legacy-v1', athletes,
@@ -94,6 +94,9 @@ export async function loadTests(profile: AppProfile): Promise<TestData> {
 
           testSessionId:
             row.test_session_id,
+
+          attemptId:
+            row.attempt_id,
 
           metricKey:
             row.metric_key,
@@ -176,4 +179,62 @@ export async function deleteTest(profile: AppProfile, testSessionId: string) {
     .select('id')
     .single()
   if (result.error) throw result.error
+}
+
+export async function deleteTindeqTestAttempt(
+  profile: AppProfile,
+  attemptId: string,
+) {
+  if (profile.role !== 'coach') {
+    throw new Error('Solo il coach può eliminare un test Tindeq.')
+  }
+
+  if (isDemo(profile)) return
+
+  const selectedAttempt = await supabase!
+    .from('test_attempts')
+    .select('test_session_item_id')
+    .eq('id', attemptId)
+    .single()
+
+  if (selectedAttempt.error) throw selectedAttempt.error
+
+  const itemId = selectedAttempt.data.test_session_item_id as string
+  const attempts = await supabase!
+    .from('test_attempts')
+    .select('id,raw_curve_path')
+    .eq('test_session_item_id', itemId)
+
+  if (attempts.error) throw attempts.error
+
+  const attemptIds = (attempts.data ?? []).map(row => row.id as string)
+  const rawCurvePaths = (attempts.data ?? [])
+    .map(row => row.raw_curve_path as string | null)
+    .filter((path): path is string => Boolean(path))
+
+  if (rawCurvePaths.length) {
+    const storage = await supabase!.storage
+      .from('test-acquisitions')
+      .remove(rawCurvePaths)
+
+    if (storage.error) throw storage.error
+  }
+
+  if (attemptIds.length) {
+    const results = await supabase!
+      .from('test_results')
+      .delete()
+      .in('attempt_id', attemptIds)
+
+    if (results.error) throw results.error
+  }
+
+  const item = await supabase!
+    .from('test_session_items')
+    .delete()
+    .eq('id', itemId)
+    .select('id')
+    .single()
+
+  if (item.error) throw item.error
 }

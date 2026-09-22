@@ -12,6 +12,7 @@ import {
   RotateCcw,
   Send,
   Square,
+  Trash2,
   Unplug,
   X,
 } from 'lucide-react'
@@ -47,6 +48,7 @@ import {
 } from './testCanonicalResults'
 
 import {
+  deleteTestSessionItem,
   flushLiveTestSession,
   persistLiveAttemptRecord,
   persistLiveRunnerState,
@@ -817,6 +819,51 @@ export function LiveTindeqPanel({
             Error
             ? reason.message
             : 'Test non avviato.',
+        )
+      } finally {
+        setBusy(false)
+      }
+    }
+
+  const removeItem =
+    async (
+      itemId: string,
+    ) => {
+      if (!runtime) return
+
+      if (
+        !window.confirm(
+          'Rimuovere questo test dalla sessione live?',
+        )
+      ) {
+        return
+      }
+
+      setBusy(true)
+      setError('')
+      setMessage('')
+
+      try {
+        await deleteTestSessionItem(
+          profile,
+          itemId,
+        )
+
+        runtime.removeItem(itemId)
+
+        await persistLiveRunnerState(
+          profile,
+          runtime.snapshot.runner,
+        )
+
+        setMessage(
+          'Test rimosso dalla sessione live.',
+        )
+      } catch (reason) {
+        setError(
+          reason instanceof Error
+            ? reason.message
+            : 'Test non rimosso.',
         )
       } finally {
         setBusy(false)
@@ -1680,22 +1727,34 @@ export function LiveTindeqPanel({
                           snapshot.runner
                             .phase ===
                             'setup' && (
-                            <button
-                              type="button"
-                              className="button button--signal"
-                              disabled={
-                                busy
-                              }
-                              onClick={() =>
-                                void activateItem(
-                                  entry
-                                    .item
-                                    .id,
-                                )
-                              }
-                            >
-                              Avvia questo test
-                            </button>
+                            <div className="live-tindeq__item-actions">
+                              <button
+                                type="button"
+                                className="button button--signal"
+                                disabled={busy}
+                                onClick={() =>
+                                  void activateItem(
+                                    entry.item.id,
+                                  )
+                                }
+                              >
+                                Avvia questo test
+                              </button>
+
+                              <button
+                                type="button"
+                                className="test-delete-button"
+                                disabled={busy}
+                                onClick={() =>
+                                  void removeItem(
+                                    entry.item.id,
+                                  )
+                                }
+                              >
+                                <Trash2 size={14} />
+                                Rimuovi
+                              </button>
+                            </div>
                           )}
                       </article>
                     )

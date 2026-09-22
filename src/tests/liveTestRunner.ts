@@ -217,6 +217,47 @@ export function addLiveTestItem(
   }
 }
 
+export function removeLiveTestItem(
+  state: LiveTestRunnerState,
+  itemId: string,
+): LiveTestRunnerState {
+  if (state.phase !== 'setup') {
+    throw new Error(
+      'Finish the active test before removing another item.',
+    )
+  }
+
+  const target = state.items.find(
+    entry => entry.item.id === itemId,
+  )
+
+  if (!target) {
+    throw new Error('Test item not found.')
+  }
+
+  if (
+    target.item.status !== 'pending' ||
+    target.attempts.length > 0
+  ) {
+    throw new Error(
+      'Only a pending test without acquisitions can be removed.',
+    )
+  }
+
+  return {
+    ...state,
+    items: state.items
+      .filter(entry => entry.item.id !== itemId)
+      .map((entry, index) => ({
+        ...entry,
+        item: {
+          ...entry.item,
+          itemOrder: index + 1,
+        },
+      })),
+  }
+}
+
 export function activateLiveTestItem(
   state: LiveTestRunnerState,
   itemId: string,

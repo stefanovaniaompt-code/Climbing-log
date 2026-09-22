@@ -4,6 +4,8 @@ import {
   buildRetestInput,
   buildTestPresentation,
   canManageTests,
+  sessionMeasureCount,
+  sessionTindeqTests,
   testCaptureSourceLabel,
 } from './testPresentation'
 
@@ -145,5 +147,44 @@ describe('test presentation', () => {
     expect(testCaptureSourceLabel(data.sessions[1])).toBe(
       'Registrato',
     )
+  })
+
+  it('nasconde i Newton tecnici del Peak Force live e i metadati interni', () => {
+    const liveData: TestData = {
+      source: 'legacy-v1',
+      athletes: [{ id: 'a', name: 'Ada' }],
+      sessions: [{
+        id: 'live', athleteId: 'a', coachId: 'c', testedAt: '2026-09-10',
+        createdAt: '2026-09-10T10:00:00Z', bodyWeightKg: 60,
+        protocolVersion: '2.0', context: {}, notes: '', mode: 'live', status: 'completed',
+      }],
+      results: [
+        {
+          id: 'kg', testSessionId: 'live', attemptId: 'attempt-1', metricKey: 'mvc_kg',
+          metricLabel: 'MVC', value: 40, unit: 'kg', side: 'right', grip: 'open_hand',
+          normalizeToBodyWeight: false, setup: { liveClinicalKind: 'mvc', targetN: 235.3, mvcSourceItemId: 'internal-id' },
+          notes: '', protocolKey: 'live_mvc_open_hand', protocolVersion: '2.0',
+          measurementSource: 'tindeq', qualityStatus: 'VALID', isPrimary: true,
+        },
+        {
+          id: 'newton', testSessionId: 'live', attemptId: 'attempt-1', metricKey: 'peak_n',
+          metricLabel: 'Picco sensore', value: 392.3, unit: 'N', side: 'right', grip: 'open_hand',
+          normalizeToBodyWeight: false, setup: { liveClinicalKind: 'mvc', targetN: 235.3, mvcSourceItemId: 'internal-id' },
+          notes: '', protocolKey: 'live_mvc_open_hand', protocolVersion: '2.0',
+          measurementSource: 'tindeq', qualityStatus: 'VALID', isPrimary: false,
+        },
+      ],
+    }
+
+    const presentation = buildTestPresentation(liveData, 'a')
+    expect(presentation.groups).toHaveLength(1)
+    expect(presentation.groups[0].unit).toBe('kg')
+    expect(presentation.groups[0].setupLabel).toBe('')
+    expect(sessionMeasureCount(liveData, 'live')).toBe(1)
+    expect(sessionTindeqTests(liveData, 'live')).toEqual([{
+      attemptId: 'attempt-1',
+      label: 'Peak Force / MVC - Open Hand',
+      detail: 'DX - Open Hand - 40 kg',
+    }])
   })
 })

@@ -40,4 +40,16 @@ describe('acquisition metrics dispatch', () => {
     expect(result.metrics.force_onset_timestamp_micros).toBe(600_000)
     expect(result.metrics.peak_timestamp_micros).toBe(1_300_000)
   })
+  it('stores repetitions performed in the 7:3 protocol even when a rep misses the target', () => {
+    const repeaterSamples = [
+      ...Array.from({ length: 8 }, (_, index) => ({ forceN: 70, timestampMicros: index * 1_000_000, sourceForceKgf: 70 / 9.80665, unit: 'N' as const })),
+      ...Array.from({ length: 3 }, (_, index) => ({ forceN: 0, timestampMicros: (index + 8) * 1_000_000, sourceForceKgf: 0, unit: 'N' as const })),
+      ...Array.from({ length: 8 }, (_, index) => ({ forceN: 40, timestampMicros: (index + 11) * 1_000_000, sourceForceKgf: 40 / 9.80665, unit: 'N' as const })),
+    ]
+    const result = computeAcquisitionMetrics(repeaterSamples, { protocolKey: 'live_repeaters_open_hand', protocolVersion: '2.0', bodyWeightKg: null, side: 'right', grip: 'open_hand', targetN: 70, repeaterWorkMs: 7000, targetTolerancePercent: 0.05 })
+    expect(result.key).toBe('performed_repetitions')
+    expect(result.value).toBe(2)
+    expect(result.metrics.performed_repetitions).toBe(2)
+    expect(result.metrics.valid_repetitions).toBe(1)
+  })
 })

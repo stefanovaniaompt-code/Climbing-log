@@ -82,6 +82,15 @@ Non è stata eseguita una nuova prova mutante in produzione.
   evitando la precedente concorrenza che poteva bloccare “Conferma test”.
 - Le sessioni Tindeq non concluse vengono conservate localmente per
   coach–atleta e ripristinate al rientro nell'app.
+- I test ancora pendenti possono essere rimossi dalla batteria live. Nello
+  storico il coach può inoltre eliminare un singolo test Tindeq, inclusi i suoi
+  tentativi e la curva, senza cancellare l'intera sessione.
+- Peak Force / MVC materializza e presenta il risultato soltanto in kg; la
+  misura tecnica in Newton resta disponibile nell'acquisizione grezza ma non
+  genera più un secondo grafico. Repeaters 7:3 salva come risultato principale
+  il numero di ripetizioni effettivamente svolte.
+- I parametri tecnici interni della sessione Tindeq non vengono più mostrati nei
+  box dei grafici né usati per separare serie storiche equivalenti.
 - Timer, outbox e aggiornamenti PWA: presenti con persistenza locale e policy di
   aggiornamento sicuro.
 - CI frontend: gate completo su ogni push e pull request.
@@ -98,6 +107,13 @@ Non è stata eseguita una nuova prova mutante in produzione.
   - Vitest: 43 file, 201 test superati;
   - test Node/migrazioni: 40 test superati;
   - build Vite produzione: completata, 1.719 moduli trasformati.
+- Gate generale `pnpm check`: superato il 22 settembre 2026 dopo le correzioni
+  Tindeq live.
+  - encoding: 403 file controllati;
+  - copy check, ESLint e TypeScript: superati;
+  - Vitest: 44 file, 209 test superati;
+  - test Node/migrazioni: 40 test superati;
+  - build Vite produzione: completata, 1.720 moduli trasformati.
 - Confronto Edge Function: il file locale coincide riga per riga con la versione
   6 distribuita.
 

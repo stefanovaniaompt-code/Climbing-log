@@ -7,6 +7,75 @@ import {
   type TestInput,
   type TestSessionRecord,
 } from './testAnalytics'
+import { getTestDefinition } from './testCatalog'
+import { liveGripLabel } from './liveTestTemplates'
+
+export function isVisibleTestResult(
+  result: TestData['results'][number],
+) {
+  return !(
+    result.protocolKey?.startsWith('live_mvc_') &&
+    result.metricKey === 'peak_n'
+  )
+}
+
+function visibleTestData(data: TestData): TestData {
+  return {
+    ...data,
+    results: data.results.filter(isVisibleTestResult),
+  }
+}
+
+export type SessionTindeqTest = {
+  attemptId: string
+  label: string
+  detail: string
+}
+
+export function sessionTindeqTests(
+  data: TestData,
+  testSessionId: string,
+): SessionTindeqTest[] {
+  const grouped = new Map<string, TestData['results']>()
+
+  for (const result of data.results) {
+    if (
+      result.testSessionId !== testSessionId ||
+      result.measurementSource !== 'tindeq' ||
+      !result.attemptId ||
+      !isVisibleTestResult(result)
+    ) {
+      continue
+    }
+
+    grouped.set(
+      result.attemptId,
+      [...(grouped.get(result.attemptId) ?? []), result],
+    )
+  }
+
+  return [...grouped.entries()].map(([attemptId, results]) => {
+    const primary = results.find(result => result.isPrimary) ?? results[0]
+    const definition = getTestDefinition(primary.protocolKey ?? '')
+    const side = primary.side === 'right'
+      ? 'DX'
+      : primary.side === 'left'
+        ? 'SX'
+        : primary.side === 'bilateral'
+          ? 'Bilaterale'
+          : ''
+    const grip = primary.grip ? liveGripLabel(primary.grip) : ''
+    const value = `${primary.value.toLocaleString('it-IT', {
+      maximumFractionDigits: 2,
+    })} ${primary.unit}`
+
+    return {
+      attemptId,
+      label: definition?.name ?? primary.metricLabel,
+      detail: [side, grip, value].filter(Boolean).join(' - '),
+    }
+  })
+}
 
 export type TestCaptureSource =
   | 'manual'
@@ -186,9 +255,10 @@ export function buildTestPresentation(
   data: TestData,
   athleteId: string,
 ): TestPresentation {
+  const visibleData = visibleTestData(data)
   const comparisons =
     buildComparisons(
-      data,
+      visibleData,
       athleteId,
     )
 
@@ -285,7 +355,7 @@ export function buildTestPresentation(
 
           points:
             mergeHistory(
-              data,
+              visibleData,
               athleteId,
               group,
             ),
@@ -572,6 +642,7 @@ export function sessionMeasureCount(
   return data.results
     .filter(
       result =>
+        isVisibleTestResult(result) &&
         result
           .testSessionId ===
           testSessionId &&

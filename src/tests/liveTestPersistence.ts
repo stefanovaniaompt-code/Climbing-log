@@ -3,11 +3,14 @@ import type {
 } from '../onboarding/types'
 
 import {
+  deleteTestSessionItem,
   selectTestAttempt,
   syncTestAttempt,
   syncTestSession,
   syncTestSessionItem,
 } from './testAttemptRepository'
+
+export { deleteTestSessionItem }
 
 import type {
   LiveTestAttemptRecord,

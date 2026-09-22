@@ -227,11 +227,12 @@ function acquisitionMetrics(
     })
     const valid = reps.filter(rep => rep.valid)
     return {
-      key: 'valid_repetitions',
-      value: valid.length,
+      key: 'performed_repetitions',
+      value: reps.length,
       unit: 'rep',
       metrics: {
         ...common,
+        performed_repetitions: reps.length,
         valid_repetitions: valid.length,
         mvc_used_kg: config.mvcUsedKg ?? null,
         target_kg: config.targetKg ?? null,

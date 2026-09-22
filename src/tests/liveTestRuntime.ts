@@ -29,6 +29,7 @@ import {
   markLiveAcquisitionStarted,
   prepareNextLiveAttempt,
   recordLiveAcquisition,
+  removeLiveTestItem,
   selectLiveTestAttempt,
   skipActiveLiveTestItem,
   type AddLiveTestItemOptions,
@@ -615,6 +616,17 @@ export class LiveTestRuntime {
     }
 
     this.publish()
+  }
+
+  removeItem(
+    itemId: string,
+  ) {
+    this.updateRunner(
+      removeLiveTestItem(
+        this.runnerState,
+        itemId,
+      ),
+    )
   }
 
   private checkEnduranceTarget(sample: TindeqForceSample) {

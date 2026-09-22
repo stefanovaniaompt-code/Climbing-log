@@ -92,6 +92,28 @@ export async function syncTestSessionItem(
   return result.data.id as string
 }
 
+export async function deleteTestSessionItem(
+  profile: AppProfile,
+  itemId: string,
+) {
+  if (profile.role !== 'coach') {
+    throw new Error(
+      'Solo il coach può rimuovere un test dalla sessione.',
+    )
+  }
+
+  if (isDemo(profile)) return
+
+  const result = await supabase!
+    .from('test_session_items')
+    .delete()
+    .eq('id', itemId)
+    .select('id')
+    .maybeSingle()
+
+  if (result.error) throw result.error
+}
+
 export async function syncTestAttempt(
   profile: AppProfile,
   payload: TestAttemptSyncPayload,

@@ -29,15 +29,18 @@ import {
 import {
   createTest,
   deleteTest,
+  deleteTindeqTestAttempt,
   loadTests,
 } from './testRepository'
 import { RemoteTestPanel } from './RemoteTestPanel'
 import { LiveTindeqPanel } from './LiveTindeqPanel'
+import { liveGripLabel } from './liveTestTemplates'
 import {
   buildRetestInput,
   buildTestPresentation,
   canManageTests,
   sessionMeasureCount,
+  sessionTindeqTests,
   testCaptureSourceLabel,
   type MetricSideBundle,
 } from './testPresentation'
@@ -138,12 +141,14 @@ function MetricGroupCard({
       action={
         <Tag tone="purple">
           {[
-            group.grip,
+            liveGripLabel(group.grip),
             group.setupLabel,
-            group.protocolVersion,
+            group.protocolVersion
+              ? `v${group.protocolVersion}`
+              : '',
           ]
             .filter(Boolean)
-            .join(' - ') ||
+            .join(' · ') ||
             'Setup standard'}
         </Tag>
       }
@@ -320,6 +325,15 @@ export function TestScreen({
   const [message, setMessage] = useState('')
   const [deleteTarget, setDeleteTarget] =
     useState<TestSessionRecord | null>(null)
+  const [managedSessionId, setManagedSessionId] =
+    useState<string | null>(null)
+  const [deleteTindeqTarget, setDeleteTindeqTarget] =
+    useState<{
+      attemptId: string
+      label: string
+      detail: string
+      testedAt: string
+    } | null>(null)
 
   const refresh = async () => {
     const next = await loadTests(profile)
@@ -402,6 +416,16 @@ export function TestScreen({
     data?.athletes.find(
       athlete => athlete.id === athleteId,
     )?.name ?? 'Atleta'
+
+  const managedSession =
+    presentation?.sessions.find(
+      session => session.id === managedSessionId,
+    ) ?? null
+
+  const managedTindeqTests =
+    data && managedSession
+      ? sessionTindeqTests(data, managedSession.id)
+      : []
 
   const updateMetric = (
     index: number,
@@ -532,6 +556,34 @@ export function TestScreen({
         reason instanceof Error
           ? reason.message
           : 'Test non eliminato.',
+      )
+    } finally {
+      setState('idle')
+    }
+  }
+
+  const removeTindeqTest = async () => {
+    if (!deleteTindeqTarget || !manageable) return
+
+    setState('saving')
+    setError('')
+    setMessage('')
+
+    try {
+      await deleteTindeqTestAttempt(
+        profile,
+        deleteTindeqTarget.attemptId,
+      )
+      await refresh()
+      setDeleteTindeqTarget(null)
+      setMessage(
+        'Il singolo test Tindeq è stato eliminato. Gli altri test della sessione sono rimasti invariati.',
+      )
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Test Tindeq non eliminato.',
       )
     } finally {
       setState('idle')
@@ -1095,6 +1147,22 @@ export function TestScreen({
 
                 {manageable && (
                   <div className="test-history-actions">
+                    {sessionTindeqTests(data, session.id).length > 0 && (
+                      <button
+                        className="text-button"
+                        disabled={state === 'saving'}
+                        onClick={() =>
+                          setManagedSessionId(current =>
+                            current === session.id
+                              ? null
+                              : session.id,
+                          )
+                        }
+                      >
+                        Singoli test
+                      </button>
+                    )}
+
                     <button
                       className="text-button"
                       disabled={state === 'saving'}
@@ -1121,6 +1189,45 @@ export function TestScreen({
               </div>
             ))}
           </div>
+
+          {managedSession && managedTindeqTests.length > 0 && (
+            <section className="test-session-items-manager">
+              <header>
+                <div>
+                  <small>SESSIONE TINDEQ</small>
+                  <b>{formatTestDate(managedSession.testedAt)}</b>
+                </div>
+                <button
+                  className="text-button"
+                  onClick={() => setManagedSessionId(null)}
+                >
+                  Chiudi
+                </button>
+              </header>
+
+              {managedTindeqTests.map(test => (
+                <div key={test.attemptId}>
+                  <span>
+                    <b>{test.label}</b>
+                    <small>{test.detail}</small>
+                  </span>
+                  <button
+                    className="test-delete-button"
+                    disabled={state === 'saving'}
+                    onClick={() =>
+                      setDeleteTindeqTarget({
+                        ...test,
+                        testedAt: managedSession.testedAt,
+                      })
+                    }
+                  >
+                    <Trash2 size={14} />
+                    Elimina test
+                  </button>
+                </div>
+              ))}
+            </section>
+          )}
         </Panel>
       )}
 
@@ -1146,6 +1253,19 @@ export function TestScreen({
           onConfirm={() =>
             void removeTest()
           }
+        />
+      )}
+
+      {manageable && deleteTindeqTarget && (
+        <ConfirmDialog
+          title={`Eliminare ${deleteTindeqTarget.label}?`}
+          text={`Verranno eliminati definitivamente il risultato, i tentativi e la curva acquisita il ${formatTestDate(
+            deleteTindeqTarget.testedAt,
+          )}. Gli altri test della sessione non saranno modificati.`}
+          confirmLabel="Elimina singolo test"
+          busy={state === 'saving'}
+          onCancel={() => setDeleteTindeqTarget(null)}
+          onConfirm={() => void removeTindeqTest()}
         />
       )}
     </div>

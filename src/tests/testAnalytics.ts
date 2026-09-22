@@ -29,6 +29,7 @@ export type TestSessionRecord = {
 export type TestResultRecord = {
   id: string
   testSessionId: string
+  attemptId?: string | null
   metricKey: string
   metricLabel: string
   value: number
@@ -77,6 +78,7 @@ export type TestMetricInput =
     TestResultRecord,
     | 'id'
     | 'testSessionId'
+    | 'attemptId'
     | 'protocolKey'
     | 'protocolVersion'
     | 'measurementSource'
@@ -147,6 +149,15 @@ const NON_MATERIAL_SETUP_KEYS =
     'measurement_source',
     'measurementSource',
     'source',
+    'liveClinicalKind',
+    'mvcSourceItemId',
+    'mvcUsedKg',
+    'targetPercent',
+    'targetTolerancePercent',
+    'targetKg',
+    'targetN',
+    'enduranceFailureGraceMs',
+    'repeaterWorkMs',
   ])
 
 function canonicalValue(

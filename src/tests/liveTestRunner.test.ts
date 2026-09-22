@@ -18,6 +18,7 @@ import {
   markLiveAcquisitionStarted,
   prepareNextLiveAttempt,
   recordLiveAcquisition,
+  removeLiveTestItem,
   selectLiveTestAttempt,
   selectedLiveAttempt,
 } from './liveTestRunner'
@@ -184,6 +185,32 @@ describe(
               entry.item.itemOrder,
           ),
         ).toEqual([1, 2])
+      },
+    )
+
+    it(
+      'removes a pending item and compacts the remaining order',
+      () => {
+        let state = runnerWithItem()
+
+        state = addLiveTestItem(
+          state,
+          'rfd',
+          {
+            itemId: 'item-left',
+            side: 'left',
+            grip: '20 mm',
+          },
+        )
+
+        state = removeLiveTestItem(
+          state,
+          'item-right',
+        )
+
+        expect(state.items).toHaveLength(1)
+        expect(state.items[0].item.id).toBe('item-left')
+        expect(state.items[0].item.itemOrder).toBe(1)
       },
     )
 
