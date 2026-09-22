@@ -93,6 +93,10 @@ Non è stata eseguita una nuova prova mutante in produzione.
   box dei grafici né usati per separare serie storiche equivalenti.
 - Timer, outbox e aggiornamenti PWA: presenti con persistenza locale e policy di
   aggiornamento sicuro.
+- Il runner atleta usa un solo componente timer, sempre contenuto nella card del
+  singolo esercizio. Gli esercizi a ripetizioni espongono il recupero tra serie;
+  quelli isometrici guidano lavoro, pausa tra ripetizioni, alternanza DX/SX se
+  prevista e recupero lungo soltanto al termine della serie.
 - CI frontend: gate completo su ogni push e pull request.
 - CI database: ricostruisce lo snapshot produttivo isolato e vi applica
   automaticamente ogni migrazione canonica successiva al baseline.
@@ -112,6 +116,13 @@ Non è stata eseguita una nuova prova mutante in produzione.
   - encoding: 403 file controllati;
   - copy check, ESLint e TypeScript: superati;
   - Vitest: 44 file, 209 test superati;
+  - test Node/migrazioni: 40 test superati;
+  - build Vite produzione: completata, 1.720 moduli trasformati.
+- Gate generale `pnpm check`: superato il 22 settembre 2026 dopo
+  l'unificazione dei timer atleta.
+  - encoding: 403 file controllati;
+  - copy check, ESLint e TypeScript: superati;
+  - Vitest: 44 file, 211 test superati;
   - test Node/migrazioni: 40 test superati;
   - build Vite produzione: completata, 1.720 moduli trasformati.
 - Confronto Edge Function: il file locale coincide riga per riga con la versione

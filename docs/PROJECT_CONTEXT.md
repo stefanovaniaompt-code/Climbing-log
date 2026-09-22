@@ -21,6 +21,18 @@ Il browser riceve solo URL e chiave pubblicabile. Le credenziali amministrative
 sono confinate alla Edge Function o agli script server-side esplicitamente
 autorizzati.
 
+## Principi permanenti di interfaccia
+
+- mantenere il linguaggio visivo ispirato a Nothing OS e la palette esistente
+  viola/prugna, senape e fondo caldo;
+- usare lo stesso componente e lo stesso comportamento per funzioni equivalenti;
+- privilegiare leggibilità, pulizia e utilizzo su smartphone, soprattutto nelle
+  schermate atleta;
+- mostrare solo testi funzionali: niente etichette promozionali, metatestuali o
+  formulazioni che facciano percepire contenuti generati automaticamente;
+- non introdurre interpretazioni grafiche o funzionali ambigue senza prima
+  verificarle con il responsabile del prodotto.
+
 ## Architettura applicativa
 
 `src/main.tsx` registra il gestore aggiornamenti PWA e monta `AppRoot` dentro

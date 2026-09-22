@@ -52,6 +52,7 @@ export type SessionRunnerData = {
 }
 
 export type ExerciseTimerConfig = {
+  mode: 'guided' | 'recovery'
   executionMode: 'bilateral' | 'single_hand'
   preparationSeconds: number
   workSeconds: number
@@ -98,19 +99,39 @@ function nonNegativeInteger(value: unknown, fallback: number): number {
 
 export function getExerciseTimerConfig(exercise: RunnerExercise): ExerciseTimerConfig | null {
   const source = exercise.prescription.timer
-  if (!source || typeof source !== 'object' || Array.isArray(source)) return null
-  const timer = source as JsonRecord
+  const timer = source && typeof source === 'object' && !Array.isArray(source)
+    ? source as JsonRecord
+    : {}
   const workSeconds = positiveInteger(timer.work_seconds)
-  if (!workSeconds) return null
+  const sets = positiveInteger(exercise.prescription.sets) ?? positiveInteger(timer.sets) ?? 1
+
+  if (!workSeconds) {
+    const setRestSeconds = getRestSeconds(exercise)
+    if (sets <= 1 || setRestSeconds <= 0) return null
+
+    return {
+      mode: 'recovery',
+      executionMode: 'bilateral',
+      preparationSeconds: 0,
+      workSeconds: 0,
+      handChangeSeconds: 0,
+      intervalRestSeconds: 0,
+      repetitions: 1,
+      sets,
+      setRestSeconds,
+    }
+  }
+
   const executionMode = timer.execution_mode === 'single_hand' ? 'single_hand' : 'bilateral'
   return {
+    mode: 'guided',
     executionMode,
     preparationSeconds: nonNegativeInteger(timer.preparation_seconds, 5),
     workSeconds,
     handChangeSeconds: executionMode === 'single_hand' ? nonNegativeInteger(timer.hand_change_seconds, 5) : 0,
     intervalRestSeconds: nonNegativeInteger(timer.interval_rest_seconds, 0),
     repetitions: positiveInteger(timer.repetitions) ?? 1,
-    sets: positiveInteger(exercise.prescription.sets) ?? positiveInteger(timer.sets) ?? 1,
+    sets,
     setRestSeconds: nonNegativeInteger(timer.set_rest_seconds, getRestSeconds(exercise)),
   }
 }
@@ -130,14 +151,51 @@ export function timerPhaseDuration(state: ExerciseTimerState): number {
 export function createExerciseTimerState(exercise: RunnerExercise): ExerciseTimerState | null {
   const config = getExerciseTimerConfig(exercise)
   if (!config) return null
+  if (config.mode === 'recovery') {
+    return {
+      exerciseId: exercise.id,
+      config,
+      phase: 'set_rest',
+      set: 1,
+      repetition: 1,
+      hand: 'right',
+      remaining: config.setRestSeconds,
+      running: false,
+    }
+  }
   const state: ExerciseTimerState = { exerciseId: exercise.id, config, phase: 'preparation', set: 1, repetition: 1, hand: 'right', remaining: config.preparationSeconds, running: false }
   return config.preparationSeconds > 0 ? state : advanceExerciseTimer(state)
+}
+
+export function restartExerciseTimerState(
+  exercise: RunnerExercise,
+  previous: ExerciseTimerState | null,
+): ExerciseTimerState | null {
+  const restarted = createExerciseTimerState(exercise)
+  if (
+    !restarted ||
+    restarted.config.mode !== 'recovery' ||
+    previous?.exerciseId !== exercise.id ||
+    previous.phase !== 'complete'
+  ) {
+    return restarted
+  }
+
+  const recoveryCount = Math.max(1, restarted.config.sets - 1)
+  return {
+    ...restarted,
+    set: previous.set < recoveryCount
+      ? previous.set + 1
+      : 1,
+  }
 }
 
 export function advanceExerciseTimer(state: ExerciseTimerState): ExerciseTimerState {
   const { config } = state
   let next: ExerciseTimerState
-  if (state.phase === 'preparation') {
+  if (state.phase === 'set_rest' && config.mode === 'recovery') {
+    next = { ...state, phase: 'complete', remaining: 0, running: false }
+  } else if (state.phase === 'preparation') {
     next = { ...state, phase: 'work', remaining: config.workSeconds }
   } else if (state.phase === 'work' && config.executionMode === 'single_hand' && state.hand === 'right') {
     next = { ...state, phase: 'hand_rest', remaining: config.handChangeSeconds }
@@ -220,12 +278,27 @@ export function restoreExerciseTimerSnapshot(
 }
 
 export function exerciseTimerPhaseLabel(state: ExerciseTimerState): string {
+  if (state.config.mode === 'recovery') {
+    return state.phase === 'complete' ? 'RECUPERO COMPLETATO' : 'RECUPERO'
+  }
   if (state.phase === 'work') return state.config.executionMode === 'single_hand' ? `LAVORO ${state.hand === 'right' ? 'DX' : 'SX'}` : 'LAVORO'
   if (state.phase === 'hand_rest') return 'CAMBIO MANO'
   if (state.phase === 'interval_rest') return 'PAUSA'
   if (state.phase === 'set_rest') return 'RECUPERO SERIE'
   if (state.phase === 'complete') return 'COMPLETATO'
   return 'PREPARAZIONE'
+}
+
+export function exerciseTimerProgressLabel(state: ExerciseTimerState): string {
+  if (state.config.mode === 'recovery') {
+    return `RECUPERO ${state.set}/${Math.max(1, state.config.sets - 1)}`
+  }
+
+  const repetition = state.config.repetitions > 1
+    ? ` · RIPETIZIONE ${state.repetition}/${state.config.repetitions}`
+    : ''
+
+  return `SERIE ${state.set}/${state.config.sets}${repetition}`
 }
 
 export type DerivedSetPrescription = {
@@ -445,7 +518,7 @@ export function getVariableSeries(
       )
       .filter(Boolean)
 
-  return series.length > 1
+  return series.length > 1 && series.length === getSetCount(exercise)
     ? series
     : []
 }

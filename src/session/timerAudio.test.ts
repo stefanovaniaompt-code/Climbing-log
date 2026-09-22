@@ -5,6 +5,7 @@ import { timerAudioCueForTransition } from './timerAudio'
 const timer = (patch: Partial<ExerciseTimerState> = {}): ExerciseTimerState => ({
   exerciseId: 'exercise-1',
   config: {
+    mode: 'guided',
     executionMode: 'bilateral', preparationSeconds: 5, workSeconds: 10,
     handChangeSeconds: 0, intervalRestSeconds: 5, repetitions: 2,
     sets: 3, setRestSeconds: 90,

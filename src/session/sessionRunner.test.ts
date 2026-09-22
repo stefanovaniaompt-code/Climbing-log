@@ -3,6 +3,7 @@ import {
   buildActualFromPrescription,
   createExerciseTimerState,
   exerciseTimerPhaseLabel,
+  exerciseTimerProgressLabel,
   getExerciseTimerConfig,
   firstOpenExerciseIndex,
   formatPrescription,
@@ -13,6 +14,7 @@ import {
   tickExerciseTimer,
   elapseExerciseTimer,
   restoreExerciseTimerSnapshot,
+  restartExerciseTimerState,
   type RunnerExercise,
 } from './sessionRunner'
 
@@ -56,6 +58,30 @@ describe('session runner selectors', () => {
       '25 kg × 5',
       '30 kg × 3',
     ])
+    expect(getVariableSeries(exercise({ prescription: { sets: 4, dose: '6 ripetizioni · tenuta 5 s a 90°' } }))).toEqual([])
+  })
+
+  it('crea un recupero uniforme per gli esercizi a ripetizioni', () => {
+    const item = exercise({
+      prescription: { sets: 4, reps: 6, dose: '6 ripetizioni' },
+      restSeconds: 120,
+    })
+    const initial = createExerciseTimerState(item)!
+
+    expect(initial.config.mode).toBe('recovery')
+    expect(initial.phase).toBe('set_rest')
+    expect(initial.remaining).toBe(120)
+    expect(exerciseTimerProgressLabel(initial)).toBe('RECUPERO 1/3')
+
+    const completed = elapseExerciseTimer(
+      { ...initial, running: true },
+      120,
+    )
+    const next = restartExerciseTimerState(item, completed)!
+
+    expect(completed.phase).toBe('complete')
+    expect(next.set).toBe(2)
+    expect(next.remaining).toBe(120)
   })
 
   it('riprende dal primo esercizio non completato', () => {
@@ -82,16 +108,38 @@ describe('session runner selectors', () => {
     expect(exerciseTimerPhaseLabel(changed)).toBe('LAVORO SX')
   })
 
+  it('separa ogni lato e ripetizione prima del recupero lungo', () => {
+    const item = exercise({ prescription: { sets: 2, timer: { type: 'isometric', execution_mode: 'single_hand', preparation_seconds: 0, work_seconds: 1, hand_change_seconds: 2, interval_rest_seconds: 3, repetitions: 2, set_rest_seconds: 90 } } })
+    let state = { ...createExerciseTimerState(item)!, running: true }
+
+    expect(exerciseTimerPhaseLabel(state)).toBe('LAVORO DX')
+    state = elapseExerciseTimer(state, 1)
+    expect(exerciseTimerPhaseLabel(state)).toBe('CAMBIO MANO')
+    state = elapseExerciseTimer(state, 2)
+    expect(exerciseTimerPhaseLabel(state)).toBe('LAVORO SX')
+    state = elapseExerciseTimer(state, 1)
+    expect(exerciseTimerPhaseLabel(state)).toBe('PAUSA')
+    state = elapseExerciseTimer(state, 3)
+    expect(exerciseTimerPhaseLabel(state)).toBe('LAVORO DX')
+    expect(state.repetition).toBe(2)
+    state = elapseExerciseTimer(state, 1 + 2 + 1)
+    expect(exerciseTimerPhaseLabel(state)).toBe('RECUPERO SERIE')
+    expect(state.remaining).toBe(90)
+  })
+
   it('alterna lavoro e pausa negli esercizi bilaterali', () => {
-    const item = exercise({ prescription: { sets: 1, timer: { type: 'isometric', execution_mode: 'bilateral', preparation_seconds: 0, work_seconds: 1, interval_rest_seconds: 3, repetitions: 2, set_rest_seconds: 0 } } })
-    const initial = createExerciseTimerState(item)!
-    expect(exerciseTimerPhaseLabel(initial)).toBe('LAVORO')
-    const resting = tickExerciseTimer({ ...initial, running: true })
-    expect(exerciseTimerPhaseLabel(resting)).toBe('PAUSA')
-    let secondWork = resting
-    for (let second = 0; second < 3; second += 1) secondWork = tickExerciseTimer({ ...secondWork, running: true })
-    expect(exerciseTimerPhaseLabel(secondWork)).toBe('LAVORO')
-    expect(secondWork.repetition).toBe(2)
+    const item = exercise({ prescription: { sets: 2, timer: { type: 'isometric', execution_mode: 'bilateral', preparation_seconds: 0, work_seconds: 1, interval_rest_seconds: 3, repetitions: 2, set_rest_seconds: 90 } } })
+    let state = { ...createExerciseTimerState(item)!, running: true }
+
+    expect(exerciseTimerPhaseLabel(state)).toBe('LAVORO')
+    state = elapseExerciseTimer(state, 1)
+    expect(exerciseTimerPhaseLabel(state)).toBe('PAUSA')
+    state = elapseExerciseTimer(state, 3)
+    expect(exerciseTimerPhaseLabel(state)).toBe('LAVORO')
+    expect(state.repetition).toBe(2)
+    state = elapseExerciseTimer(state, 1)
+    expect(exerciseTimerPhaseLabel(state)).toBe('RECUPERO SERIE')
+    expect(state.remaining).toBe(90)
   })
   it('advances a running timer using real elapsed time', () => {
     const item = exercise({

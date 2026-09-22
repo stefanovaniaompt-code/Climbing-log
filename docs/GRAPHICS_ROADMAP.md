@@ -63,9 +63,11 @@ quando il tentativo è valido.
 
 - timer con cifre leggibili a distanza, integrato nella card del singolo esercizio;
 - fase corrente, serie e ripetizione visibili durante tutto l'esercizio;
-- segnali audio forti e distinti per countdown, lavoro, recupero e fine;
+- segnali audio distinti per countdown, lavoro, recupero e fine;
 - vibrazione sui cambi di fase compatibili e controllo audio sempre raggiungibile;
-- timer compatto ingrandito prima dell'avvio e resa smartphone verificata.
+- un solo componente timer per tutti gli esercizi, con resa smartphone verificata;
+- sequenze isometriche guidate: lavoro e pausa per ogni ripetizione, alternanza
+  destra/sinistra quando prevista e recupero lungo soltanto tra le serie.
 
 ## Fase 4 — accessibilità e qualità percepita
 

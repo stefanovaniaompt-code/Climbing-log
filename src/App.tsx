@@ -37,7 +37,7 @@ import { dataRuntime } from './dataRuntime'
 import { countPendingOperations, flushExerciseOutbox, OUTBOX_CHANGED_EVENT } from './outbox'
 import { availableModes, defaultMode, type AppProfile, type AppRole } from './onboarding/types'
 import { AthleteHomeScreen as HomeScreen } from './dashboard/AthleteHomeScreen'
-import { createExerciseTimerState, exerciseTimerPhaseLabel, firstOpenExerciseIndex, formatPrescription, getExerciseTimerConfig, getRestSeconds, getSetCount, getVariableSeries, restoreExerciseTimerSnapshot, summarizeRunner, tickExerciseTimer, type ExerciseTimerSnapshot, type ExerciseTimerState, type SessionRunnerData } from './session/sessionRunner'
+import { createExerciseTimerState, exerciseTimerPhaseLabel, exerciseTimerProgressLabel, firstOpenExerciseIndex, formatPrescription, getExerciseTimerConfig, getRestSeconds, getSetCount, getVariableSeries, restartExerciseTimerState, restoreExerciseTimerSnapshot, summarizeRunner, tickExerciseTimer, type ExerciseTimerSnapshot, type ExerciseTimerState, type SessionRunnerData } from './session/sessionRunner'
 import { autosaveSessionDraft, beginSession, finishSession, loadSessionRunner, saveExerciseProgress, syncQueuedExercise } from './session/sessionRunnerRepository'
 import { loadCoachDashboard } from './coach/coachDashboardRepository'
 import type { CoachDashboardData } from './coach/coachDashboard'
@@ -599,7 +599,10 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
     setTimerState(current => {
       if (current?.exerciseId === exercise.id) {
         if (current.phase === 'complete') {
-          const restarted = createExerciseTimerState(exercise)
+          const restarted = restartExerciseTimerState(
+            exercise,
+            current,
+          )
           return restarted ? { ...restarted, running: true } : null
         }
         return { ...current, running: !current.running }
@@ -816,7 +819,7 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
       <ScreenHeader eyebrow="SESSIONE / PANORAMICA" title={runner.session.title} text={[runner.session.objective, runner.session.durationMinutes ? String(runner.session.durationMinutes) + ' min' : ''].filter(Boolean).join(' · ')} action={<div className="header-actions"><Tag tone={runner.source === 'legacy-v1' ? 'success' : 'neutral'}>{runner.source === 'legacy-v1' ? 'ONLINE' : 'DEMO'}</Tag>{wakeLockStatus === 'active' && <Tag tone="success">SCHERMO ATTIVO</Tag>}</div>} />
       <div className="session-status session-status--compact">
         <div className="session-status__progress"><span>ESERCIZI DELLA SESSIONE</span><b>{String(runner.exercises.length).padStart(2, '0')} · {summary.completed} registrati</b><div className="progress-line"><i style={{ width: String(summary.percentage) + '%' }} /></div></div>
-        {canEdit && <button className={`session-sound-toggle ${soundEnabled ? 'is-on' : ''}`} onClick={toggleSound} aria-pressed={soundEnabled}>{soundEnabled ? <Volume2 size={22} /> : <VolumeX size={22} />}<span>{soundEnabled ? 'SEGNALI AUDIO FORTI' : 'AUDIO DISATTIVATO'}</span></button>}
+        {canEdit && <button className={`session-sound-toggle ${soundEnabled ? 'is-on' : ''}`} onClick={toggleSound} aria-pressed={soundEnabled}>{soundEnabled ? <Volume2 size={22} /> : <VolumeX size={22} />}<span>{soundEnabled ? 'AUDIO ATTIVO' : 'AUDIO DISATTIVATO'}</span></button>}
       </div>
 
       <div className="session-exercise-list">
@@ -875,12 +878,11 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
             </div>
             {variableSeries.length > 0 ? <div className="variable-series"><div className="variable-series__label"><b>Carichi differenti</b><span>Una riga per ogni serie</span></div><ol>{variableSeries.map((series, index) => <li key={series + index}><span>{String(index + 1).padStart(2, '0')}</span><b>{series}</b></li>)}</ol></div> : <div className="uniform-prescription"><div><small>STRUTTURA</small><b>{getSetCount(exercise)} serie</b></div><div><small>DOSE</small><b>{dose}</b></div><div><small>CARICO</small><b>{load}</b></div><div><small>RECUPERO</small><b>{getRestSeconds(exercise)} sec</b></div></div>}
             <div className="exercise-guidance"><span>Indicazioni</span><p>{exercise.instructions || runner.session.coachNotes || 'Segui la prescrizione e interrompi in caso di dolore.'}</p></div>
-            {canEdit && timerActive && timerState && <section className={`session-focus-timer is-${timerState.phase}${timerState.running ? ' is-running' : ''}`} aria-label={`Timer ${exercise.name}`}>
-              <div className="session-focus-timer__head"><span>TIMER ESERCIZIO</span><b>{exercise.name}</b></div>
-              <div className="session-focus-timer__display"><small aria-live="assertive">{exerciseTimerPhaseLabel(timerState)}</small><strong>{timerLabel}</strong><div><span>SERIE {timerState.set}/{timerState.config.sets}</span>{timerState.config.repetitions > 1 && <span>RIPETIZIONE {timerState.repetition}/{timerState.config.repetitions}</span>}</div></div>
-              <div className="session-focus-timer__actions"><button className="session-focus-timer__control" onClick={() => toggleTimer(exercise)}>{timerState.running ? <Pause size={25} fill="currentColor" /> : <Play size={25} fill="currentColor" />}<span>{timerState.running ? 'PAUSA' : timerState.phase === 'complete' ? 'RICOMINCIA' : 'RIPRENDI'}</span></button><button className="session-focus-timer__reset" onClick={() => resetTimer(exercise)}><TimerReset size={21} /><span>REIMPOSTA</span></button></div>
+            {canEdit && timerConfig && activeTimer && <section className={`exercise-timer is-${activeTimer.phase}${activeTimer.running ? ' is-running' : ''}`} aria-label={`Timer ${exercise.name}`}>
+              <div className="exercise-timer__display"><small aria-live="assertive">{exerciseTimerPhaseLabel(activeTimer)}</small><strong>{timerLabel}</strong><span>{exerciseTimerProgressLabel(activeTimer)}</span></div>
+              <button className="exercise-timer__control" onClick={() => toggleTimer(exercise)} aria-label={`${activeTimer.running ? 'Metti in pausa' : 'Avvia'} il timer di ${exercise.name}`}>{activeTimer.running ? <Pause size={24} fill="currentColor" /> : <Play size={24} fill="currentColor" />}<span>{activeTimer.running ? 'Pausa' : activeTimer.phase === 'complete' ? activeTimer.config.mode === 'recovery' && activeTimer.set < Math.max(1, activeTimer.config.sets - 1) ? 'Prossimo' : 'Ricomincia' : timerActive ? 'Riprendi' : 'Avvia'}</span></button>
+              <button className="exercise-timer__reset" onClick={() => resetTimer(exercise)} aria-label={`Reimposta il timer di ${exercise.name}`}><TimerReset size={20} /><span>Reimposta</span></button>
             </section>}
-            {canEdit && timerConfig && activeTimer && !timerActive && <div className="exercise-timer"><div><small>{exerciseTimerPhaseLabel(activeTimer)}</small><strong>{timerLabel}</strong><span>Serie {activeTimer.set}/{timerConfig.sets}{timerConfig.repetitions > 1 ? ` · Rip. ${activeTimer.repetition}/${timerConfig.repetitions}` : ''}</span></div><button className="exercise-timer__control" onClick={() => toggleTimer(exercise)} aria-label={`Avvia il timer di ${exercise.name}`}><Play size={18} fill="currentColor" /><span>Avvia</span></button><button className="exercise-timer__reset" onClick={() => resetTimer(exercise)} aria-label={`Reimposta il timer di ${exercise.name}`}><TimerReset size={17} /></button></div>}
             {canEdit && !exercise.progress?.completed && (
               <div className="exercise-entry">
                 <div className="exercise-entry__fields">
