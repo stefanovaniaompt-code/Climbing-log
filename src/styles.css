@@ -307,6 +307,31 @@ textarea { width: calc(100% - 36px); min-height: 76px; padding: 10px; resize: ve
 .completion-banner--error span { color: #754541; }
 .completion-banner--queued { border-color: var(--mustard-500); background: #fbf3d8; color: #71570d; box-shadow: 0 2px 0 #e4cf88, 0 8px 18px rgba(113,87,13,.08); }
 .completion-banner--queued span { color: #685d38; }
+.completion-banner--editable { grid-template-columns: 22px 1fr auto; }
+.session-feedback-form { display: grid; gap: 16px; }
+.session-feedback-form fieldset { border: 0; padding: 0; margin: 0; }
+.session-feedback-form legend, .session-feedback-form label > span { display: block; margin-bottom: 8px; font-weight: 700; }
+.session-feedback-form label input, .session-feedback-form label select, .session-feedback-form label textarea { width: 100%; }
+@media (max-width: 640px) { .completion-banner--editable { grid-template-columns: 22px 1fr; } .completion-banner--editable .button { grid-column: 1 / -1; } }
+
+.feedback-tabs { display: flex; gap: 8px; margin: 0 0 18px; }
+.feedback-tabs button { min-width: 120px; padding: 11px 18px; border: 1px solid var(--border); background: var(--surface); color: var(--ink); font-weight: 800; }
+.feedback-tabs button.active { background: var(--purple-900); color: #fff; border-color: var(--purple-900); }
+.feedback-card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 14px; }
+.feedback-card { display: grid; gap: 14px; padding: 18px; border: 1px solid var(--border); background: var(--surface); color: var(--ink); text-align: left; box-shadow: 0 3px 0 rgba(52,14,67,.08); }
+.feedback-card.active { outline: 3px solid var(--mustard-500); }
+.feedback-card > div { display: grid; gap: 4px; }.feedback-card > div > b { font-size: 18px; }.feedback-card small { color: var(--muted); }
+.feedback-card dl, .feedback-history dl { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; margin: 0; }
+.feedback-card dl div, .feedback-history dl div { padding: 9px; background: var(--surface-2); border: 1px solid var(--border); }.feedback-card dt, .feedback-history dt { color: var(--muted); font-size: 10px; font-weight: 800; text-transform: uppercase; }.feedback-card dd, .feedback-history dd { margin: 3px 0 0; font-weight: 800; }
+.feedback-person-detail { display: grid; grid-template-columns: minmax(0,1.35fr) minmax(300px,.85fr); gap: 18px; margin-top: 20px; align-items: start; }
+.feedback-history { display: grid; gap: 12px; }.feedback-history article { padding: 14px; border: 1px solid var(--border); }.feedback-history header { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 12px; }.feedback-history header div { display: grid; gap: 3px; }.feedback-history .wide { grid-column: 1 / -1; }
+.feedback-latest-note, .feedback-frequency { display: grid; gap: 7px; margin-bottom: 14px; padding: 13px; background: var(--surface-2); border-left: 4px solid var(--mustard-500); }.feedback-latest-note p { margin: 0; }.feedback-frequency span { font-size: 13px; }
+.message-thread { display: grid; gap: 12px; }.message-thread__head { display: flex; justify-content: space-between; color: var(--muted); }.message-list { display: flex; flex-direction: column; gap: 9px; min-height: 220px; max-height: 480px; overflow-y: auto; padding: 12px; background: var(--surface-2); border: 1px solid var(--border); }
+.message-bubble { max-width: 82%; padding: 10px 12px; border: 1px solid var(--border); background: #fff; }.message-bubble.is-own { align-self: flex-end; background: var(--purple-900); color: #fff; border-color: var(--purple-900); }.message-bubble.is-other { align-self: flex-start; }.message-bubble p { margin: 0 0 5px; white-space: pre-wrap; overflow-wrap: anywhere; }.message-bubble small { opacity: .72; }
+.message-compose { display: grid; grid-template-columns: 1fr auto; gap: 9px; align-items: end; }.message-compose textarea { min-height: 70px; resize: vertical; }.message-coach-select { display: grid; gap: 6px; max-width: 360px; margin-bottom: 16px; }.message-indicator { position: relative; }.message-indicator > span, .bottom-nav button > i { position: absolute; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px; background: var(--error); color: #fff; font: 700 10px/17px sans-serif; text-align: center; }.message-indicator > span { top: -5px; right: -5px; }.bottom-nav button { position: relative; }.bottom-nav button > i { top: 3px; right: calc(50% - 20px); font-style: normal; }
+.message-toast { position: fixed; right: 20px; bottom: 24px; z-index: 100; padding: 13px 18px; background: var(--purple-900); color: #fff; border-left: 5px solid var(--mustard-500); box-shadow: 0 12px 30px rgba(0,0,0,.22); font-weight: 800; }
+@media (max-width: 900px) { .feedback-person-detail { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .message-compose { grid-template-columns: 1fr; }.feedback-card dl, .feedback-history dl { grid-template-columns: 1fr 1fr; }.message-toast { left: 12px; right: 12px; bottom: 82px; } }
 
 .coach-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 21px; }
 .athlete-list { margin: 0 !important; }

@@ -1,12 +1,13 @@
 import { dataRuntime } from '../dataRuntime'
 import { supabase } from '../lib/supabase'
 import type { AppProfile } from '../onboarding/types'
+import { normalizeProgramType, type ProgramType } from '../programs/programType'
 import { nextSequence, type ProgramBuilderData } from './programBuilder'
 
 const demo: ProgramBuilderData = {
   source: 'demo',
   athletes: [{ id: 'demo-a', name: 'Sara Monti' }],
-  programs: [{ id: 'demo-p', athleteId: 'demo-a', name: 'Forza dita', goal: 'Costruzione forza massima', status: 'draft', startDate: '2026-09-07', endDate: null }],
+  programs: [{ id: 'demo-p', athleteId: 'demo-a', name: 'Forza dita', goal: 'Costruzione forza massima', programType: 'athlete', status: 'draft', startDate: '2026-09-07', endDate: null }],
   weeks: [{ id: 'demo-w', programId: 'demo-p', weekNumber: 1, blockName: 'Carico 1', phase: 'Forza', status: 'planned' }],
   sessions: [{ id: 'demo-s', weekId: 'demo-w', order: 1, title: 'Forza dita', objective: 'Forza massima', durationMinutes: 55, scheduledDay: 2 }],
   library: [
@@ -25,7 +26,7 @@ export async function loadProgramBuilder(profile: AppProfile): Promise<ProgramBu
 
   const [relationsResult, programsResult, libraryResult] = await Promise.all([
     supabase!.from('coach_athletes').select('athlete_id').eq('coach_id', profile.userId).eq('status', 'active'),
-    supabase!.from('programs').select('id,athlete_id,name,goal,status,start_date,end_date').eq('coach_id', profile.userId).order('updated_at', { ascending: false }),
+    supabase!.from('programs').select('id,athlete_id,name,goal,program_type,status,start_date,end_date').eq('coach_id', profile.userId).order('updated_at', { ascending: false }),
     supabase!.from('exercise_library').select('id,name,category,default_instructions,default_prescription').eq('coach_id', profile.userId).eq('archived', false).order('name'),
   ])
   for (const result of [relationsResult, programsResult, libraryResult]) if (result.error) throw result.error
@@ -36,7 +37,7 @@ export async function loadProgramBuilder(profile: AppProfile): Promise<ProgramBu
     : { data: [], error: null }
   if (profilesResult.error) throw profilesResult.error
 
-  const programs = (programsResult.data ?? []).map(row => ({ id: row.id, athleteId: row.athlete_id, name: row.name, goal: row.goal, status: row.status, startDate: row.start_date, endDate: row.end_date })) as ProgramBuilderData['programs']
+  const programs = (programsResult.data ?? []).map(row => ({ id: row.id, athleteId: row.athlete_id, name: row.name, goal: row.goal, programType: normalizeProgramType(row.program_type), status: row.status, startDate: row.start_date, endDate: row.end_date })) as ProgramBuilderData['programs']
   const programIds = programs.map(program => program.id)
   const weeksResult = programIds.length
     ? await supabase!.from('training_weeks').select('id,program_id,week_number,block_name,phase,status').in('program_id', programIds).order('week_number')
@@ -66,9 +67,9 @@ export async function loadProgramBuilder(profile: AppProfile): Promise<ProgramBu
   }
 }
 
-export async function createProgram(profile: AppProfile, athleteId: string, name: string, goal: string) {
+export async function createProgram(profile: AppProfile, athleteId: string, name: string, goal: string, programType: ProgramType) {
   assertCoach(profile); if (isDemo(profile)) return 'demo-p'
-  const result = await supabase!.from('programs').insert({ coach_id: profile.userId, athlete_id: athleteId, name: name.trim(), goal: goal.trim() || null, status: 'draft', start_date: new Date().toISOString().slice(0, 10) }).select('id').single()
+  const result = await supabase!.from('programs').insert({ coach_id: profile.userId, athlete_id: athleteId, name: name.trim(), goal: goal.trim() || null, program_type: programType, status: 'draft', start_date: new Date().toISOString().slice(0, 10) }).select('id').single()
   if (result.error) throw result.error
   return result.data.id as string
 }

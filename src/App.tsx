@@ -38,7 +38,9 @@ import { countPendingOperations, flushExerciseOutbox, OUTBOX_CHANGED_EVENT } fro
 import { availableModes, defaultMode, type AppProfile, type AppRole } from './onboarding/types'
 import { AthleteHomeScreen as HomeScreen } from './dashboard/AthleteHomeScreen'
 import { createExerciseTimerState, exerciseTimerPhaseLabel, exerciseTimerProgressLabel, firstOpenExerciseIndex, formatPrescription, getExerciseTimerConfig, getRestSeconds, getSetCount, getVariableSeries, restartExerciseTimerState, restoreExerciseTimerSnapshot, summarizeRunner, tickExerciseTimer, type ExerciseTimerSnapshot, type ExerciseTimerState, type SessionRunnerData } from './session/sessionRunner'
-import { autosaveSessionDraft, beginSession, finishSession, loadSessionRunner, saveExerciseProgress, syncQueuedExercise } from './session/sessionRunnerRepository'
+import { autosaveSessionDraft, beginSession, loadSessionRunner, saveExerciseProgress, saveSessionFeedback, syncQueuedExercise } from './session/sessionRunnerRepository'
+import { SessionFeedbackPanel } from './session/SessionFeedbackPanel'
+import { validateSessionFeedback, type CompletionOutcome, type SessionFeedbackInput } from './session/sessionFeedback'
 import { loadCoachDashboard } from './coach/coachDashboardRepository'
 import type { CoachDashboardData } from './coach/coachDashboard'
 import { createManagedAthlete, decideCoachLinkRequest, inviteAthlete, loadAthleteManagement, removeAthleteRelationship, resolveInvitationEmail, revokeInvitation, setAthleteStatus, type AthleteManagementData } from './coach/athleteManagementRepository'
@@ -55,8 +57,11 @@ import { useUpdateBlocker } from './pwa/useUpdateBlocker'
 import { SystemScreen } from './features/system/SystemScreen'
 import { MigrationScreen } from './features/migration/MigrationScreen'
 import { AccountSecurityScreen } from './features/account/AccountSecurityScreen'
+import { CoachFeedbackScreen } from './feedback/CoachFeedbackScreen'
+import { MessagesScreen } from './messaging/MessagesScreen'
+import { useMessageNotifications } from './messaging/useMessageNotifications'
 
-type ViewId = 'system' | 'home' | 'session' | 'dashboard' | 'athletes' | 'builder' | 'library' | 'test' | 'migration' | 'account'
+type ViewId = 'system' | 'home' | 'session' | 'dashboard' | 'athletes' | 'feedback' | 'messages' | 'builder' | 'library' | 'test' | 'migration' | 'account'
 
 type NavItem = {
   id: ViewId
@@ -72,9 +77,11 @@ const navItems: NavItem[] = [
   { id: 'session', label: 'Sessione', shortLabel: 'Sessione', icon: TimerReset, group: 'Allenamento', roles: ['athlete'] },
   { id: 'dashboard', label: 'Coach dashboard', shortLabel: 'Coach', icon: Users, group: 'Coaching', roles: ['coach'] },
   { id: 'athletes', label: 'Atleti e inviti', shortLabel: 'Atleti', icon: Mail, group: 'Coaching', roles: ['coach'] },
+  { id: 'feedback', label: 'Feedback', shortLabel: 'Feedback', icon: ClipboardCheck, group: 'Coaching', roles: ['coach'] },
   { id: 'builder', label: 'Program builder', shortLabel: 'Builder', icon: SlidersHorizontal, group: 'Coaching', roles: ['coach'] },
   { id: 'library', label: 'Libreria esercizi', shortLabel: 'Esercizi', icon: BookOpen, group: 'Coaching', roles: ['coach'] },
   { id: 'test', label: 'Test / retest', shortLabel: 'Test', icon: TestTube2, group: 'Analisi', roles: ['athlete', 'coach'] },
+  { id: 'messages', label: 'Messaggi', shortLabel: 'Messaggi', icon: Mail, group: 'Comunicazione', roles: ['athlete'] },
   { id: 'account', label: 'Account e sicurezza', shortLabel: 'Account', icon: KeyRound, group: 'Account', roles: ['athlete', 'coach'] },
 ]
 
@@ -93,10 +100,13 @@ type ExerciseSaveState =
 type SessionLocalDraft = {
   version: 1
   sessionId: string
-  outcome: 'completed' | 'partial' | ''
-  missedIds: string[]
+  outcome: CompletionOutcome | null
   sessionRpe: string
   sessionNote: string
+  painPresent: boolean | null
+  painVas: string
+  painExerciseId: string
+  painPersistsPostSession: boolean | null
   timer: ExerciseTimerSnapshot | null
   exerciseInputs: Record<string, ExerciseInputDraft>
 }
@@ -170,15 +180,10 @@ function readSessionLocalDraft(
       sessionId: parsed.sessionId,
       outcome:
         parsed.outcome === 'completed' ||
-        parsed.outcome === 'partial'
+        parsed.outcome === 'partial' ||
+        parsed.outcome === 'not_completed'
           ? parsed.outcome
-          : '',
-      missedIds: Array.isArray(parsed.missedIds)
-        ? parsed.missedIds.filter(
-            (value): value is string =>
-              typeof value === 'string',
-          )
-        : [],
+          : null,
       sessionRpe:
         typeof parsed.sessionRpe === 'string'
           ? parsed.sessionRpe
@@ -187,6 +192,10 @@ function readSessionLocalDraft(
         typeof parsed.sessionNote === 'string'
           ? parsed.sessionNote
           : '',
+      painPresent: typeof parsed.painPresent === 'boolean' ? parsed.painPresent : null,
+      painVas: typeof parsed.painVas === 'string' ? parsed.painVas : '',
+      painExerciseId: typeof parsed.painExerciseId === 'string' ? parsed.painExerciseId : '',
+      painPersistsPostSession: typeof parsed.painPersistsPostSession === 'boolean' ? parsed.painPersistsPostSession : null,
       timer: timerCandidate,
       exerciseInputs:
         readExerciseInputDrafts(
@@ -223,10 +232,14 @@ function clearSessionLocalDraft(key: string) {
 function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId: string }) {
   const [runner, setRunner] = useState<SessionRunnerData | null | undefined>(undefined)
   const [timerState, setTimerState] = useState<ExerciseTimerState | null>(null)
-  const [outcome, setOutcome] = useState<'completed' | 'partial' | ''>('')
-  const [missedIds, setMissedIds] = useState<string[]>([])
+  const [outcome, setOutcome] = useState<CompletionOutcome | null>(null)
   const [sessionRpe, setSessionRpe] = useState('')
   const [sessionNote, setSessionNote] = useState('')
+  const [painPresent, setPainPresent] = useState<boolean | null>(null)
+  const [painVas, setPainVas] = useState('')
+  const [painExerciseId, setPainExerciseId] = useState('')
+  const [painPersistsPostSession, setPainPersistsPostSession] = useState<boolean | null>(null)
+  const [editingFeedback, setEditingFeedback] = useState(false)
   const [exerciseInputs, setExerciseInputs] = useState<Record<string, ExerciseInputDraft>>({})
   const [exerciseSaveStates, setExerciseSaveStates] = useState<Record<string, ExerciseSaveState>>({})
   const [saveState, setSaveState] = useState<'idle' | 'starting' | 'finishing' | 'saved' | 'queued' | 'error'>('idle')
@@ -257,7 +270,6 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
       if (data.session.status === 'completed') {
         clearSessionLocalDraft(draftStorageKey)
         setTimerState(null)
-        setMissedIds([])
         setExerciseInputs({})
         setExerciseSaveStates({})
         setSessionRpe(
@@ -265,8 +277,13 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
         )
         setSessionNote(data.session.notes ?? '')
         setOutcome(
-          data.session.completionOutcome ?? '',
+          data.session.completionOutcome,
         )
+        setPainPresent(data.session.painPresent)
+        setPainVas(data.session.painVas?.toString() ?? '')
+        setPainExerciseId(data.session.painExerciseId ?? '')
+        setPainPersistsPostSession(data.session.painPersistsPostSession)
+        setEditingFeedback(false)
         setDraftReady(true)
         return
       }
@@ -279,9 +296,12 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
         draft.sessionId === data.session.id
       ) {
         setOutcome(draft.outcome)
-        setMissedIds(draft.missedIds)
         setSessionRpe(draft.sessionRpe)
         setSessionNote(draft.sessionNote)
+        setPainPresent(draft.painPresent)
+        setPainVas(draft.painVas)
+        setPainExerciseId(draft.painExerciseId)
+        setPainPersistsPostSession(draft.painPersistsPostSession)
         setExerciseInputs(draft.exerciseInputs)
         setExerciseSaveStates({})
         setTimerState(
@@ -293,15 +313,18 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
         )
       } else {
         setOutcome(
-          data.session.completionOutcome ?? '',
+          data.session.completionOutcome,
         )
-        setMissedIds([])
         setExerciseInputs({})
         setExerciseSaveStates({})
         setSessionRpe(
           data.session.sessionRpe?.toString() ?? '',
         )
         setSessionNote(data.session.notes ?? '')
+        setPainPresent(data.session.painPresent)
+        setPainVas(data.session.painVas?.toString() ?? '')
+        setPainExerciseId(data.session.painExerciseId ?? '')
+        setPainPersistsPostSession(data.session.painPersistsPostSession)
         setTimerState(null)
       }
 
@@ -347,9 +370,12 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
         version: 1,
         sessionId: runner.session.id,
         outcome,
-        missedIds,
         sessionRpe,
         sessionNote,
+        painPresent,
+        painVas,
+        painExerciseId,
+        painPersistsPostSession,
         exerciseInputs,
         timer: timerState
           ? {
@@ -363,8 +389,11 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
     draftReady,
     draftStorageKey,
     exerciseInputs,
-    missedIds,
     outcome,
+    painExerciseId,
+    painPersistsPostSession,
+    painPresent,
+    painVas,
     runner,
     sessionNote,
     sessionRpe,
@@ -616,12 +645,6 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
     setTimerState(createExerciseTimerState(exercise))
   }
 
-  const toggleMissed = (exerciseId: string) => {
-    setMissedIds(ids => ids.includes(exerciseId) ? ids.filter(id => id !== exerciseId) : [...ids, exerciseId])
-    setSaveState('idle')
-    setError('')
-  }
-
   const updateExerciseInput = (
     exerciseId: string,
     patch: Partial<ExerciseInputDraft>,
@@ -730,12 +753,6 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
         }
       })
 
-      setMissedIds(current =>
-        current.filter(
-          id => id !== exercise.id,
-        ),
-      )
-
       if (
         timerState?.exerciseId ===
         exercise.id
@@ -764,47 +781,87 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
     }
   }
 
-  const completeCurrentSession = async () => {
-    if (!outcome) { setError('Scegli se la sessione è stata completata oppure no.'); return }
-    if (outcome === 'partial' && missedIds.length === 0) { setError('Indica almeno un esercizio non eseguito.'); return }
-    const parsedSessionRpe = sessionRpe.trim() ? Number(sessionRpe) : null
-    if (parsedSessionRpe !== null && (!Number.isFinite(parsedSessionRpe) || parsedSessionRpe < 0 || parsedSessionRpe > 10)) { setError('L’RPE sessione deve essere compreso tra 0 e 10.'); return }
+  const changeFeedback = (patch: Partial<SessionFeedbackInput> & { sessionRpeText?: string; painVasText?: string }) => {
+    if (patch.completionOutcome !== undefined) setOutcome(patch.completionOutcome)
+    if (patch.sessionRpeText !== undefined) setSessionRpe(patch.sessionRpeText)
+    if (patch.notes !== undefined) setSessionNote(patch.notes)
+    if (patch.painPresent !== undefined) setPainPresent(patch.painPresent)
+    if (patch.painVasText !== undefined) setPainVas(patch.painVasText)
+    if (patch.painExerciseId !== undefined) setPainExerciseId(patch.painExerciseId ?? '')
+    if (patch.painPersistsPostSession !== undefined) setPainPersistsPostSession(patch.painPersistsPostSession)
+    setSaveState('idle')
+    setError('')
+  }
+
+  const restoreFeedback = () => {
+    setOutcome(runner.session.completionOutcome)
+    setSessionRpe(runner.session.sessionRpe?.toString() ?? '')
+    setSessionNote(runner.session.notes)
+    setPainPresent(runner.session.painPresent)
+    setPainVas(runner.session.painVas?.toString() ?? '')
+    setPainExerciseId(runner.session.painExerciseId ?? '')
+    setPainPersistsPostSession(runner.session.painPersistsPostSession)
+  }
+
+  const submitSessionFeedback = async (overrides: Partial<SessionFeedbackInput> = {}) => {
+    let values
+    try {
+      values = validateSessionFeedback({
+        programType: runner.session.programType,
+        completionOutcome: outcome,
+        sessionRpe: sessionRpe.trim() ? Number(sessionRpe) : null,
+        notes: sessionNote,
+        painPresent,
+        painVas: painVas.trim() ? Number(painVas) : null,
+        painExerciseId: painExerciseId || null,
+        painPersistsPostSession,
+        ...overrides,
+      }, runner.exercises.map(exercise => exercise.id))
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Controlla il feedback inserito.')
+      return
+    }
 
     setSaveState('finishing')
     setError('')
     try {
       let logId = runner.session.logId
+      let status = runner.session.status
       if (!logId) {
         const log = await beginSession(profile, runner.session.id)
         logId = log.id
+        status = log.status
       }
 
       let hasQueuedWrites = false
       const updatedExercises = [...runner.exercises]
-      for (let index = 0; index < updatedExercises.length; index += 1) {
-        const exercise = updatedExercises[index]
-        const shouldRecord = outcome === 'completed' || !missedIds.includes(exercise.id)
-        if (!shouldRecord || exercise.progress?.completed) {
-          if (exercise.progress?.syncState === 'queued') hasQueuedWrites = true
-          continue
+      if (status !== 'completed' && values.completion_outcome === 'completed') {
+        for (let index = 0; index < updatedExercises.length; index += 1) {
+          const exercise = updatedExercises[index]
+          if (exercise.progress?.syncState === 'queued') { hasQueuedWrites = true; continue }
+          if (exercise.progress?.completed) continue
+          const result = await saveExerciseProgress(profile, logId, exercise, { rpe: null, notes: '' })
+          updatedExercises[index] = { ...exercise, progress: result.progress }
+          if (result.disposition === 'queued') hasQueuedWrites = true
         }
-        const result = await saveExerciseProgress(profile, logId, exercise, { rpe: null, notes: '' })
-        updatedExercises[index] = { ...exercise, progress: result.progress }
-        if (result.disposition === 'queued') hasQueuedWrites = true
       }
-
-      const nextRunner = { ...runner, session: { ...runner.session, logId, status: 'in_progress' }, exercises: updatedExercises }
-      setRunner(nextRunner)
+      setRunner(current => current ? { ...current, session: { ...current.session, logId, status }, exercises: updatedExercises } : current)
       if (hasQueuedWrites) {
         setSaveState('queued')
         setError('La sessione è protetta nella coda offline. Verrà chiusa dopo la sincronizzazione.')
         return
       }
 
-      const missedNames = updatedExercises.filter(exercise => missedIds.includes(exercise.id)).map(exercise => exercise.name)
-      const finalNotes = [sessionNote.trim(), outcome === 'partial' ? 'Non eseguiti: ' + missedNames.join(', ') : ''].filter(Boolean).join('\n')
-      const result = await finishSession(profile, logId, { allCompleted: outcome === 'completed', rpe: parsedSessionRpe, notes: finalNotes })
-      setRunner(value => value ? { ...value, session: { ...value.session, status: 'completed', completionOutcome: outcome, completedAt: result.completedAt, notes: finalNotes } } : value)
+      const result = await saveSessionFeedback(profile, logId, values, { status, completedAt: runner.session.completedAt, feedbackSubmittedAt: runner.session.feedbackSubmittedAt })
+      setRunner(current => current ? { ...current, session: { ...current.session, logId, status: 'completed', completionOutcome: values.completion_outcome, completedAt: result.completedAt, sessionRpe: values.session_rpe, notes: values.notes ?? '', painPresent: values.pain_present, painVas: values.pain_vas, painExerciseId: values.pain_exercise_id, painPersistsPostSession: values.pain_persists_post_session, feedbackSubmittedAt: result.feedbackSubmittedAt, feedbackUpdatedAt: result.feedbackUpdatedAt }, exercises: updatedExercises } : current)
+      setOutcome(values.completion_outcome)
+      setSessionRpe(values.session_rpe?.toString() ?? '')
+      setSessionNote(values.notes ?? '')
+      setPainPresent(values.pain_present)
+      setPainVas(values.pain_vas?.toString() ?? '')
+      setPainExerciseId(values.pain_exercise_id ?? '')
+      setPainPersistsPostSession(values.pain_persists_post_session)
+      setEditingFeedback(false)
       setSaveState('saved')
       setTimerState(null)
       clearSessionLocalDraft(draftStorageKey)
@@ -825,7 +882,6 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
       <div className="session-exercise-list">
         {runner.exercises.map(exercise => {
           const variableSeries = getVariableSeries(exercise)
-          const isMissed = missedIds.includes(exercise.id)
           const exerciseInput =
             exerciseInputs[exercise.id] ?? {
               rpe: '',
@@ -846,7 +902,6 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
             id={`exercise-${exercise.id}`}
             className={
               'session-exercise-card ' +
-              (isMissed ? 'is-missed' : '') +
               (exercise.progress?.completed ? ' is-recorded' : '') +
               (isNext ? ' is-next' : '')
             }
@@ -981,12 +1036,7 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
         })}
       </div>
 
-      {runner.session.status === 'completed' ? <div className="completion-banner"><ShieldCheck size={19} /><div><b>{runner.session.completionOutcome === 'partial' ? 'Sessione registrata come non completata' : 'Sessione completata'}</b><span>{runner.session.completionOutcome === 'partial' ? runner.session.notes : 'Lo storico è stato salvato.'}</span></div></div> : runner.session.logId ? <Panel className="session-outcome-panel" title="Esito sessione" index="✓">
-        <div className="session-outcome-choice" role="group" aria-label="Esito della sessione"><button className={outcome === 'completed' ? 'active' : ''} onClick={() => { setOutcome('completed'); setMissedIds([]); setError('') }}><Check size={18} /><span><b>Completata</b><small>Ho eseguito tutti gli esercizi.</small></span></button><button className={outcome === 'partial' ? 'active partial' : ''} onClick={() => { setOutcome('partial'); setError('') }}><TriangleAlert size={18} /><span><b>Non completata</b><small>Indicherò cosa non ho eseguito.</small></span></button></div>
-        {outcome === 'partial' && <fieldset className="missed-exercises"><legend>Cosa non hai eseguito?</legend>{runner.exercises.map(exercise => <label className={exercise.progress?.completed ? 'is-disabled' : ''} key={exercise.id}><input type="checkbox" checked={missedIds.includes(exercise.id)} disabled={Boolean(exercise.progress?.completed)} onChange={() => toggleMissed(exercise.id)} /><span><b>{exercise.name}</b><small>{exercise.progress?.completed ? 'Già registrato' : formatPrescription(exercise)}</small></span></label>)}</fieldset>}
-        <div className="session-feedback"><label><span>RPE sessione</span><input type="number" min="0" max="10" step="0.5" value={sessionRpe} onChange={event => setSessionRpe(event.target.value)} /></label><label><span>Note</span><textarea value={sessionNote} onChange={event => setSessionNote(event.target.value)} placeholder="Sensazioni, dolore, osservazioni…" /></label></div>
-        <button className="button button--signal button--wide session-submit" disabled={!outcome || saveState === 'finishing'} onClick={() => void completeCurrentSession()}><span>{saveState === 'finishing' ? 'Salvataggio…' : 'Registra esito sessione'}</span><ArrowRight size={17} /></button>
-      </Panel> : <div className="session-dock"><div><small>SESSIONE PRONTA</small><b>{runner.session.title}</b></div><button className="button button--signal" disabled={saveState === 'starting'} onClick={startCurrentSession}><span>{saveState === 'starting' ? 'Avvio…' : 'Avvia sessione'}</span><Play size={17} /></button></div>}
+      {runner.session.status === 'completed' && !editingFeedback ? <div className="completion-banner completion-banner--editable"><ShieldCheck size={19} /><div><b>{runner.session.completionOutcome === 'not_completed' ? 'Sessione non completata' : 'Sessione completata'}</b><span>Il feedback è stato salvato.</span></div><button className="button button--secondary" onClick={() => { restoreFeedback(); setEditingFeedback(true); setSaveState('idle') }}>Modifica feedback</button></div> : runner.session.logId || editingFeedback ? <SessionFeedbackPanel programType={runner.session.programType} exercises={runner.exercises} outcome={outcome} sessionRpe={sessionRpe} notes={sessionNote} painPresent={painPresent} painVas={painVas} painExerciseId={painExerciseId} painPersistsPostSession={painPersistsPostSession} saving={saveState === 'finishing'} editing={editingFeedback} onChange={changeFeedback} onSubmit={patch => void submitSessionFeedback(patch)} onCancel={() => { restoreFeedback(); setEditingFeedback(false); setError('') }} /> : <div className="session-dock"><div><small>SESSIONE PRONTA</small><b>{runner.session.title}</b></div><button className="button button--signal" disabled={saveState === 'starting'} onClick={startCurrentSession}><span>{saveState === 'starting' ? 'Avvio…' : 'Avvia sessione'}</span><Play size={17} /></button></div>}
 
       {error && <div className={'completion-banner ' + (saveState === 'queued' ? 'completion-banner--queued' : 'completion-banner--error')}><TriangleAlert size={19} /><div><b>{saveState === 'queued' ? 'Sessione in attesa di sincronizzazione' : 'Operazione non completata'}</b><span>{error}</span></div></div>}
       {saveState === 'saved' && <div className="completion-banner"><Check size={19} /><div><b>Esito salvato</b><span>La sessione e gli esercizi eseguiti sono stati registrati.</span></div></div>}
@@ -1160,7 +1210,7 @@ function BuilderScreen({ profile, selectedAthleteId }: { profile: AppProfile; se
   const [state, setState] = useState<'loading' | 'idle' | 'saving'>('loading')
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
-  const [newProgram, setNewProgram] = useState({ name: '', goal: '' })
+  const [newProgram, setNewProgram] = useState<{ name: string; goal: string; programType: 'athlete' | 'patient' }>({ name: '', goal: '', programType: 'athlete' })
   const [newExercise, setNewExercise] = useState('')
   const [libraryId, setLibraryId] = useState('')
   const [weekDetails, setWeekDetails] = useState({ blockName: '', phase: '' })
@@ -1215,7 +1265,7 @@ function BuilderScreen({ profile, selectedAthleteId }: { profile: AppProfile; se
   const submitProgram = (event: FormEvent) => {
     event.preventDefault()
     if (!athleteId || !newProgram.name.trim()) return
-    void run(async () => { const id = await createProgram(profile, athleteId, newProgram.name, newProgram.goal); setProgramId(id); setNewProgram({ name: '', goal: '' }) }, 'Bozza creata. Ora aggiungi una settimana.')
+    void run(async () => { const id = await createProgram(profile, athleteId, newProgram.name, newProgram.goal, newProgram.programType); setProgramId(id); setNewProgram({ name: '', goal: '', programType: 'athlete' }) }, 'Bozza creata. Ora aggiungi una settimana.')
   }
   const addWeek = () => void run(async () => { const id = await createWeek(profile, programId, weeks.map(week => week.weekNumber)); setWeekId(id) }, 'Settimana aggiunta senza modificare le precedenti.')
   const addSession = () => void run(async () => { const id = await createSession(profile, weekId, sessions.map(item => item.order)); setSessionId(id) }, 'Sessione aggiunta.')
@@ -1243,7 +1293,7 @@ function BuilderScreen({ profile, selectedAthleteId }: { profile: AppProfile; se
       {program && <div className="builder-program-status"><small>STATO</small><Tag tone={program.status === 'active' ? 'success' : program.status === 'draft' ? 'signal' : 'neutral'}>{program.status}</Tag><span>{program.goal || 'Obiettivo da definire'}</span></div>}
     </div>
     {!data?.athletes.length && <Panel title="Nessun atleta attivo" index="00"><div className="empty-state"><Users size={22} /><b>Collega o riattiva un atleta</b><span>Il builder mostra soltanto le relazioni coach-atleta attive.</span></div></Panel>}
-    {!!athleteId && !program && <Panel title="Crea una bozza" index="00"><form className="builder-create-form" onSubmit={submitProgram}><label><span>Nome programma</span><input className="standalone-input" value={newProgram.name} onChange={event => setNewProgram(current => ({ ...current, name: event.target.value }))} placeholder="Es. Forza dita · Autunno" required /></label><label><span>Obiettivo</span><input className="standalone-input" value={newProgram.goal} onChange={event => setNewProgram(current => ({ ...current, goal: event.target.value }))} placeholder="Obiettivo del blocco" /></label><button className="button button--signal" disabled={state === 'saving'}><Plus size={16} /> Crea bozza</button></form></Panel>}
+    {!!athleteId && !program && <Panel title="Crea una bozza" index="00"><form className="builder-create-form" onSubmit={submitProgram}><label><span>Nome programma</span><input className="standalone-input" value={newProgram.name} onChange={event => setNewProgram(current => ({ ...current, name: event.target.value }))} placeholder="Es. Forza dita · Autunno" required /></label><label><span>Tipo programma</span><select value={newProgram.programType} onChange={event => setNewProgram(current => ({ ...current, programType: event.target.value as 'athlete' | 'patient' }))}><option value="athlete">Programma atleta</option><option value="patient">Programma paziente</option></select></label><label><span>Obiettivo</span><input className="standalone-input" value={newProgram.goal} onChange={event => setNewProgram(current => ({ ...current, goal: event.target.value }))} placeholder="Obiettivo del blocco" /></label><button className="button button--signal" disabled={state === 'saving'}><Plus size={16} /> Crea bozza</button></form></Panel>}
     {program && <div className="builder-layout">
       <Panel className="week-rail" title="Settimane" index="01">
         {weeks.map(week => <button className={week.id === weekId ? 'active' : ''} key={week.id} onClick={() => setWeekId(week.id)}><span>W{String(week.weekNumber).padStart(2, '0')}</span><b>{week.blockName || `Settimana ${week.weekNumber}`}</b><em>{week.phase || week.status}</em></button>)}
@@ -1397,6 +1447,8 @@ const viewMeta: Record<ViewId, { label: string; component: (props: ScreenProps) 
   builder: { label: 'Program builder', component: ({ profile, selectedAthleteId }) => <BuilderScreen profile={profile} selectedAthleteId={selectedAthleteId} /> },
   library: { label: 'Libreria esercizi', component: ({ profile }) => <LibraryScreen profile={profile} /> },
   test: { label: 'Test / retest', component: ({ profile, selectedAthleteId }) => <TestScreen profile={profile} selectedAthleteId={selectedAthleteId} /> },
+  feedback: { label: 'Feedback', component: ({ profile }) => <CoachFeedbackScreen profile={profile} /> },
+  messages: { label: 'Messaggi', component: ({ profile }) => <MessagesScreen profile={profile} /> },
   migration: { label: 'Migrazione', component: () => <MigrationScreen /> },
   account: { label: 'Account e sicurezza', component: ({ profile }) => <AccountSecurityScreen profile={profile} /> },
 }
@@ -1408,6 +1460,7 @@ export default function App({ profile, onSignOut, initialMode }: { profile: AppP
     return modes.includes(initialMode) ? initialMode : defaultMode(profile.capabilities)
   })
   const activeProfile = useMemo(() => ({ ...profile, role: mode }), [mode, profile])
+  const { unreadCount, toast: messageToast } = useMessageNotifications(activeProfile)
   const roleNavItems = navItems.filter(item => item.roles.includes(mode))
   const initialView: ViewId = mode === 'coach' ? 'dashboard' : 'home'
   const viewStorageKey = `cc-v2:view:${profile.userId}`
@@ -1567,7 +1620,7 @@ export default function App({ profile, onSignOut, initialMode }: { profile: AppP
       <aside className={`sidebar ${menuOpen ? 'is-open' : ''}`}>
         <div className="brand"><div className="brand__mark"><Mountain size={22} /></div><div><b>CLIMBING<br />COACH</b><span>TRAINING SYSTEM</span></div></div>
         <nav aria-label="Navigazione prototipo">
-          {groups.map(group => <div className="nav-group" key={group}><small>{group}</small>{roleNavItems.filter(item => item.group === group).map(item => { const Icon = item.icon; return <button key={item.id} className={view === item.id ? 'active' : ''} onClick={() => navigate(item.id)}><Icon size={17} /><span>{item.label}</span><i>{item.id === 'migration' ? '!' : ''}</i></button> })}</div>)}
+          {groups.map(group => <div className="nav-group" key={group}><small>{group}</small>{roleNavItems.filter(item => item.group === group).map(item => { const Icon = item.icon; const messageItem = item.id === 'feedback' || item.id === 'messages'; return <button key={item.id} className={view === item.id ? 'active' : ''} onClick={() => navigate(item.id)}><Icon size={17} /><span>{item.label}</span><i>{messageItem && unreadCount ? unreadCount : item.id === 'migration' ? '!' : ''}</i></button> })}</div>)}
         </nav>
         <div className="sidebar__foot"><div><span className={`status-dot ${pendingCount ? 'status-dot--sync' : 'status-dot--ok'}`} /><b>{profile.workspaceName}</b></div><small>{dataRuntime.isConfigured ? 'Supabase collegato' : 'Demo locale'} · {pendingCount ? `${pendingCount} modifiche in coda` : 'coda vuota'}</small></div>
       </aside>
@@ -1575,14 +1628,15 @@ export default function App({ profile, onSignOut, initialMode }: { profile: AppP
         <div className="topbar">
           <button className="menu-button" onClick={() => setMenuOpen(!menuOpen)} aria-label="Apri navigazione"><Menu size={20} /></button>
           <div className="topbar__crumb"><span>CC</span><i>/</i><b>{viewMeta[view].label}</b></div>
-          <div className="topbar__tools">{modes.length > 1 ? <div className="mode-switch" aria-label="Modalità"><button className={mode === 'coach' ? 'active' : ''} onClick={() => changeMode('coach')}>Coach</button><button className={mode === 'athlete' ? 'active' : ''} onClick={() => changeMode('athlete')}>Atleta</button></div> : <span className="role-chip">{mode === 'coach' ? 'Coach' : 'Atleta'}</span>}<button className="sync-chip" onClick={() => void synchronizePending()} disabled={syncing || pendingCount === 0} title="Sincronizza la coda offline"><span className={`status-dot ${pendingCount ? 'status-dot--sync' : 'status-dot--ok'}`} />{syncing ? 'Sincronizzo…' : pendingCount ? `${pendingCount} in coda` : 'Cloud allineato'}</button><button className="icon-button" aria-label="Ricerca"><Search size={17} /></button><button className="icon-button" aria-label="Account e sicurezza" onClick={() => navigate('account')}><Settings2 size={17} /></button><button className="profile-button" onClick={() => void onSignOut()} title="Esci"><span>{initials}</span><LogOut size={14} /></button></div>
+          <div className="topbar__tools">{modes.length > 1 ? <div className="mode-switch" aria-label="Modalità"><button className={mode === 'coach' ? 'active' : ''} onClick={() => changeMode('coach')}>Coach</button><button className={mode === 'athlete' ? 'active' : ''} onClick={() => changeMode('athlete')}>Atleta</button></div> : <span className="role-chip">{mode === 'coach' ? 'Coach' : 'Atleta'}</span>}<button className="sync-chip" onClick={() => void synchronizePending()} disabled={syncing || pendingCount === 0} title="Sincronizza la coda offline"><span className={`status-dot ${pendingCount ? 'status-dot--sync' : 'status-dot--ok'}`} />{syncing ? 'Sincronizzo…' : pendingCount ? `${pendingCount} in coda` : 'Cloud allineato'}</button><button className="icon-button message-indicator" aria-label={`Messaggi${unreadCount ? `, ${unreadCount} non letti` : ''}`} onClick={() => navigate(mode === 'coach' ? 'feedback' : 'messages')}><Mail size={17} />{unreadCount > 0 && <span>{unreadCount}</span>}</button><button className="icon-button" aria-label="Account e sicurezza" onClick={() => navigate('account')}><Settings2 size={17} /></button><button className="profile-button" onClick={() => void onSignOut()} title="Esci"><span>{initials}</span><LogOut size={14} /></button></div>
         </div>
         <main><Screen goTo={navigate} goToAthlete={goToAthlete} openAthlete={openAthlete} openSession={openSession} profile={activeProfile} selectedAthleteId={selectedAthleteId} setSelectedAthleteId={setSelectedAthleteId} selectedSessionId={selectedSessionId} /></main>
         <nav className="bottom-nav" aria-label="Navigazione mobile">
-          {roleNavItems.filter(item => mode === 'coach' ? ['dashboard', 'athletes', 'builder', 'test'].includes(item.id) : ['home', 'session', 'test'].includes(item.id)).slice(0, 4).map(item => { const Icon = item.icon; return <button key={item.id} className={view === item.id ? 'active' : ''} onClick={() => navigate(item.id)}><Icon size={18} /><span>{item.shortLabel}</span></button> })}
+          {roleNavItems.filter(item => mode === 'coach' ? ['dashboard', 'athletes', 'feedback', 'test'].includes(item.id) : ['home', 'session', 'test', 'messages'].includes(item.id)).slice(0, 4).map(item => { const Icon = item.icon; return <button key={item.id} className={view === item.id ? 'active' : ''} onClick={() => navigate(item.id)}><Icon size={18} /><span>{item.shortLabel}</span>{(item.id === 'feedback' || item.id === 'messages') && unreadCount > 0 && <i>{unreadCount}</i>}</button> })}
         </nav>
       </div>
       {menuOpen && <button className="scrim" aria-label="Chiudi navigazione" onClick={() => setMenuOpen(false)} />}
+      {messageToast && <div className="message-toast" role="status">{messageToast}</div>}
     </div>
   )
 }

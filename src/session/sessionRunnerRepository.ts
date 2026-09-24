@@ -2,6 +2,7 @@ import { dataRuntime } from '../dataRuntime'
 import { loadAthleteHome } from '../dashboard/athleteHomeRepository'
 import { supabase } from '../lib/supabase'
 import type { AppProfile } from '../onboarding/types'
+import { normalizeProgramType } from '../programs/programType'
 import { enqueueExerciseSync, isRetryableNetworkError, listPendingExerciseSync } from '../outbox'
 import {
   buildActualFromPrescription,
@@ -11,6 +12,7 @@ import {
   type RunnerExercise,
   type SessionRunnerData,
 } from './sessionRunner'
+import { buildSessionFeedbackUpdate, type CompletionOutcome, type SessionFeedbackValues } from './sessionFeedback'
 
 type SessionRow = {
   id: string
@@ -18,17 +20,26 @@ type SessionRow = {
   objective: string | null
   duration_minutes: number | null
   coach_notes: string | null
+  training_weeks: unknown
 }
 
 type SessionLogRow = {
   id: string
   status: string
-  completion_outcome: 'completed' | 'partial' | null
+  completion_outcome: CompletionOutcome | null
   started_at: string | null
   completed_at: string | null
   session_rpe: number | string | null
   notes: string | null
+  pain_present: boolean | null
+  pain_vas: number | null
+  pain_exercise_id: string | null
+  pain_persists_post_session: boolean | null
+  feedback_submitted_at: string | null
+  feedback_updated_at: string | null
 }
+
+const SESSION_LOG_SELECT = 'id,status,completion_outcome,started_at,completed_at,session_rpe,notes,pain_present,pain_vas,pain_exercise_id,pain_persists_post_session,feedback_submitted_at,feedback_updated_at'
 
 type ExerciseRow = {
   id: string
@@ -81,6 +92,16 @@ function numericOrNull(value: number | string | null): number | null {
   return Number.isFinite(numeric) ? numeric : null
 }
 
+function sessionProgramType(value: unknown) {
+  if (!value || typeof value !== 'object') return normalizeProgramType(null)
+  const relation = (value as { training_weeks?: unknown }).training_weeks
+  const week = Array.isArray(relation) ? relation[0] : relation
+  if (!week || typeof week !== 'object') return normalizeProgramType(null)
+  const programs = (week as { programs?: unknown }).programs
+  const program = Array.isArray(programs) ? programs[0] : programs
+  return normalizeProgramType(program && typeof program === 'object' ? (program as { program_type?: unknown }).program_type : null)
+}
+
 function rowToProgress(row: Omit<ExerciseLogRow, 'session_exercise_id'> | ExerciseLogRow): ExerciseProgress {
   return {
     completed: row.completed,
@@ -100,6 +121,7 @@ const demo: SessionRunnerData = {
     objective: 'Forza dita',
     durationMinutes: 55,
     coachNotes: 'Spalla bassa, presa attiva. Interrompi se perdi la posizione.',
+    programType: 'athlete',
     logId: 'demo-log',
     status: 'in_progress',
     completionOutcome: null,
@@ -107,6 +129,12 @@ const demo: SessionRunnerData = {
     completedAt: null,
     sessionRpe: null,
     notes: '',
+    painPresent: null,
+    painVas: null,
+    painExerciseId: null,
+    painPersistsPostSession: null,
+    feedbackSubmittedAt: null,
+    feedbackUpdatedAt: null,
   },
   exercises: [
     { id: 'demo-ex-1', order: 1, name: 'Block lift · 20 mm', prescription: { sets: 4, dose: '5 sec', load_type: 'external', load_value: '32.5', unit: 'kg', timer: { execution_mode: 'bilateral', preparation_seconds: 5, work_seconds: 5, repetitions: 1, set_rest_seconds: 102 } }, calculationContext: {}, targetRpeMin: 7, targetRpeMax: 8, restSeconds: 102, instructions: 'Presa attiva e spalla bassa.', progress: null },
@@ -131,9 +159,9 @@ export async function loadSessionRunner(profile: AppProfile, requestedSessionId?
   if (!candidateId) return null
 
   const [sessionResult, exerciseResult, logResult] = await Promise.all([
-    supabase.from('sessions').select('id,title,objective,duration_minutes,coach_notes').eq('id', candidateId).maybeSingle(),
+    supabase.from('sessions').select('id,title,objective,duration_minutes,coach_notes,training_weeks(programs(program_type))').eq('id', candidateId).maybeSingle(),
     supabase.from('session_exercises').select('id,exercise_order,exercise_name,prescription,calculation_context,target_rpe_min,target_rpe_max,rest_seconds,instructions').eq('session_id', candidateId).order('exercise_order'),
-    supabase.from('session_logs').select('id,status,completion_outcome,started_at,completed_at,session_rpe,notes').eq('session_id', candidateId).eq('athlete_id', athleteId).maybeSingle(),
+    supabase.from('session_logs').select(SESSION_LOG_SELECT).eq('session_id', candidateId).eq('athlete_id', athleteId).maybeSingle(),
   ])
   if (sessionResult.error) throw sessionResult.error
   if (exerciseResult.error) throw exerciseResult.error
@@ -290,6 +318,7 @@ export async function loadSessionRunner(profile: AppProfile, requestedSessionId?
       objective: session.objective,
       durationMinutes: session.duration_minutes,
       coachNotes: session.coach_notes,
+      programType: sessionProgramType(session),
       logId: sessionLog?.id ?? null,
       status: sessionLog?.status ?? 'planned',
       completionOutcome: sessionLog?.completion_outcome ?? null,
@@ -297,6 +326,12 @@ export async function loadSessionRunner(profile: AppProfile, requestedSessionId?
       completedAt: sessionLog?.completed_at ?? null,
       sessionRpe: numericOrNull(sessionLog?.session_rpe ?? null),
       notes: sessionLog?.notes ?? '',
+      painPresent: sessionLog?.pain_present ?? null,
+      painVas: sessionLog?.pain_vas ?? null,
+      painExerciseId: sessionLog?.pain_exercise_id ?? null,
+      painPersistsPostSession: sessionLog?.pain_persists_post_session ?? null,
+      feedbackSubmittedAt: sessionLog?.feedback_submitted_at ?? null,
+      feedbackUpdatedAt: sessionLog?.feedback_updated_at ?? null,
     },
     exercises,
   }
@@ -306,7 +341,7 @@ async function readSessionLog(profile: AppProfile, sessionId: string): Promise<S
   if (!supabase) return null
   const { data, error } = await supabase
     .from('session_logs')
-    .select('id,status,completion_outcome,started_at,completed_at,session_rpe,notes')
+    .select(SESSION_LOG_SELECT)
     .eq('session_id', sessionId)
     .eq('athlete_id', athleteIdentity(profile))
     .maybeSingle()
@@ -315,7 +350,7 @@ async function readSessionLog(profile: AppProfile, sessionId: string): Promise<S
 }
 
 export async function beginSession(profile: AppProfile, sessionId: string): Promise<SessionLogRow> {
-  if (!supabase || profile.userId.startsWith('00000000-')) return { id: 'demo-log', status: 'in_progress', completion_outcome: null, started_at: new Date().toISOString(), completed_at: null, session_rpe: null, notes: null }
+  if (!supabase || profile.userId.startsWith('00000000-')) return { id: 'demo-log', status: 'in_progress', completion_outcome: null, started_at: new Date().toISOString(), completed_at: null, session_rpe: null, notes: null, pain_present: null, pain_vas: null, pain_exercise_id: null, pain_persists_post_session: null, feedback_submitted_at: null, feedback_updated_at: null }
   const existing = await readSessionLog(profile, sessionId)
   if (existing?.status === 'completed') return existing
   if (existing?.status === 'in_progress') return existing
@@ -329,7 +364,7 @@ export async function beginSession(profile: AppProfile, sessionId: string): Prom
       .eq('id', existing.id)
       .eq('athlete_id', athleteIdentity(profile))
       .eq('status', 'planned')
-      .select('id,status,completion_outcome,started_at,completed_at,session_rpe,notes')
+      .select(SESSION_LOG_SELECT)
       .maybeSingle()
     if (error) throw error
     return (data as SessionLogRow | null) ?? await readSessionLog(profile, sessionId) ?? existing
@@ -338,7 +373,7 @@ export async function beginSession(profile: AppProfile, sessionId: string): Prom
   const { data, error } = await supabase
     .from('session_logs')
     .insert({ session_id: sessionId, athlete_id: athleteIdentity(profile), status: 'in_progress', started_at: now, autosaved_at: now })
-    .select('id,status,completion_outcome,started_at,completed_at,session_rpe,notes')
+    .select(SESSION_LOG_SELECT)
     .single()
   if (!error) return data as SessionLogRow
   if (error.code === '23505') {
@@ -461,25 +496,18 @@ export async function autosaveSessionDraft(
   if (error) throw error
 }
 
-export async function finishSession(profile: AppProfile, sessionLogId: string, input: { allCompleted: boolean; rpe: number | null; notes: string }) {
-  const completedAt = new Date().toISOString()
-  if (!supabase || profile.userId.startsWith('00000000-')) return { completedAt }
+export async function saveSessionFeedback(profile: AppProfile, sessionLogId: string, values: SessionFeedbackValues, current: { status: string; completedAt: string | null; feedbackSubmittedAt: string | null }) {
+  const now = new Date().toISOString()
+  const update = buildSessionFeedbackUpdate(values, current, now)
+  if (!supabase || profile.userId.startsWith('00000000-')) return { completedAt: current.completedAt ?? now, feedbackSubmittedAt: current.feedbackSubmittedAt ?? now, feedbackUpdatedAt: current.feedbackSubmittedAt ? now : null }
   const { data, error } = await supabase
     .from('session_logs')
-    .update({
-      status: 'completed',
-      completed_at: completedAt,
-      completion_outcome: input.allCompleted ? 'completed' : 'partial',
-      session_rpe: input.rpe,
-      notes: input.notes.trim() || null,
-      autosaved_at: completedAt,
-    })
+    .update(update)
     .eq('id', sessionLogId)
     .eq('athlete_id', athleteIdentity(profile))
-    .eq('status', 'in_progress')
-    .select('completed_at')
+    .select('completed_at,feedback_submitted_at,feedback_updated_at')
     .maybeSingle()
   if (error) throw error
-  if (!data) throw new Error('La sessione non è in corso oppure è già stata completata.')
-  return { completedAt: data.completed_at as string }
+  if (!data) throw new Error('Il feedback della sessione non è più disponibile.')
+  return { completedAt: data.completed_at as string, feedbackSubmittedAt: data.feedback_submitted_at as string, feedbackUpdatedAt: data.feedback_updated_at as string | null }
 }

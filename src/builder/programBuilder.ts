@@ -1,5 +1,7 @@
+import type { ProgramType } from '../programs/programType'
+
 export type BuilderAthlete = { id: string; name: string }
-export type BuilderProgram = { id: string; athleteId: string; name: string; goal: string | null; status: 'draft' | 'active' | 'completed' | 'archived'; startDate: string | null; endDate: string | null }
+export type BuilderProgram = { id: string; athleteId: string; name: string; goal: string | null; programType: ProgramType; status: 'draft' | 'active' | 'completed' | 'archived'; startDate: string | null; endDate: string | null }
 export type BuilderWeek = { id: string; programId: string; weekNumber: number; blockName: string | null; phase: string | null; status: string }
 export type BuilderSession = { id: string; weekId: string; order: number; title: string; objective: string | null; durationMinutes: number | null; scheduledDay: number }
 export type BuilderLibraryExercise = { id: string; name: string; category: string | null; defaultInstructions: string | null; defaultPrescription: Record<string, unknown> }

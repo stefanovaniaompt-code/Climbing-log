@@ -1,4 +1,6 @@
 export type JsonRecord = Record<string, unknown>
+import type { ProgramType } from '../programs/programType'
+import type { CompletionOutcome } from './sessionFeedback'
 
 export type ExerciseProgress = {
   completed: boolean
@@ -40,13 +42,20 @@ export type SessionRunnerData = {
     objective: string | null
     durationMinutes: number | null
     coachNotes: string | null
+    programType: ProgramType
     logId: string | null
     status: string
-    completionOutcome: 'completed' | 'partial' | null
+    completionOutcome: CompletionOutcome | null
     startedAt: string | null
     completedAt: string | null
     sessionRpe: number | null
     notes: string
+    painPresent: boolean | null
+    painVas: number | null
+    painExerciseId: string | null
+    painPersistsPostSession: boolean | null
+    feedbackSubmittedAt: string | null
+    feedbackUpdatedAt: string | null
   }
   exercises: RunnerExercise[]
 }
