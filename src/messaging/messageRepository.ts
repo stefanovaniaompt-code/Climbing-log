@@ -7,7 +7,10 @@ export type CoachOption = { id: string; name: string }
 export const MESSAGES_READ_EVENT = 'cc-v2:messages-read'
 
 const isDemo = (profile: AppProfile) => !supabase || profile.userId.startsWith('00000000-') || dataRuntime.backendSchema !== 'legacy-v1'
-const mapMessage = (row: { id: string; coach_id: string; athlete_id: string; sender_user_id: string; body: string; created_at: string; read_at: string | null }): Message => ({ id: row.id, coachId: row.coach_id, athleteId: row.athlete_id, senderUserId: row.sender_user_id, body: row.body, createdAt: row.created_at, readAt: row.read_at })
+const mapMessage = (row: Partial<{ id: string; coach_id: string; athlete_id: string; sender_user_id: string; body: string; created_at: string; read_at: string | null }>): Message | null => {
+  if (!row.id || !row.coach_id || !row.athlete_id || !row.sender_user_id || typeof row.body !== 'string' || !row.created_at) return null
+  return { id: row.id, coachId: row.coach_id, athleteId: row.athlete_id, senderUserId: row.sender_user_id, body: row.body, createdAt: row.created_at, readAt: row.read_at ?? null }
+}
 
 export async function loadAthleteCoaches(profile: AppProfile): Promise<CoachOption[]> {
   if (isDemo(profile) || !profile.athleteId) return []
@@ -25,7 +28,7 @@ export async function loadConversation(profile: AppProfile, coachId: string, ath
   if (isDemo(profile)) return []
   const result = await supabase!.from('messages').select('id,coach_id,athlete_id,sender_user_id,body,created_at,read_at').eq('coach_id', coachId).eq('athlete_id', athleteId).order('created_at', { ascending: true }).limit(250)
   if (result.error) throw result.error
-  return (result.data ?? []).map(row => mapMessage(row as Parameters<typeof mapMessage>[0]))
+  return (result.data ?? []).flatMap(row => mapMessage(row as Parameters<typeof mapMessage>[0]) ?? [])
 }
 
 export async function sendMessage(profile: AppProfile, coachId: string, athleteId: string, body: string): Promise<Message> {
@@ -35,7 +38,9 @@ export async function sendMessage(profile: AppProfile, coachId: string, athleteI
   if (isDemo(profile)) return { id: crypto.randomUUID(), coachId, athleteId, senderUserId: profile.userId, body: trimmed, createdAt: new Date().toISOString(), readAt: null }
   const result = await supabase!.from('messages').insert({ coach_id: coachId, athlete_id: athleteId, sender_user_id: profile.userId, body: trimmed }).select('id,coach_id,athlete_id,sender_user_id,body,created_at,read_at').single()
   if (result.error) throw result.error
-  return mapMessage(result.data as Parameters<typeof mapMessage>[0])
+  const message = mapMessage(result.data as Parameters<typeof mapMessage>[0])
+  if (!message) throw new Error('Il server ha restituito un messaggio non valido.')
+  return message
 }
 
 export async function markConversationRead(profile: AppProfile, coachId: string, athleteId: string) {
@@ -59,7 +64,7 @@ export function subscribeToMessages(profile: AppProfile, callback: (message: Mes
   const filter = thread ? `athlete_id=eq.${thread.athleteId}` : profile.role === 'coach' ? `coach_id=eq.${profile.userId}` : `athlete_id=eq.${profile.athleteId ?? ''}`
   const channel = supabase!.channel(`messages-${profile.userId}-${thread?.athleteId ?? 'all'}-${crypto.randomUUID()}`).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter }, payload => {
     const message = mapMessage(payload.new as Parameters<typeof mapMessage>[0])
-    if (!thread || message.coachId === thread.coachId) callback(message)
+    if (message && (!thread || message.coachId === thread.coachId)) callback(message)
   }).subscribe()
   return () => { void supabase!.removeChannel(channel) }
 }

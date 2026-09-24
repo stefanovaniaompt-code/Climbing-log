@@ -32,3 +32,13 @@ test('athlete coach lookup uses the production profiles columns', async () => {
   assert.match(source, /from\('profiles'\)\.select\('id,full_name'\)\.in\('id', ids\)/)
   assert.doesNotMatch(source, /user_id,display_name/)
 })
+
+test('message rendering keeps scrolling inside the thread and validates realtime payloads', async () => {
+  const [thread, repository] = await Promise.all([
+    readFile(new URL('../src/messaging/MessageThread.tsx', import.meta.url), 'utf8'),
+    readFile(new URL('../src/messaging/messageRepository.ts', import.meta.url), 'utf8'),
+  ])
+  assert.doesNotMatch(thread, /scrollIntoView/)
+  assert.match(thread, /list\.scrollTop = list\.scrollHeight/)
+  assert.match(repository, /if \(!row\.id \|\| !row\.coach_id/)
+})
