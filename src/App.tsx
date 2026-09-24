@@ -1,31 +1,23 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  ArrowLeft,
-  ArrowRight,
-  Archive,
   BookOpen,
   Check,
-  ChevronDown,
   ClipboardCheck,
   Home,
   KeyRound,
-  Layers3,
   LogOut,
   Mail,
   Menu,
   Mountain,
   Pause,
   Play,
-  Plus,
   Save,
-  Search,
   Settings2,
   ShieldCheck,
   SlidersHorizontal,
   TestTube2,
   TimerReset,
-  Trash2,
   TriangleAlert,
   Users,
   Volume2,
@@ -41,14 +33,11 @@ import { autosaveSessionDraft, beginSession, loadSessionRunner, saveExerciseProg
 import { SessionFeedbackPanel } from './session/SessionFeedbackPanel'
 import { validateSessionFeedback, type CompletionOutcome, type SessionFeedbackInput } from './session/sessionFeedback'
 import { DashboardScreen } from './coach/DashboardScreen'
-import { createManagedAthlete, decideCoachLinkRequest, inviteAthlete, loadAthleteManagement, removeAthleteRelationship, resolveInvitationEmail, revokeInvitation, setAthleteStatus, type AthleteManagementData } from './coach/athleteManagementRepository'
-import { canPublishProgram, prescriptionSummary, type ProgramBuilderData } from './builder/programBuilder'
-import { addExercise, createProgram, createSession, createWeek, loadProgramBuilder, publishProgram, updateExercise, updateSessionDetails, updateWeekDetails, type ExercisePatch } from './builder/programBuilderRepository'
-import { ExerciseTestTargetPanel } from './builder/ExerciseTestTargetPanel'
-import { emptyExercise, filterExercises, validateExercise, type ExerciseLibraryInput, type ExerciseLibraryItem, type LibraryStatusFilter } from './library/exerciseLibrary'
-import { createLibraryExercise, deleteLibraryExercise, loadExerciseLibrary, setLibraryExerciseArchived, updateLibraryExercise } from './library/exerciseLibraryRepository'
+import { AthleteManagementScreen } from './coach/AthleteManagementScreen'
+import { BuilderScreen } from './builder/BuilderScreen'
+import { LibraryScreen } from './library/LibraryScreen'
 import { TestScreen } from './tests/TestScreen'
-import { ConfirmDialog, Metric, Panel, ScreenHeader, Tag } from './shared/ui'
+import { Panel, ScreenHeader, Tag } from './shared/ui'
 import { useScreenWakeLock } from './shared/hooks/useScreenWakeLock'
 import { playTimerAudioCue, timerAudioCueForTransition } from './session/timerAudio'
 import { useUpdateBlocker } from './pwa/useUpdateBlocker'
@@ -1042,337 +1031,6 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
   )
 }
 
-function AthleteManagementScreen({ profile, selectedAthleteId, setSelectedAthleteId, goTo, goToAthlete }: { profile: AppProfile; selectedAthleteId: string; setSelectedAthleteId: (athleteId: string) => void; goTo: (view: ViewId) => void; goToAthlete: (view: 'builder' | 'test', athleteId: string) => void }) {
-  const [data, setData] = useState<AthleteManagementData | null>(null)
-  const [email, setEmail] = useState('')
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
-  const [state, setState] = useState<'idle' | 'loading' | 'saving'>('loading')
-  const [message, setMessage] = useState('')
-  const [error, setError] = useState('')
-  const [removeTarget, setRemoveTarget] = useState<{ id: string; name: string } | null>(null)
-
-  const refresh = async () => {
-    setState('loading')
-    setError('')
-    try { setData(await loadAthleteManagement(profile)) } catch (reason) { setError(reason instanceof Error ? reason.message : 'Elenco atleti non disponibile.') } finally { setState('idle') }
-  }
-  useEffect(() => { void refresh() }, [profile])
-
-  const submitInvite = async (event: FormEvent) => {
-    event.preventDefault()
-    setState('saving'); setError(''); setMessage('')
-    try {
-      if (!selectedAthleteId) throw new Error('Seleziona prima un atleta.')
-      const savedEmail = data?.athletes.find(athlete => athlete.id === selectedAthleteId)?.email ?? ''
-      const result = await inviteAthlete(profile, selectedAthleteId, resolveInvitationEmail(email, savedEmail))
-      setMessage(result.delivered ? 'Invito registrato e link di accesso inviato.' : `Invito registrato. Invio email non confermato${result.deliveryError ? `: ${result.deliveryError}` : '.'}`)
-      setEmail('')
-      setData(await loadAthleteManagement(profile))
-    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Invito non creato.') } finally { setState('idle') }
-  }
-
-  const submitAthlete = async (event: FormEvent) => {
-    event.preventDefault(); setState('saving'); setError(''); setMessage('')
-    try {
-      const athleteId = await createManagedAthlete(profile, firstName, lastName, email)
-      setFirstName(''); setLastName(''); setEmail(''); setMessage('Atleta creato. Puoi già aprire il profilo e preparare programma e test.'); setData(await loadAthleteManagement(profile)); setSelectedAthleteId(athleteId)
-    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Atleta non creato.') } finally { setState('idle') }
-  }
-
-  const decideRequest = async (requestId: string, accept: boolean) => {
-    setState('saving'); setError(''); setMessage('')
-    try { await decideCoachLinkRequest(profile, requestId, accept); setMessage(accept ? 'Richiesta accettata: atleta collegato.' : 'Richiesta rifiutata.'); setData(await loadAthleteManagement(profile)) }
-    catch (reason) { setError(reason instanceof Error ? reason.message : 'Richiesta non aggiornata.') } finally { setState('idle') }
-  }
-
-  const changeStatus = async (athleteId: string, status: 'active' | 'inactive') => {
-    setState('saving'); setError(''); setMessage('')
-    try { await setAthleteStatus(profile, athleteId, status); setMessage(status === 'active' ? 'Atleta riattivato.' : 'Atleta sospeso. Storico e allenamenti restano intatti.'); setData(await loadAthleteManagement(profile)) } catch (reason) { setError(reason instanceof Error ? reason.message : 'Stato non aggiornato.') } finally { setState('idle') }
-  }
-
-  const revoke = async (invitationId: string) => {
-    setState('saving'); setError(''); setMessage('')
-    try { await revokeInvitation(profile, invitationId); setMessage('Invito revocato senza cancellare alcun dato.'); setData(await loadAthleteManagement(profile)) } catch (reason) { setError(reason instanceof Error ? reason.message : 'Invito non revocato.') } finally { setState('idle') }
-  }
-
-  const removeAthlete = async () => {
-    if (!removeTarget) return
-    setState('saving'); setError(''); setMessage('')
-    try {
-      await removeAthleteRelationship(profile, removeTarget.id)
-      setSelectedAthleteId('')
-      setRemoveTarget(null)
-      setMessage('Collegamento rimosso. Profilo, allenamenti completati, log esercizi e test dell’atleta sono rimasti intatti.')
-      setData(await loadAthleteManagement(profile))
-    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Atleta non rimosso.') } finally { setState('idle') }
-  }
-
-  const selectedAthlete = data?.athletes.find(athlete => athlete.id === selectedAthleteId)
-
-  if (selectedAthlete) return <div className="screen athlete-detail-screen">
-    <button className="back-button" onClick={() => { setSelectedAthleteId(''); goTo('dashboard') }}><ArrowLeft size={17} /> Torna alla dashboard coach</button>
-    <ScreenHeader eyebrow="COACH / DETTAGLIO ATLETA" title={selectedAthlete.name} text="Programma, test e accesso atleta." action={<Tag tone={selectedAthlete.status === 'active' ? 'success' : 'warning'}>{selectedAthlete.status}</Tag>} />
-    <div className="athlete-detail-grid">
-      <button className="athlete-action-card" onClick={() => goToAthlete('builder', selectedAthlete.id)}><SlidersHorizontal size={22} /><span><b>Programma di esercizi</b><small>Apri schede, settimane, sessioni e parametri.</small></span><ArrowRight size={18} /></button>
-      <button className="athlete-action-card" onClick={() => goToAthlete('test', selectedAthlete.id)}><TestTube2 size={22} /><span><b>Test e progressi</b><small>Consulta lo storico o registra una nuova rilevazione.</small></span><ArrowRight size={18} /></button>
-    </div>
-    <Panel title="Gestione collegamento" index="03"><div className="relationship-actions"><div><b>Rimuovi atleta dal coach</b><p>Viene eliminato solo il collegamento. L’account dell’atleta e tutto il suo storico restano nel database.</p></div><button className="button button--danger" disabled={state === 'saving'} onClick={() => setRemoveTarget({ id: selectedAthlete.id, name: selectedAthlete.name })}><Trash2 size={16} /> Rimuovi atleta</button></div></Panel>
-    <Panel title="Accesso app" index="04">{selectedAthlete.appAccessActive ? <div className="completion-banner"><Check size={19} /><div><b>Accesso app attivo</b><span>L’account è collegato a questa identità atleta.</span></div></div> : <form className="invite-form" onSubmit={submitInvite}><b>Accesso app non attivo</b><label><span>Email’atleta</span><input className="standalone-input" type="email" value={email || selectedAthlete.email || ''} onChange={event => setEmail(event.target.value)} required /></label><button className="button button--signal" disabled={state === 'saving'}><Mail size={16} /> Invita alla app</button></form>}</Panel>
-    {error && <div className="completion-banner completion-banner--error"><TriangleAlert size={19} /><div><b>Operazione non completata</b><span>{error}</span></div></div>}
-    {message && <div className="completion-banner"><ShieldCheck size={19} /><div><b>Operazione confermata</b><span>{message}</span></div></div>}
-    {removeTarget && <ConfirmDialog title={`Rimuovere ${removeTarget.name}?`} text="Perderai l’accesso coach ai suoi dati finché non verrà collegato di nuovo. Profilo, allenamenti completati, esercizi registrati e test non saranno cancellati." confirmLabel="Rimuovi atleta" busy={state === 'saving'} onCancel={() => setRemoveTarget(null)} onConfirm={() => void removeAthlete()} />}
-  </div>
-
-  return <div className="screen">
-    <ScreenHeader eyebrow="COACH / ATLETI" title="Atleti" text="Crea i profili e gestisci gli accessi." action={data && <Tag tone={data.source === 'legacy-v1' ? 'success' : 'neutral'}>{data.source === 'legacy-v1' ? 'ONLINE' : 'DEMO'}</Tag>} />
-    <div className="grid grid--2-1">
-      <Panel title="Atleti collegati" index="01">
-        {state === 'loading' && !data && <div className="skeleton-stack"><span /><span /><span /></div>}
-        {data?.athletes.length === 0 && <div className="empty-state"><Users size={22} /><b>Nessun atleta collegato</b><span>Creane uno: l’email non è obbligatoria.</span></div>}
-        <div className="management-list">{data?.athletes.map(athlete => <div className="management-row" key={athlete.id}><button className="management-athlete-link" onClick={() => { setEmail(athlete.email ?? ''); setSelectedAthleteId(athlete.id) }}><span className="avatar">{athlete.initials}</span><span><b>{athlete.name}</b><small>{athlete.appAccessActive ? 'Accesso app attivo' : 'Accesso app non attivo'}</small></span></button><Tag tone={athlete.status === 'active' ? 'success' : 'warning'}>{athlete.status}</Tag><button className="button button--secondary" disabled={state === 'saving'} onClick={() => void changeStatus(athlete.id, athlete.status === 'active' ? 'inactive' : 'active')}>{athlete.status === 'active' ? 'Sospendi' : 'Riattiva'}</button></div>)}</div>
-      </Panel>
-      <Panel title="Aggiungi nuovo atleta" index="02">
-        <form className="invite-form" onSubmit={submitAthlete}><label><span>Nome *</span><input className="standalone-input" value={firstName} onChange={event => setFirstName(event.target.value)} required /></label><label><span>Cognome *</span><input className="standalone-input" value={lastName} onChange={event => setLastName(event.target.value)} required /></label><label><span>Email (facoltativa)</span><input className="standalone-input" type="email" value={email} onChange={event => setEmail(event.target.value)} /></label><p>L’atleta viene creato subito. L’invito alla app resta un’azione separata.</p><button className="button button--signal button--wide" disabled={state === 'saving'}><Plus size={16} /> {state === 'saving' ? 'Creazione…' : 'Crea atleta'}</button></form>
-      </Panel>
-    </div>
-    {error && <div className="completion-banner completion-banner--error"><TriangleAlert size={19} /><div><b>Operazione non completata</b><span>{error}</span></div></div>}
-    {message && <div className="completion-banner"><ShieldCheck size={19} /><div><b>Operazione confermata</b><span>{message}</span></div></div>}
-    <Panel title="Storico inviti" index="03">
-      {data?.invitations.length === 0 && <div className="empty-state empty-state--compact"><Mail size={20} /><b>Nessun invito</b><span>Gli inviti inviati compariranno qui.</span></div>}
-      <div className="invitation-list">{data?.invitations.map(invite => <div className="invitation-row" key={invite.id}><div><b>{invite.email}</b><small>{new Intl.DateTimeFormat('it-IT', { dateStyle: 'medium' }).format(new Date(invite.invitedAt))}</small></div><Tag tone={invite.status === 'accepted' ? 'success' : invite.status === 'pending' ? 'signal' : 'warning'}>{invite.status}</Tag>{invite.status === 'pending' ? <button className="text-button" disabled={state === 'saving'} onClick={() => void revoke(invite.id)}>Revoca</button> : <span />}</div>)}</div>
-    </Panel>
-    <Panel title="Richieste di collegamento" index="04">{data?.linkRequests.filter(request => request.status === 'pending').length === 0 && <div className="empty-state empty-state--compact"><Users size={20} /><b>Nessuna richiesta</b></div>}<div className="invitation-list">{data?.linkRequests.filter(request => request.status === 'pending').map(request => <div className="invitation-row" key={request.id}><div><b>{request.athleteName}</b><small>Richiesta atleta</small></div><button className="button button--secondary" disabled={state === 'saving'} onClick={() => void decideRequest(request.id, false)}>Rifiuta</button><button className="button button--signal" disabled={state === 'saving'} onClick={() => void decideRequest(request.id, true)}>Accetta</button></div>)}</div></Panel>
-  </div>
-}
-
-function BuilderScreen({ profile, selectedAthleteId }: { profile: AppProfile; selectedAthleteId: string }) {
-  const [data, setData] = useState<ProgramBuilderData | null>(null)
-  const [athleteId, setAthleteId] = useState(selectedAthleteId)
-  const [programId, setProgramId] = useState('')
-  const [weekId, setWeekId] = useState('')
-  const [sessionId, setSessionId] = useState('')
-  const [exerciseId, setExerciseId] = useState('')
-  const [state, setState] = useState<'loading' | 'idle' | 'saving'>('loading')
-  const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
-  const [newProgram, setNewProgram] = useState<{ name: string; goal: string; programType: 'athlete' | 'patient' }>({ name: '', goal: '', programType: 'athlete' })
-  const [newExercise, setNewExercise] = useState('')
-  const [libraryId, setLibraryId] = useState('')
-  const [weekDetails, setWeekDetails] = useState({ blockName: '', phase: '' })
-  const [sessionDetails, setSessionDetails] = useState({ title: '', objective: '', durationMinutes: 0, scheduledDay: 1 })
-  const [patch, setPatch] = useState<ExercisePatch>({ sets: 3, reps: 5, seconds: 0, loadKg: 0, rpe: 7, restSeconds: 120, instructions: '' })
-  const initialAthleteApplied = useRef(false)
-
-  const refresh = async () => {
-    const next = await loadProgramBuilder(profile)
-    setData(next)
-    return next
-  }
-
-  useEffect(() => { refresh().catch(reason => setError(reason instanceof Error ? reason.message : 'Programmi non caricati.')).finally(() => setState('idle')) }, [profile.userId])
-  useEffect(() => {
-    if (!data) return
-    if (!initialAthleteApplied.current) {
-      initialAthleteApplied.current = true
-      if (selectedAthleteId && data.athletes.some(athlete => athlete.id === selectedAthleteId)) { setAthleteId(selectedAthleteId); return }
-    }
-    if (!data.athletes.some(athlete => athlete.id === athleteId)) setAthleteId(data.athletes[0]?.id ?? '')
-  }, [data, athleteId, selectedAthleteId])
-  const athletePrograms = data?.programs.filter(program => program.athleteId === athleteId) ?? []
-  useEffect(() => { if (!athletePrograms.some(program => program.id === programId)) setProgramId(athletePrograms[0]?.id ?? '') }, [athleteId, data, programId])
-  const weeks = data?.weeks.filter(week => week.programId === programId) ?? []
-  useEffect(() => { if (!weeks.some(week => week.id === weekId)) setWeekId(weeks[0]?.id ?? '') }, [programId, data, weekId])
-  const sessions = data?.sessions.filter(session => session.weekId === weekId) ?? []
-  useEffect(() => { if (!sessions.some(session => session.id === sessionId)) setSessionId(sessions[0]?.id ?? '') }, [weekId, data, sessionId])
-  const exercises = data?.exercises.filter(exercise => exercise.sessionId === sessionId) ?? []
-  useEffect(() => { if (!exercises.some(exercise => exercise.id === exerciseId)) setExerciseId(exercises[0]?.id ?? '') }, [sessionId, data, exerciseId])
-  const program = data?.programs.find(item => item.id === programId)
-  const session = data?.sessions.find(item => item.id === sessionId)
-  const exercise = data?.exercises.find(item => item.id === exerciseId)
-
-  useEffect(() => {
-    const week = data?.weeks.find(item => item.id === weekId)
-    setWeekDetails({ blockName: week?.blockName ?? '', phase: week?.phase ?? '' })
-  }, [data, weekId])
-  useEffect(() => {
-    setSessionDetails({ title: session?.title ?? '', objective: session?.objective ?? '', durationMinutes: session?.durationMinutes ?? 0, scheduledDay: session?.scheduledDay ?? 1 })
-  }, [session])
-
-  useEffect(() => {
-    if (!exercise) return
-    setPatch({ sets: Number(exercise.prescription.sets) || 1, reps: Number(exercise.prescription.reps) || 0, seconds: Number(exercise.prescription.seconds) || 0, loadKg: Number(exercise.prescription.loadKg) || 0, rpe: exercise.targetRpeMax ?? 7, restSeconds: exercise.restSeconds ?? 120, instructions: exercise.instructions ?? '' })
-  }, [exercise])
-
-  const run = async (operation: () => Promise<void>, success: string) => {
-    setState('saving'); setError(''); setMessage('')
-    try { await operation(); await refresh(); setMessage(success) } catch (reason) { setError(reason instanceof Error ? reason.message : 'Operazione non completata.') } finally { setState('idle') }
-  }
-  const submitProgram = (event: FormEvent) => {
-    event.preventDefault()
-    if (!athleteId || !newProgram.name.trim()) return
-    void run(async () => { const id = await createProgram(profile, athleteId, newProgram.name, newProgram.goal, newProgram.programType); setProgramId(id); setNewProgram({ name: '', goal: '', programType: 'athlete' }) }, 'Bozza creata. Ora aggiungi una settimana.')
-  }
-  const addWeek = () => void run(async () => { const id = await createWeek(profile, programId, weeks.map(week => week.weekNumber)); setWeekId(id) }, 'Settimana aggiunta senza modificare le precedenti.')
-  const addSession = () => void run(async () => { const id = await createSession(profile, weekId, sessions.map(item => item.order)); setSessionId(id) }, 'Sessione aggiunta.')
-  const submitExercise = (event: FormEvent) => {
-    event.preventDefault()
-    const libraryExercise = data?.library.find(item => item.id === libraryId)
-    if (!sessionId || (!libraryExercise && !newExercise.trim())) return
-    void run(async () => { const id = await addExercise(profile, sessionId, exercises.map(item => item.order), newExercise, libraryExercise); setExerciseId(id); setNewExercise(''); setLibraryId('') }, 'Esercizio aggiunto alla sessione.')
-  }
-  const saveParameters = () => exercise && void run(() => updateExercise(profile, exercise.id, patch), 'Parametri salvati sul programma.')
-  const saveWeek = () => weekId && void run(() => updateWeekDetails(profile, weekId, weekDetails.blockName, weekDetails.phase), 'Dettagli della settimana salvati.')
-  const saveSession = () => sessionId && void run(() => updateSessionDetails(profile, sessionId, sessionDetails.title, sessionDetails.objective, sessionDetails.durationMinutes, sessionDetails.scheduledDay), 'Dettagli della sessione salvati.')
-  const publish = () => {
-    if (!data || !program || !canPublishProgram(program.id, data)) { setError('Per pubblicare servono almeno una settimana, una sessione e un esercizio.'); return }
-    void run(() => publishProgram(profile, program.id, program.athleteId), 'Programma pubblicato. Il precedente resta archiviato e consultabile.')
-  }
-
-  if (state === 'loading' && !data) return <div className="screen"><ScreenHeader eyebrow="PROGRAMMA" title="Caricamento programma" text="Aggiornamento dati in corso." /><div className="skeleton-stack"><span /><span /><span /></div></div>
-
-  return <div className="screen">
-    <ScreenHeader eyebrow="PROGRAMMA" title={program?.name ?? 'Nuovo programma'} text="Modifica settimane, sessioni ed esercizi." action={<div className="header-actions"><Tag tone={data?.source === 'legacy-v1' ? 'success' : 'neutral'}>{data?.source === 'legacy-v1' ? 'ONLINE' : 'DEMO'}</Tag><button className="button button--primary" disabled={!program || state === 'saving' || program.status === 'active'} onClick={publish}><Save size={16} /> {program?.status === 'active' ? 'Pubblicato' : 'Pubblica'}</button></div>} />
-    <div className="builder-toolbar">
-      <label><span>Atleta</span><select value={athleteId} onChange={event => setAthleteId(event.target.value)} disabled={state === 'saving'}>{data?.athletes.map(athlete => <option key={athlete.id} value={athlete.id}>{athlete.name}</option>)}</select></label>
-      <label><span>Programma</span><select value={programId} onChange={event => setProgramId(event.target.value)} disabled={state === 'saving'}><option value="">Nuova bozza…</option>{athletePrograms.map(item => <option key={item.id} value={item.id}>{item.name} · {item.status}</option>)}</select></label>
-      {program && <div className="builder-program-status"><small>STATO</small><Tag tone={program.status === 'active' ? 'success' : program.status === 'draft' ? 'signal' : 'neutral'}>{program.status}</Tag><span>{program.goal || 'Obiettivo da definire'}</span></div>}
-    </div>
-    {!data?.athletes.length && <Panel title="Nessun atleta attivo" index="00"><div className="empty-state"><Users size={22} /><b>Collega o riattiva un atleta</b><span>Il builder mostra soltanto le relazioni coach-atleta attive.</span></div></Panel>}
-    {!!athleteId && !program && <Panel title="Crea una bozza" index="00"><form className="builder-create-form" onSubmit={submitProgram}><label><span>Nome programma</span><input className="standalone-input" value={newProgram.name} onChange={event => setNewProgram(current => ({ ...current, name: event.target.value }))} placeholder="Es. Forza dita · Autunno" required /></label><label><span>Tipo programma</span><select value={newProgram.programType} onChange={event => setNewProgram(current => ({ ...current, programType: event.target.value as 'athlete' | 'patient' }))}><option value="athlete">Programma atleta</option><option value="patient">Programma paziente</option></select></label><label><span>Obiettivo</span><input className="standalone-input" value={newProgram.goal} onChange={event => setNewProgram(current => ({ ...current, goal: event.target.value }))} placeholder="Obiettivo del blocco" /></label><button className="button button--signal" disabled={state === 'saving'}><Plus size={16} /> Crea bozza</button></form></Panel>}
-    {program && <div className="builder-layout">
-      <Panel className="week-rail" title="Settimane" index="01">
-        {weeks.map(week => <button className={week.id === weekId ? 'active' : ''} key={week.id} onClick={() => setWeekId(week.id)}><span>W{String(week.weekNumber).padStart(2, '0')}</span><b>{week.blockName || `Settimana ${week.weekNumber}`}</b><em>{week.phase || week.status}</em></button>)}
-        <button className="add-row" disabled={state === 'saving'} onClick={addWeek}><Plus size={15} /> Aggiungi</button>
-      </Panel>
-      <div className="builder-main">
-        {!weekId && <Panel title="Inizia dalla struttura" index="02"><div className="empty-state"><Layers3 size={22} /><b>Aggiungi la prima settimana</b><span>Le sessioni appariranno dentro la settimana selezionata.</span></div></Panel>}
-        {weekId && <Panel title={session?.title ?? 'Sessioni'} index="02" action={<button className="button button--secondary" disabled={state === 'saving'} onClick={addSession}><Plus size={15} /> Sessione</button>}>
-          <div className="builder-details builder-details--week"><label><span>Blocco settimana</span><input value={weekDetails.blockName} onChange={event => setWeekDetails(value => ({ ...value, blockName: event.target.value }))} /></label><label><span>Fase</span><input value={weekDetails.phase} onChange={event => setWeekDetails(value => ({ ...value, phase: event.target.value }))} /></label><button className="text-button" disabled={state === 'saving'} onClick={saveWeek}><Save size={14} /> Salva settimana</button></div>
-          <div className="session-tabs">{sessions.map(item => <button className={item.id === sessionId ? 'active' : ''} key={item.id} onClick={() => setSessionId(item.id)}><b>S{String(item.order).padStart(2, '0')}</b><span>{item.title}</span></button>)}</div>
-          {!sessionId && <div className="empty-state empty-state--compact"><TimerReset size={20} /><b>Aggiungi la prima sessione</b></div>}
-          {sessionId && <div className="builder-details builder-details--session"><label><span>Titolo sessione</span><input value={sessionDetails.title} onChange={event => setSessionDetails(value => ({ ...value, title: event.target.value }))} /></label><label><span>Obiettivo</span><input value={sessionDetails.objective} onChange={event => setSessionDetails(value => ({ ...value, objective: event.target.value }))} /></label><label><span>Durata</span><input type="number" min="0" value={sessionDetails.durationMinutes} onChange={event => setSessionDetails(value => ({ ...value, durationMinutes: Number(event.target.value) }))} /></label><label><span>Giorno 1–7</span><input type="number" min="1" max="7" value={sessionDetails.scheduledDay} onChange={event => setSessionDetails(value => ({ ...value, scheduledDay: Number(event.target.value) }))} /></label><button className="text-button" disabled={state === 'saving'} onClick={saveSession}><Save size={14} /> Salva sessione</button></div>}
-          {exercises.map(item => <button className={`exercise-block ${item.id === exerciseId ? 'active' : ''}`} key={item.id} onClick={() => setExerciseId(item.id)}><span className="drag-handle">⠿</span><span className="exercise-number">{String(item.order).padStart(2, '0')}</span><div><b>{item.name}</b><small>{prescriptionSummary(item)}</small></div><Tag tone="purple">Esercizio</Tag><ChevronDown size={17} /></button>)}
-          {sessionId && <form className="exercise-adder" onSubmit={submitExercise}><select value={libraryId} onChange={event => setLibraryId(event.target.value)}><option value="">Esercizio rapido…</option>{data?.library.map(item => <option value={item.id} key={item.id}>{item.name}{item.category ? ` · ${item.category}` : ''}</option>)}</select>{!libraryId && <input value={newExercise} onChange={event => setNewExercise(event.target.value)} placeholder="Nome esercizio" />}<button className="drop-zone" disabled={state === 'saving'}><Plus size={17} /> Aggiungi alla sessione</button></form>}
-        </Panel>}
-      </div>
-      <Panel className="inspector" title="Parametri" index="03">
-        {!exercise && <div className="empty-state empty-state--compact"><Settings2 size={20} /><b>Seleziona un esercizio</b><span>Qui modificherai volume, carico, RPE e recupero.</span></div>}
-        {exercise && <>
-          <label><span>Serie</span><div className="stepper"><button onClick={() => setPatch(value => ({ ...value, sets: Math.max(1, value.sets - 1) }))}>−</button><b>{patch.sets}</b><button onClick={() => setPatch(value => ({ ...value, sets: value.sets + 1 }))}>+</button></div></label>
-          <label><span>Ripetizioni</span><div className="input-shell"><input type="number" min="0" value={patch.reps} onChange={event => setPatch(value => ({ ...value, reps: Number(event.target.value) }))} /><em>rep</em></div></label>
-          <label><span>Durata</span><div className="input-shell"><input type="number" min="0" value={patch.seconds} onChange={event => setPatch(value => ({ ...value, seconds: Number(event.target.value) }))} /><em>sec</em></div></label>
-          <label><span>Carico</span><div className="input-shell"><input type="number" min="0" step="0.5" value={patch.loadKg} onChange={event => setPatch(value => ({ ...value, loadKg: Number(event.target.value) }))} /><em>kg</em></div></label>
-          <label><span>Recupero</span><div className="input-shell"><input type="number" min="0" step="15" value={patch.restSeconds} onChange={event => setPatch(value => ({ ...value, restSeconds: Number(event.target.value) }))} /><em>sec</em></div></label>
-          <label><span>RPE target</span><div className="rpe-scale">{[6, 7, 8, 9, 10].map(value => <button className={value === patch.rpe ? 'active' : ''} key={value} onClick={() => setPatch(current => ({ ...current, rpe: value }))}>{value}</button>)}</div></label>
-          <label className="inspector-notes"><span>Indicazioni</span><textarea value={patch.instructions} onChange={event => setPatch(value => ({ ...value, instructions: event.target.value }))} /></label>
-
-          <ExerciseTestTargetPanel
-            profile={profile}
-            athleteId={athleteId}
-            exerciseId={exercise.id}
-            setCount={patch.sets}
-          />
-          <button className="button button--signal button--wide" disabled={state === 'saving'} onClick={saveParameters}><Save size={15} /> {state === 'saving' ? 'Salvo…' : 'Salva parametri'}</button>
-        </>}
-      </Panel>
-    </div>}
-    {error && <div className="completion-banner completion-banner--error"><TriangleAlert size={19} /><div><b>Operazione non completata</b><span>{error}</span></div></div>}
-    {message && <div className="completion-banner"><ShieldCheck size={19} /><div><b>Program Builder aggiornato</b><span>{message}</span></div></div>}
-  </div>
-}
-
-function LibraryScreen({ profile }: { profile: AppProfile }) {
-  const [items, setItems] = useState<ExerciseLibraryItem[]>([])
-  const [source, setSource] = useState<'demo' | 'legacy-v1'>('demo')
-  const [selectedId, setSelectedId] = useState('')
-  const [input, setInput] = useState<ExerciseLibraryInput>(emptyExercise)
-  const [search, setSearch] = useState('')
-  const [category, setCategory] = useState('')
-  const [status, setStatus] = useState<LibraryStatusFilter>('active')
-  const [state, setState] = useState<'loading' | 'idle' | 'saving'>('loading')
-  const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
-  const [deleteTarget, setDeleteTarget] = useState<ExerciseLibraryItem | null>(null)
-
-  const refresh = async () => {
-    const next = await loadExerciseLibrary(profile)
-    setItems(next.items); setSource(next.source)
-    return next.items
-  }
-
-  useEffect(() => { refresh().then(next => setSelectedId(current => current || next.find(item => !item.archived)?.id || next[0]?.id || '')).catch(reason => setError(reason instanceof Error ? reason.message : 'Libreria non caricata.')).finally(() => setState('idle')) }, [profile.userId])
-  const selected = items.find(item => item.id === selectedId)
-  useEffect(() => {
-    if (!selected) { setInput(emptyExercise()); return }
-    setInput({ name: selected.name, category: selected.category, modality: selected.modality, description: selected.description, defaultInstructions: selected.defaultInstructions, defaultPrescription: { ...selected.defaultPrescription } })
-  }, [selected])
-
-  const categories = [...new Set(items.map(item => item.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'it'))
-  const visibleItems = filterExercises(items, search, category, status)
-  const usedCount = items.filter(item => item.usageCount > 0).length
-
-  const save = async (event: FormEvent) => {
-    event.preventDefault()
-    const validationError = validateExercise(input)
-    if (validationError) { setError(validationError); return }
-    setState('saving'); setError(''); setMessage('')
-    try {
-      if (selected) {
-        await updateLibraryExercise(profile, selected.id, input)
-        setMessage('Esercizio aggiornato. Le sessioni già svolte conservano i valori registrati.')
-      } else {
-        const id = await createLibraryExercise(profile, input)
-        setSelectedId(id); setMessage('Esercizio creato e disponibile nel Program Builder.')
-      }
-      await refresh()
-    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Esercizio non salvato.') } finally { setState('idle') }
-  }
-
-  const toggleArchive = () => {
-    if (!selected) return
-    setState('saving'); setError(''); setMessage('')
-    setLibraryExerciseArchived(profile, selected.id, !selected.archived).then(async () => {
-      await refresh()
-      setMessage(selected.archived ? 'Esercizio ripristinato nella libreria attiva.' : 'Esercizio archiviato. Rimane nelle sessioni e nello storico.')
-    }).catch(reason => setError(reason instanceof Error ? reason.message : 'Stato non aggiornato.')).finally(() => setState('idle'))
-  }
-
-  const removeExercise = async () => {
-    if (!deleteTarget) return
-    setState('saving'); setError(''); setMessage('')
-    try {
-      await deleteLibraryExercise(profile, deleteTarget.id)
-      const remaining = await refresh()
-      setSelectedId(remaining.find(item => !item.archived)?.id ?? remaining[0]?.id ?? '')
-      setDeleteTarget(null)
-      setMessage('Esercizio eliminato definitivamente dalla libreria. Le copie nelle sessioni e i risultati già registrati sono rimasti intatti.')
-    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Esercizio non eliminato.') } finally { setState('idle') }
-  }
-
-  return <div className="screen">
-    <ScreenHeader eyebrow="LIBRERIA / ESERCIZI" title="Libreria esercizi" text="Crea e modifica gli esercizi dei programmi." action={<div className="header-actions"><Tag tone={source === 'legacy-v1' ? 'success' : 'neutral'}>{source === 'legacy-v1' ? 'ONLINE' : 'DEMO'}</Tag><button className="button button--signal" onClick={() => { setSelectedId(''); setInput(emptyExercise()); setError(''); setMessage('') }}><Plus size={16} /> Nuovo esercizio</button></div>} />
-    <div className="library-summary"><Metric label="Esercizi totali" value={String(items.length).padStart(2, '0')} /><Metric label="In uso" value={String(usedCount).padStart(2, '0')} /><Metric label="Archivio precedente" value={String(items.filter(item => item.archived).length).padStart(2, '0')} /></div>
-    <div className="library-layout">
-      <Panel className="library-catalog" title="Catalogo" index="01">
-        <div className="library-filters"><div className="library-search"><Search size={16} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Cerca nome, categoria…" /></div><select value={category} onChange={event => setCategory(event.target.value)}><option value="">Tutte le categorie</option>{categories.map(value => <option key={value}>{value}</option>)}</select><select value={status} onChange={event => setStatus(event.target.value as LibraryStatusFilter)}><option value="active">Attivi</option><option value="archived">Archiviati</option><option value="all">Tutti</option></select></div>
-        {state === 'loading' && <div className="skeleton-stack"><span /><span /><span /></div>}
-        {!visibleItems.length && state !== 'loading' && <div className="empty-state"><BookOpen size={22} /><b>Nessun esercizio trovato</b><span>Modifica i filtri oppure crea il primo esercizio.</span></div>}
-        <div className="exercise-library-list">{visibleItems.map(item => <button className={item.id === selectedId ? 'active' : ''} key={item.id} onClick={() => setSelectedId(item.id)}><span className="exercise-library-list__mark">{item.name.slice(0, 2).toUpperCase()}</span><div><b>{item.name}</b><small>{[item.category, item.modality].filter(Boolean).join(' · ') || 'Senza categoria'}</small></div><span className="exercise-library-list__usage">{item.usageCount}<small>usi</small></span>{item.archived ? <Tag tone="warning">Archivio</Tag> : <ChevronDown size={16} />}</button>)}</div>
-      </Panel>
-      <Panel className="library-editor" title={selected ? 'Modifica esercizio' : 'Nuovo esercizio'} index="02" action={selected && <Tag tone={selected.archived ? 'warning' : 'success'}>{selected.archived ? 'Archiviato' : 'Attivo'}</Tag>}>
-        <form onSubmit={save}>
-          <div className="library-form-grid"><label className="library-form-grid__wide"><span>Nome</span><input value={input.name} onChange={event => setInput(value => ({ ...value, name: event.target.value }))} placeholder="Es. Max hang · 20 mm" required /></label><label><span>Categoria</span><input value={input.category} onChange={event => setInput(value => ({ ...value, category: event.target.value }))} placeholder="Dita, Trazione…" /></label><label><span>Modalità</span><input value={input.modality} onChange={event => setInput(value => ({ ...value, modality: event.target.value }))} placeholder="Forza, Isometrico…" /></label><label><span>Serie</span><input type="number" min="1" step="1" value={input.defaultPrescription.sets} onChange={event => setInput(value => ({ ...value, defaultPrescription: { ...value.defaultPrescription, sets: Number(event.target.value) } }))} /></label><label><span>Ripetizioni</span><input type="number" min="0" value={input.defaultPrescription.reps} onChange={event => setInput(value => ({ ...value, defaultPrescription: { ...value.defaultPrescription, reps: Number(event.target.value) } }))} /></label><label><span>Durata</span><div className="input-shell"><input type="number" min="0" value={input.defaultPrescription.seconds} onChange={event => setInput(value => ({ ...value, defaultPrescription: { ...value.defaultPrescription, seconds: Number(event.target.value) } }))} /><em>sec</em></div></label><label><span>Carico</span><div className="input-shell"><input type="number" min="0" step="0.5" value={input.defaultPrescription.loadKg} onChange={event => setInput(value => ({ ...value, defaultPrescription: { ...value.defaultPrescription, loadKg: Number(event.target.value) } }))} /><em>kg</em></div></label><label className="library-form-grid__wide"><span>Descrizione</span><textarea value={input.description} onChange={event => setInput(value => ({ ...value, description: event.target.value }))} placeholder="Scopo e configurazione dell’esercizio" /></label><label className="library-form-grid__wide"><span>Indicazioni predefinite</span><textarea value={input.defaultInstructions} onChange={event => setInput(value => ({ ...value, defaultInstructions: event.target.value }))} placeholder="Tecnica, criteri di stop, sicurezza…" /></label></div>
-          {error && <p className="form-error form-error--box" role="alert">{error}</p>}
-          <div className="library-actions"><button className="button button--primary" disabled={state === 'saving'}><Save size={16} /> {state === 'saving' ? 'Salvo…' : selected ? 'Salva modifiche' : 'Crea esercizio'}</button>{selected?.archived && <button type="button" className="button button--secondary" disabled={state === 'saving'} onClick={toggleArchive}><Archive size={16} /> Ripristina</button>}{selected && <button type="button" className="button button--danger" disabled={state === 'saving'} onClick={() => setDeleteTarget(selected)}><Trash2 size={16} /> Elimina</button>}</div>
-        </form>
-      </Panel>
-    </div>
-    {message && <div className="completion-banner"><ShieldCheck size={19} /><div><b>Libreria aggiornata</b><span>{message}</span></div></div>}
-    {deleteTarget && <ConfirmDialog title={`Eliminare ${deleteTarget.name}?`} text={`${deleteTarget.usageCount ? `È usato in ${deleteTarget.usageCount} sessioni. ` : ''}La voce sparirà dalla libreria, ma le sessioni già create e i risultati registrati manterranno nome, parametri e storico.`} confirmLabel="Elimina definitivamente" busy={state === 'saving'} onCancel={() => setDeleteTarget(null)} onConfirm={() => void removeExercise()} />}
-  </div>
-}
-
 type ScreenProps = {
   goTo: (view: ViewId) => void
   goToAthlete: (view: 'builder' | 'test', athleteId: string) => void
@@ -1389,7 +1047,7 @@ const viewMeta: Record<ViewId, { label: string; component: (props: ScreenProps) 
   home: { label: 'Home atleta', component: ({ openSession, profile }) => <HomeScreen openSession={openSession} profile={profile} /> },
   session: { label: 'Sessione', component: ({ profile, selectedSessionId }) => <SessionScreen profile={profile} sessionId={selectedSessionId} /> },
   dashboard: { label: 'Coach dashboard', component: ({ profile, goTo, openAthlete }) => <DashboardScreen profile={profile} openAthletes={() => goTo('athletes')} openAthlete={openAthlete} /> },
-  athletes: { label: 'Atleti e inviti', component: ({ profile, goTo, selectedAthleteId, setSelectedAthleteId, goToAthlete }) => <AthleteManagementScreen profile={profile} goTo={goTo} selectedAthleteId={selectedAthleteId} setSelectedAthleteId={setSelectedAthleteId} goToAthlete={goToAthlete} /> },
+  athletes: { label: 'Atleti e inviti', component: ({ profile, goTo, selectedAthleteId, setSelectedAthleteId, goToAthlete }) => <AthleteManagementScreen profile={profile} selectedAthleteId={selectedAthleteId} setSelectedAthleteId={setSelectedAthleteId} openDashboard={() => goTo('dashboard')} openAthleteArea={goToAthlete} /> },
   builder: { label: 'Program builder', component: ({ profile, selectedAthleteId }) => <BuilderScreen profile={profile} selectedAthleteId={selectedAthleteId} /> },
   library: { label: 'Libreria esercizi', component: ({ profile }) => <LibraryScreen profile={profile} /> },
   test: { label: 'Test / retest', component: ({ profile, selectedAthleteId }) => <TestScreen profile={profile} selectedAthleteId={selectedAthleteId} /> },
