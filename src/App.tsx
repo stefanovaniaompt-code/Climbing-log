@@ -25,7 +25,6 @@ import {
   SlidersHorizontal,
   TestTube2,
   TimerReset,
-  TrendingUp,
   Trash2,
   TriangleAlert,
   Users,
@@ -41,8 +40,7 @@ import { createExerciseTimerState, exerciseTimerPhaseLabel, exerciseTimerProgres
 import { autosaveSessionDraft, beginSession, loadSessionRunner, saveExerciseProgress, saveSessionFeedback, syncQueuedExercise } from './session/sessionRunnerRepository'
 import { SessionFeedbackPanel } from './session/SessionFeedbackPanel'
 import { validateSessionFeedback, type CompletionOutcome, type SessionFeedbackInput } from './session/sessionFeedback'
-import { loadCoachDashboard } from './coach/coachDashboardRepository'
-import type { CoachDashboardData } from './coach/coachDashboard'
+import { DashboardScreen } from './coach/DashboardScreen'
 import { createManagedAthlete, decideCoachLinkRequest, inviteAthlete, loadAthleteManagement, removeAthleteRelationship, resolveInvitationEmail, revokeInvitation, setAthleteStatus, type AthleteManagementData } from './coach/athleteManagementRepository'
 import { canPublishProgram, prescriptionSummary, type ProgramBuilderData } from './builder/programBuilder'
 import { addExercise, createProgram, createSession, createWeek, loadProgramBuilder, publishProgram, updateExercise, updateSessionDetails, updateWeekDetails, type ExercisePatch } from './builder/programBuilderRepository'
@@ -50,7 +48,7 @@ import { ExerciseTestTargetPanel } from './builder/ExerciseTestTargetPanel'
 import { emptyExercise, filterExercises, validateExercise, type ExerciseLibraryInput, type ExerciseLibraryItem, type LibraryStatusFilter } from './library/exerciseLibrary'
 import { createLibraryExercise, deleteLibraryExercise, loadExerciseLibrary, setLibraryExerciseArchived, updateLibraryExercise } from './library/exerciseLibraryRepository'
 import { TestScreen } from './tests/TestScreen'
-import { Bars, ConfirmDialog, Metric, Panel, ScreenHeader, Tag } from './shared/ui'
+import { ConfirmDialog, Metric, Panel, ScreenHeader, Tag } from './shared/ui'
 import { useScreenWakeLock } from './shared/hooks/useScreenWakeLock'
 import { playTimerAudioCue, timerAudioCueForTransition } from './session/timerAudio'
 import { useUpdateBlocker } from './pwa/useUpdateBlocker'
@@ -1044,58 +1042,6 @@ function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId:
   )
 }
 
-function DashboardScreen({ profile, goTo, openAthlete }: { profile: AppProfile; goTo: (view: ViewId) => void; openAthlete: (athleteId: string) => void }) {
-  const [data, setData] = useState<CoachDashboardData | null>(null)
-  const [error, setError] = useState('')
-
-  useEffect(() => {
-    let active = true
-    setError('')
-    loadCoachDashboard(profile).then(value => { if (active) setData(value) }).catch(reason => { if (active) setError(reason instanceof Error ? reason.message : 'Dashboard non disponibile.') })
-    return () => { active = false }
-  }, [profile])
-
-  if (error) return <div className="screen"><ScreenHeader eyebrow="COACH / PORTAFOGLIO" title="Dati coach non disponibili." text={error} action={<button className="button button--secondary" onClick={() => window.location.reload()}>Riprova</button>} /></div>
-  if (!data) return <div className="screen"><ScreenHeader eyebrow="COACH / DASHBOARD" title="Caricamento dashboard" text="Aggiornamento dati in corso." /><Panel title="Caricamento" index="01"><div className="skeleton-stack"><span /><span /><span /></div></Panel></div>
-
-  const totalRelationships = data.relationshipDistribution.active + data.relationshipDistribution.inactive + data.relationshipDistribution.pending
-  const activeShare = totalRelationships ? Math.round(data.relationshipDistribution.active / totalRelationships * 100) : 0
-  return (
-    <div className="screen">
-      <ScreenHeader eyebrow="COACH / DASHBOARD" title={`${data.activeAthletes} ${data.activeAthletes === 1 ? 'atleta attivo' : 'atleti attivi'}, ${data.needsReview} da rivedere`} text="Programmi, sessioni e test aggiornati." action={<div className="header-actions"><Tag tone={data.source === 'legacy-v1' ? 'success' : 'neutral'}>{data.source === 'legacy-v1' ? 'ONLINE' : 'DEMO'}</Tag><button className="button button--primary" onClick={() => goTo('athletes')}><Users size={16} /> Gestisci atleti</button></div>} />
-      <div className="coach-summary">
-        <Metric label="Atleti attivi" value={String(data.activeAthletes).padStart(2, '0')} />
-        <Metric label="Aderenza media" value={data.averageAdherence === null ? '—' : String(data.averageAdherence)} unit={data.averageAdherence === null ? undefined : '%'} />
-        <Metric label="Da rivedere" value={String(data.needsReview).padStart(2, '0')} signal={data.needsReview > 0} />
-      </div>
-      <div className="grid grid--2-1">
-        <Panel title="Atleti" index="01" action={<button className="icon-button" onClick={() => goTo('athletes')} aria-label="Gestisci atleti"><Search size={17} /></button>}>
-          <div className="athlete-list">
-            {data.athletes.length === 0 && <div className="empty-state"><Users size={22} /><b>Nessun atleta collegato</b><span>Crea il primo invito dalla gestione atleti.</span></div>}
-            {data.athletes.map(athlete => (
-              <button className="athlete" key={athlete.id} onClick={() => openAthlete(athlete.id)}>
-                <span className="avatar">{athlete.initials}</span>
-                <span className="athlete__copy"><b>{athlete.name}</b><small>{athlete.programLabel}</small></span>
-                <span className="athlete__score"><b>{athlete.adherence ?? '—'}</b><small>{athlete.adherence === null ? 'N/D' : '%'}</small></span>
-                <Tag tone={athlete.relationshipStatus !== 'active' || athlete.needsAttention ? 'warning' : 'success'}>{athlete.relationshipStatus !== 'active' ? athlete.relationshipStatus : athlete.needsAttention ? 'Controlla' : 'In linea'}</Tag>
-                <ArrowRight size={16} />
-              </button>
-            ))}
-          </div>
-        </Panel>
-        <Panel title="Attenzione" index="02">
-          {data.alerts.length === 0 && <div className="empty-state empty-state--compact"><Check size={20} /><b>Nessuna eccezione aperta</b><span>Il portafoglio è allineato.</span></div>}
-          {data.alerts.map(alert => <div className={`alert-card ${alert.tone === 'neutral' ? 'alert-card--neutral' : ''}`} key={alert.id}>{alert.tone === 'warning' ? <TriangleAlert size={20} /> : <ClipboardCheck size={20} />}<div><b>{alert.title}</b><p>{alert.detail}</p><button onClick={() => openAthlete(alert.athleteId)}>Apri atleta</button></div></div>)}
-        </Panel>
-      </div>
-      <div className="grid grid--2">
-        <Panel title="Aderenza / ultime settimane" index="03">{data.adherenceTrend.length ? <Bars values={data.adherenceTrend} accentAt={data.adherenceTrend.length - 1} /> : <div className="empty-state empty-state--compact"><TrendingUp size={20} /><b>Trend in costruzione</b><span>Comparirà dopo le prime settimane pianificate.</span></div>}<div className="chart-legend"><span><i className="purple" /> Completato</span><span><i className="mustard" /> Settimana corrente</span></div></Panel>
-        <Panel title="Relazioni atleti" index="04"><div className="distribution"><div className="donut" style={{ background: `conic-gradient(var(--purple-700) 0 ${activeShare}%, var(--mustard-500) ${activeShare}% 100%)` }}><span>{activeShare}<small>%</small></span></div><ul><li><i className="purple" /> Attivi <b>{data.relationshipDistribution.active}</b></li><li><i className="mustard" /> Inattivi <b>{data.relationshipDistribution.inactive}</b></li><li><i className="pale" /> In attesa <b>{data.relationshipDistribution.pending}</b></li></ul></div></Panel>
-      </div>
-    </div>
-  )
-}
-
 function AthleteManagementScreen({ profile, selectedAthleteId, setSelectedAthleteId, goTo, goToAthlete }: { profile: AppProfile; selectedAthleteId: string; setSelectedAthleteId: (athleteId: string) => void; goTo: (view: ViewId) => void; goToAthlete: (view: 'builder' | 'test', athleteId: string) => void }) {
   const [data, setData] = useState<AthleteManagementData | null>(null)
   const [email, setEmail] = useState('')
@@ -1442,7 +1388,7 @@ const viewMeta: Record<ViewId, { label: string; component: (props: ScreenProps) 
   system: { label: 'Sistema UI', component: () => <SystemScreen /> },
   home: { label: 'Home atleta', component: ({ openSession, profile }) => <HomeScreen openSession={openSession} profile={profile} /> },
   session: { label: 'Sessione', component: ({ profile, selectedSessionId }) => <SessionScreen profile={profile} sessionId={selectedSessionId} /> },
-  dashboard: { label: 'Coach dashboard', component: ({ profile, goTo, openAthlete }) => <DashboardScreen profile={profile} goTo={goTo} openAthlete={openAthlete} /> },
+  dashboard: { label: 'Coach dashboard', component: ({ profile, goTo, openAthlete }) => <DashboardScreen profile={profile} openAthletes={() => goTo('athletes')} openAthlete={openAthlete} /> },
   athletes: { label: 'Atleti e inviti', component: ({ profile, goTo, selectedAthleteId, setSelectedAthleteId, goToAthlete }) => <AthleteManagementScreen profile={profile} goTo={goTo} selectedAthleteId={selectedAthleteId} setSelectedAthleteId={setSelectedAthleteId} goToAthlete={goToAthlete} /> },
   builder: { label: 'Program builder', component: ({ profile, selectedAthleteId }) => <BuilderScreen profile={profile} selectedAthleteId={selectedAthleteId} /> },
   library: { label: 'Libreria esercizi', component: ({ profile }) => <LibraryScreen profile={profile} /> },
