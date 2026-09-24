@@ -15,9 +15,9 @@ export async function loadAthleteCoaches(profile: AppProfile): Promise<CoachOpti
   if (relations.error) throw relations.error
   const ids = (relations.data ?? []).map(row => row.coach_id as string)
   if (!ids.length) return []
-  const profiles = await supabase!.from('profiles').select('user_id,display_name').in('user_id', ids)
+  const profiles = await supabase!.from('profiles').select('id,full_name').in('id', ids)
   if (profiles.error) throw profiles.error
-  const names = new Map((profiles.data ?? []).map(row => [row.user_id as string, row.display_name as string]))
+  const names = new Map((profiles.data ?? []).map(row => [row.id as string, row.full_name as string]))
   return ids.map(id => ({ id, name: names.get(id) ?? 'Coach' }))
 }
 

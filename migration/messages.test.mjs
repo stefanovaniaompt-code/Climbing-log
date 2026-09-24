@@ -26,3 +26,9 @@ test('implementation contains no LLM integration', async () => {
   ])
   assert.doesNotMatch(files.join('\n'), /openai|anthropic|claude|gemini|\bllm\b/i)
 })
+
+test('athlete coach lookup uses the production profiles columns', async () => {
+  const source = await readFile(new URL('../src/messaging/messageRepository.ts', import.meta.url), 'utf8')
+  assert.match(source, /from\('profiles'\)\.select\('id,full_name'\)\.in\('id', ids\)/)
+  assert.doesNotMatch(source, /user_id,display_name/)
+})
