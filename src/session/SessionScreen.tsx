@@ -1,20 +1,20 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Check, ClipboardCheck, Play, ShieldCheck, TriangleAlert, Volume2, VolumeX } from 'lucide-react'
 import { OUTBOX_CHANGED_EVENT } from '../outbox'
 import type { AppProfile } from '../onboarding/types'
 import { Panel, ScreenHeader, Tag } from '../shared/ui'
 import { useScreenWakeLock } from '../shared/hooks/useScreenWakeLock'
-import { createExerciseTimerState, firstOpenExerciseIndex, restartExerciseTimerState, restoreExerciseTimerSnapshot, summarizeRunner, tickExerciseTimer, type ExerciseTimerState, type SessionRunnerData } from './sessionRunner'
+import { firstOpenExerciseIndex, restoreExerciseTimerSnapshot, summarizeRunner, type SessionRunnerData } from './sessionRunner'
 import { autosaveSessionDraft, beginSession, loadSessionRunner, saveExerciseProgress, saveSessionFeedback } from './sessionRunnerRepository'
 import { SessionFeedbackPanel } from './SessionFeedbackPanel'
 import { validateSessionFeedback, type CompletionOutcome, type SessionFeedbackInput } from './sessionFeedback'
-import { playTimerAudioCue, timerAudioCueForTransition } from './timerAudio'
 import { clearSessionLocalDraft, readSessionLocalDraft, writeSessionLocalDraft, type ExerciseInputDraft } from './sessionLocalDraft'
 import { SessionExerciseCard, type ExerciseSaveState } from './SessionExerciseCard'
+import { useSessionTimer } from './useSessionTimer'
 
 export function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId: string }) {
   const [runner, setRunner] = useState<SessionRunnerData | null | undefined>(undefined)
-  const [timerState, setTimerState] = useState<ExerciseTimerState | null>(null)
+  const { timerState, setTimerState, soundEnabled, toggleSound, toggleTimer, resetTimer } = useSessionTimer()
   const [outcome, setOutcome] = useState<CompletionOutcome | null>(null)
   const [sessionRpe, setSessionRpe] = useState('')
   const [sessionNote, setSessionNote] = useState('')
@@ -29,10 +29,6 @@ export function SessionScreen({ profile, sessionId }: { profile: AppProfile; ses
   const [error, setError] = useState('')
   const [reloadKey, setReloadKey] = useState(0)
   const [draftReady, setDraftReady] = useState(false)
-  const [soundEnabled, setSoundEnabled] = useState(true)
-  const audioContextRef = useRef<AudioContext | null>(null)
-  const audioArmedRef = useRef(false)
-  const previousTimerStateRef = useRef<ExerciseTimerState | null>(null)
   const draftStorageKey = `cc-v2:session-draft:${profile.userId}:${sessionId}`
   const wakeLockStatus = useScreenWakeLock(Boolean(runner && runner.session.status !== 'completed'))
 
@@ -287,37 +283,6 @@ export function SessionScreen({ profile, sessionId }: { profile: AppProfile; ses
 
 
   useEffect(() => {
-    if (!timerState?.running || timerState.phase === 'complete') return
-    const interval = window.setInterval(() => setTimerState(value => value ? tickExerciseTimer(value) : null), 1000)
-    return () => window.clearInterval(interval)
-  }, [timerState?.running, timerState?.phase])
-
-  useEffect(() => {
-    const previous = previousTimerStateRef.current
-    previousTimerStateRef.current = timerState
-
-    if (
-      !timerState ||
-      !soundEnabled ||
-      !audioArmedRef.current ||
-      !audioContextRef.current
-    ) return
-
-    const cue = timerAudioCueForTransition(previous, timerState)
-    if (!cue) return
-
-    playTimerAudioCue(audioContextRef.current, cue)
-
-    if ('vibrate' in navigator && cue !== 'countdown') {
-      navigator.vibrate(cue === 'complete' ? [90, 70, 140] : 90)
-    }
-  }, [soundEnabled, timerState])
-
-  useEffect(() => () => {
-    void audioContextRef.current?.close()
-  }, [])
-
-  useEffect(() => {
     if (
       !draftReady ||
       !runner ||
@@ -381,51 +346,6 @@ export function SessionScreen({ profile, sessionId }: { profile: AppProfile; ses
       setSaveState('error')
       setError(reason instanceof Error ? reason.message : 'Avvio non riuscito.')
     }
-  }
-
-  const armAudioFeedback = () => {
-    if (!soundEnabled) return
-
-    audioArmedRef.current = true
-    const context = audioContextRef.current ?? new AudioContext()
-    audioContextRef.current = context
-
-    if (context.state === 'suspended') void context.resume()
-  }
-
-  const toggleSound = () => {
-    if (soundEnabled) {
-      setSoundEnabled(false)
-      return
-    }
-
-    setSoundEnabled(true)
-    audioArmedRef.current = true
-    const context = audioContextRef.current ?? new AudioContext()
-    audioContextRef.current = context
-    void context.resume().then(() => playTimerAudioCue(context, 'countdown'))
-  }
-
-  const toggleTimer = (exercise: SessionRunnerData['exercises'][number]) => {
-    armAudioFeedback()
-    setTimerState(current => {
-      if (current?.exerciseId === exercise.id) {
-        if (current.phase === 'complete') {
-          const restarted = restartExerciseTimerState(
-            exercise,
-            current,
-          )
-          return restarted ? { ...restarted, running: true } : null
-        }
-        return { ...current, running: !current.running }
-      }
-      const created = createExerciseTimerState(exercise)
-      return created ? { ...created, running: true } : null
-    })
-  }
-
-  const resetTimer = (exercise: SessionRunnerData['exercises'][number]) => {
-    setTimerState(createExerciseTimerState(exercise))
   }
 
   const updateExerciseInput = (
