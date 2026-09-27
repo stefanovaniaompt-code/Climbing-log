@@ -2,8 +2,7 @@ import { Check, Pause, Play, Save, TimerReset } from 'lucide-react'
 import { Tag } from '../shared/ui'
 import { createExerciseTimerState, exerciseTimerPhaseLabel, exerciseTimerProgressLabel, formatPrescription, getExerciseTimerConfig, getRestSeconds, getSetCount, getVariableSeries, type ExerciseTimerState, type SessionRunnerData } from './sessionRunner'
 import type { ExerciseInputDraft } from './sessionLocalDraft'
-
-export type ExerciseSaveState = 'idle' | 'saving' | 'saved' | 'queued' | 'error'
+import type { ExerciseSaveState } from './useExerciseProgress'
 
 type SessionExercise = SessionRunnerData['exercises'][number]
 

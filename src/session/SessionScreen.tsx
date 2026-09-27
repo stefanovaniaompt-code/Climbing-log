@@ -8,9 +8,10 @@ import { firstOpenExerciseIndex, restoreExerciseTimerSnapshot, summarizeRunner, 
 import { autosaveSessionDraft, beginSession, loadSessionRunner, saveExerciseProgress, saveSessionFeedback } from './sessionRunnerRepository'
 import { SessionFeedbackPanel } from './SessionFeedbackPanel'
 import { validateSessionFeedback, type CompletionOutcome, type SessionFeedbackInput } from './sessionFeedback'
-import { clearSessionLocalDraft, readSessionLocalDraft, writeSessionLocalDraft, type ExerciseInputDraft } from './sessionLocalDraft'
-import { SessionExerciseCard, type ExerciseSaveState } from './SessionExerciseCard'
+import { clearSessionLocalDraft, readSessionLocalDraft, writeSessionLocalDraft } from './sessionLocalDraft'
+import { SessionExerciseCard } from './SessionExerciseCard'
 import { useSessionTimer } from './useSessionTimer'
+import { useExerciseProgress } from './useExerciseProgress'
 
 export function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId: string }) {
   const [runner, setRunner] = useState<SessionRunnerData | null | undefined>(undefined)
@@ -23,10 +24,9 @@ export function SessionScreen({ profile, sessionId }: { profile: AppProfile; ses
   const [painExerciseId, setPainExerciseId] = useState('')
   const [painPersistsPostSession, setPainPersistsPostSession] = useState<boolean | null>(null)
   const [editingFeedback, setEditingFeedback] = useState(false)
-  const [exerciseInputs, setExerciseInputs] = useState<Record<string, ExerciseInputDraft>>({})
-  const [exerciseSaveStates, setExerciseSaveStates] = useState<Record<string, ExerciseSaveState>>({})
   const [saveState, setSaveState] = useState<'idle' | 'starting' | 'finishing' | 'saved' | 'queued' | 'error'>('idle')
   const [error, setError] = useState('')
+  const { exerciseInputs, setExerciseInputs, exerciseSaveStates, setExerciseSaveStates, updateExerciseInput, recordExercise } = useExerciseProgress({ profile, runner, setRunner, timerState, setTimerState, setError })
   const [reloadKey, setReloadKey] = useState(0)
   const [draftReady, setDraftReady] = useState(false)
   const draftStorageKey = `cc-v2:session-draft:${profile.userId}:${sessionId}`
@@ -345,142 +345,6 @@ export function SessionScreen({ profile, sessionId }: { profile: AppProfile; ses
     } catch (reason) {
       setSaveState('error')
       setError(reason instanceof Error ? reason.message : 'Avvio non riuscito.')
-    }
-  }
-
-  const updateExerciseInput = (
-    exerciseId: string,
-    patch: Partial<ExerciseInputDraft>,
-  ) => {
-    setExerciseInputs(current => ({
-      ...current,
-      [exerciseId]: {
-        rpe: current[exerciseId]?.rpe ?? '',
-        notes: current[exerciseId]?.notes ?? '',
-        ...patch,
-      },
-    }))
-
-    setExerciseSaveStates(current => ({
-      ...current,
-      [exerciseId]: 'idle',
-    }))
-  }
-
-  const recordExercise = async (
-    exercise: SessionRunnerData['exercises'][number],
-  ) => {
-    if (exercise.progress?.completed) return
-
-    const input =
-      exerciseInputs[exercise.id] ?? {
-        rpe: '',
-        notes: '',
-      }
-
-    const parsedRpe =
-      input.rpe.trim()
-        ? Number(input.rpe)
-        : null
-
-    if (
-      parsedRpe !== null &&
-      (
-        !Number.isFinite(parsedRpe) ||
-        parsedRpe < 0 ||
-        parsedRpe > 10
-      )
-    ) {
-      setExerciseSaveStates(current => ({
-        ...current,
-        [exercise.id]: 'error',
-      }))
-
-      setError(
-        "L'RPE dell'esercizio deve essere compreso tra 0 e 10.",
-      )
-      return
-    }
-
-    setExerciseSaveStates(current => ({
-      ...current,
-      [exercise.id]: 'saving',
-    }))
-    setError('')
-
-    try {
-      let logId = runner.session.logId
-      let startedAt = runner.session.startedAt
-
-      if (!logId) {
-        const log = await beginSession(
-          profile,
-          runner.session.id,
-        )
-
-        logId = log.id
-        startedAt = log.started_at
-      }
-
-      const result = await saveExerciseProgress(
-        profile,
-        logId,
-        exercise,
-        {
-          rpe: parsedRpe,
-          notes: input.notes,
-        },
-      )
-
-      setRunner(current => {
-        if (!current) return current
-
-        return {
-          ...current,
-          session: {
-            ...current.session,
-            logId,
-            status: 'in_progress',
-            startedAt:
-              current.session.startedAt ??
-              startedAt,
-          },
-          exercises: current.exercises.map(item =>
-            item.id === exercise.id
-              ? {
-                  ...item,
-                  progress: result.progress,
-                }
-              : item,
-          ),
-        }
-      })
-
-      if (
-        timerState?.exerciseId ===
-        exercise.id
-      ) {
-        setTimerState(null)
-      }
-
-      setExerciseSaveStates(current => ({
-        ...current,
-        [exercise.id]:
-          result.disposition === 'queued'
-            ? 'queued'
-            : 'saved',
-      }))
-    } catch (reason) {
-      setExerciseSaveStates(current => ({
-        ...current,
-        [exercise.id]: 'error',
-      }))
-
-      setError(
-        reason instanceof Error
-          ? reason.message
-          : 'Esercizio non registrato.',
-      )
     }
   }
 
