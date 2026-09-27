@@ -1,158 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, ClipboardCheck, Pause, Play, Save, ShieldCheck, TimerReset, TriangleAlert, Volume2, VolumeX } from 'lucide-react'
+import { Check, ClipboardCheck, Play, ShieldCheck, TriangleAlert, Volume2, VolumeX } from 'lucide-react'
 import { OUTBOX_CHANGED_EVENT } from '../outbox'
 import type { AppProfile } from '../onboarding/types'
 import { Panel, ScreenHeader, Tag } from '../shared/ui'
 import { useScreenWakeLock } from '../shared/hooks/useScreenWakeLock'
-import { createExerciseTimerState, exerciseTimerPhaseLabel, exerciseTimerProgressLabel, firstOpenExerciseIndex, formatPrescription, getExerciseTimerConfig, getRestSeconds, getSetCount, getVariableSeries, restartExerciseTimerState, restoreExerciseTimerSnapshot, summarizeRunner, tickExerciseTimer, type ExerciseTimerSnapshot, type ExerciseTimerState, type SessionRunnerData } from './sessionRunner'
+import { createExerciseTimerState, firstOpenExerciseIndex, restartExerciseTimerState, restoreExerciseTimerSnapshot, summarizeRunner, tickExerciseTimer, type ExerciseTimerState, type SessionRunnerData } from './sessionRunner'
 import { autosaveSessionDraft, beginSession, loadSessionRunner, saveExerciseProgress, saveSessionFeedback } from './sessionRunnerRepository'
 import { SessionFeedbackPanel } from './SessionFeedbackPanel'
 import { validateSessionFeedback, type CompletionOutcome, type SessionFeedbackInput } from './sessionFeedback'
 import { playTimerAudioCue, timerAudioCueForTransition } from './timerAudio'
-
-type ExerciseInputDraft = {
-  rpe: string
-  notes: string
-}
-
-type ExerciseSaveState =
-  | 'idle'
-  | 'saving'
-  | 'saved'
-  | 'queued'
-  | 'error'
-
-type SessionLocalDraft = {
-  version: 1
-  sessionId: string
-  outcome: CompletionOutcome | null
-  sessionRpe: string
-  sessionNote: string
-  painPresent: boolean | null
-  painVas: string
-  painExerciseId: string
-  painPersistsPostSession: boolean | null
-  timer: ExerciseTimerSnapshot | null
-  exerciseInputs: Record<string, ExerciseInputDraft>
-}
-
-function readExerciseInputDrafts(
-  value: unknown,
-): Record<string, ExerciseInputDraft> {
-  if (
-    !value ||
-    typeof value !== 'object' ||
-    Array.isArray(value)
-  ) {
-    return {}
-  }
-
-  const result: Record<string, ExerciseInputDraft> = {}
-
-  for (const [exerciseId, raw] of Object.entries(value)) {
-    if (
-      !raw ||
-      typeof raw !== 'object' ||
-      Array.isArray(raw)
-    ) {
-      continue
-    }
-
-    const entry = raw as Record<string, unknown>
-
-    result[exerciseId] = {
-      rpe:
-        typeof entry.rpe === 'string'
-          ? entry.rpe
-          : '',
-      notes:
-        typeof entry.notes === 'string'
-          ? entry.notes
-          : '',
-    }
-  }
-
-  return result
-}
-
-function readSessionLocalDraft(
-  key: string,
-): SessionLocalDraft | null {
-  try {
-    const raw = window.localStorage.getItem(key)
-    if (!raw) return null
-
-    const parsed = JSON.parse(raw) as Partial<SessionLocalDraft>
-
-    if (
-      parsed.version !== 1 ||
-      typeof parsed.sessionId !== 'string'
-    ) {
-      return null
-    }
-
-    const timerCandidate =
-      parsed.timer &&
-      typeof parsed.timer === 'object' &&
-      typeof parsed.timer.savedAt === 'number' &&
-      parsed.timer.state &&
-      typeof parsed.timer.state.exerciseId === 'string'
-        ? parsed.timer as ExerciseTimerSnapshot
-        : null
-
-    return {
-      version: 1,
-      sessionId: parsed.sessionId,
-      outcome:
-        parsed.outcome === 'completed' ||
-        parsed.outcome === 'partial' ||
-        parsed.outcome === 'not_completed'
-          ? parsed.outcome
-          : null,
-      sessionRpe:
-        typeof parsed.sessionRpe === 'string'
-          ? parsed.sessionRpe
-          : '',
-      sessionNote:
-        typeof parsed.sessionNote === 'string'
-          ? parsed.sessionNote
-          : '',
-      painPresent: typeof parsed.painPresent === 'boolean' ? parsed.painPresent : null,
-      painVas: typeof parsed.painVas === 'string' ? parsed.painVas : '',
-      painExerciseId: typeof parsed.painExerciseId === 'string' ? parsed.painExerciseId : '',
-      painPersistsPostSession: typeof parsed.painPersistsPostSession === 'boolean' ? parsed.painPersistsPostSession : null,
-      timer: timerCandidate,
-      exerciseInputs:
-        readExerciseInputDrafts(
-          parsed.exerciseInputs,
-        ),
-    }
-  } catch {
-    return null
-  }
-}
-
-function writeSessionLocalDraft(
-  key: string,
-  draft: SessionLocalDraft,
-) {
-  try {
-    window.localStorage.setItem(
-      key,
-      JSON.stringify(draft),
-    )
-  } catch {
-    // Local storage can be unavailable.
-  }
-}
-
-function clearSessionLocalDraft(key: string) {
-  try {
-    window.localStorage.removeItem(key)
-  } catch {
-    // Local storage can be unavailable.
-  }
-}
+import { clearSessionLocalDraft, readSessionLocalDraft, writeSessionLocalDraft, type ExerciseInputDraft } from './sessionLocalDraft'
+import { SessionExerciseCard, type ExerciseSaveState } from './SessionExerciseCard'
 
 export function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId: string }) {
   const [runner, setRunner] = useState<SessionRunnerData | null | undefined>(undefined)
@@ -805,160 +663,22 @@ export function SessionScreen({ profile, sessionId }: { profile: AppProfile; ses
       </div>
 
       <div className="session-exercise-list">
-        {runner.exercises.map(exercise => {
-          const variableSeries = getVariableSeries(exercise)
-          const exerciseInput =
-            exerciseInputs[exercise.id] ?? {
-              rpe: '',
-              notes: '',
-            }
-          const exerciseSaveState =
-            exerciseSaveStates[exercise.id] ?? 'idle'
-          const isNext =
-            exercise.id === nextOpenExerciseId
-          const timerConfig = getExerciseTimerConfig(exercise)
-          const timerActive = timerState?.exerciseId === exercise.id
-          const activeTimer = timerActive ? timerState : createExerciseTimerState(exercise)
-          const timerSeconds = activeTimer?.remaining ?? getRestSeconds(exercise)
-          const timerLabel = String(Math.floor(timerSeconds / 60)).padStart(2, '0') + ':' + String(timerSeconds % 60).padStart(2, '0')
-          const dose = String(exercise.prescription.dose ?? 'Dose indicata dal coach')
-          const load = exercise.prescription.load_value == null ? 'Corpo libero' : String(exercise.prescription.load_value) + (exercise.prescription.unit ? ' ' + String(exercise.prescription.unit) : '')
-          return <article
-            id={`exercise-${exercise.id}`}
-            className={
-              'session-exercise-card ' +
-              (exercise.progress?.completed ? ' is-recorded' : '') +
-              (isNext ? ' is-next' : '')
-            }
+        {runner.exercises.map(exercise => (
+          <SessionExerciseCard
             key={exercise.id}
-          >
-            <div className="session-exercise-card__head">
-              <span>{String(exercise.order).padStart(2, '0')}</span>
-              <div>
-                <h2>{exercise.name}</h2>
-                <p>{formatPrescription(exercise)}</p>
-              </div>
-              {exercise.progress?.completed
-                ? (
-                  <Tag
-                    tone={
-                      exercise.progress.syncState === 'queued'
-                        ? 'warning'
-                        : 'success'
-                    }
-                  >
-                    {exercise.progress.syncState === 'queued'
-                      ? 'IN CODA'
-                      : 'REGISTRATO'}
-                  </Tag>
-                )
-                : isNext
-                  ? <Tag tone="signal">PROSSIMO</Tag>
-                  : <Tag tone="purple">{getSetCount(exercise)} serie</Tag>}
-            </div>
-            {variableSeries.length > 0 ? <div className="variable-series"><div className="variable-series__label"><b>Carichi differenti</b><span>Una riga per ogni serie</span></div><ol>{variableSeries.map((series, index) => <li key={series + index}><span>{String(index + 1).padStart(2, '0')}</span><b>{series}</b></li>)}</ol></div> : <div className="uniform-prescription"><div><small>STRUTTURA</small><b>{getSetCount(exercise)} serie</b></div><div><small>DOSE</small><b>{dose}</b></div><div><small>CARICO</small><b>{load}</b></div><div><small>RECUPERO</small><b>{getRestSeconds(exercise)} sec</b></div></div>}
-            <div className="exercise-guidance"><span>Indicazioni</span><p>{exercise.instructions || runner.session.coachNotes || 'Segui la prescrizione e interrompi in caso di dolore.'}</p></div>
-            {canEdit && timerConfig && activeTimer && <section className={`exercise-timer is-${activeTimer.phase}${activeTimer.running ? ' is-running' : ''}`} aria-label={`Timer ${exercise.name}`}>
-              <div className="exercise-timer__display"><small aria-live="assertive">{exerciseTimerPhaseLabel(activeTimer)}</small><strong>{timerLabel}</strong><span>{exerciseTimerProgressLabel(activeTimer)}</span></div>
-              <button className="exercise-timer__control" onClick={() => toggleTimer(exercise)} aria-label={`${activeTimer.running ? 'Metti in pausa' : 'Avvia'} il timer di ${exercise.name}`}>{activeTimer.running ? <Pause size={24} fill="currentColor" /> : <Play size={24} fill="currentColor" />}<span>{activeTimer.running ? 'Pausa' : activeTimer.phase === 'complete' ? activeTimer.config.mode === 'recovery' && activeTimer.set < Math.max(1, activeTimer.config.sets - 1) ? 'Prossimo' : 'Ricomincia' : timerActive ? 'Riprendi' : 'Avvia'}</span></button>
-              <button className="exercise-timer__reset" onClick={() => resetTimer(exercise)} aria-label={`Reimposta il timer di ${exercise.name}`}><TimerReset size={20} /><span>Reimposta</span></button>
-            </section>}
-            {canEdit && !exercise.progress?.completed && (
-              <div className="exercise-entry">
-                <div className="exercise-entry__fields">
-                  <label>
-                    <span>RPE esercizio</span>
-                    <input
-                      type="number"
-                      min="0"
-                      max="10"
-                      step="0.5"
-                      value={exerciseInput.rpe}
-                      onChange={event =>
-                        updateExerciseInput(
-                          exercise.id,
-                          {
-                            rpe:
-                              event.target.value,
-                          },
-                        )
-                      }
-                      placeholder="0-10"
-                    />
-                  </label>
-
-                  <label>
-                    <span>Note esercizio</span>
-                    <textarea
-                      value={exerciseInput.notes}
-                      onChange={event =>
-                        updateExerciseInput(
-                          exercise.id,
-                          {
-                            notes:
-                              event.target.value,
-                          },
-                        )
-                      }
-                      placeholder="Carico reale, sensazioni, dolore, adattamenti..."
-                    />
-                  </label>
-                </div>
-
-                <div className="exercise-entry__actions">
-                  <span>
-                    {exerciseSaveState === 'queued'
-                      ? 'Salvato sul dispositivo: sincronizzazione in attesa.'
-                      : exerciseSaveState === 'error'
-                        ? 'Controlla i dati e riprova.'
-                        : 'RPE e note sono facoltativi.'}
-                  </span>
-
-                  <button
-                    className="button button--primary"
-                    disabled={
-                      exerciseSaveState === 'saving'
-                    }
-                    onClick={() =>
-                      void recordExercise(exercise)
-                    }
-                  >
-                    <Save size={16} />
-                    {exerciseSaveState === 'saving'
-                      ? 'Salvataggio...'
-                      : 'Registra esercizio'}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {exercise.progress?.completed && (
-              <div className="exercise-recorded-detail">
-                <Check size={17} />
-                <div>
-                  <b>
-                    {exercise.progress.syncState === 'queued'
-                      ? 'Registrazione in coda offline'
-                      : 'Esercizio registrato'}
-                  </b>
-
-                  <span>
-                    {[
-                      exercise.progress.rpe !== null
-                        ? `RPE ${exercise.progress.rpe}/10`
-                        : '',
-                      exercise.progress.notes,
-                    ]
-                      .filter(Boolean)
-                      .join(' ? ') ||
-                      'Nessuna nota aggiuntiva.'}
-                  </span>
-                </div>
-              </div>
-            )}
-
-          </article>
-        })}
+            exercise={exercise}
+            coachNotes={runner.session.coachNotes}
+            canEdit={canEdit}
+            isNext={exercise.id === nextOpenExerciseId}
+            timerState={timerState}
+            exerciseInput={exerciseInputs[exercise.id] ?? { rpe: '', notes: '' }}
+            exerciseSaveState={exerciseSaveStates[exercise.id] ?? 'idle'}
+            onToggleTimer={toggleTimer}
+            onResetTimer={resetTimer}
+            onUpdateExerciseInput={updateExerciseInput}
+            onRecordExercise={recordExercise}
+          />
+        ))}
       </div>
 
       {runner.session.status === 'completed' && !editingFeedback ? <div className="completion-banner completion-banner--editable"><ShieldCheck size={19} /><div><b>{runner.session.completionOutcome === 'not_completed' ? 'Sessione non completata' : 'Sessione completata'}</b><span>Il feedback è stato salvato.</span></div><button className="button button--secondary" onClick={() => { restoreFeedback(); setEditingFeedback(true); setSaveState('idle') }}>Modifica feedback</button></div> : runner.session.logId || editingFeedback ? <SessionFeedbackPanel programType={runner.session.programType} exercises={runner.exercises} outcome={outcome} sessionRpe={sessionRpe} notes={sessionNote} painPresent={painPresent} painVas={painVas} painExerciseId={painExerciseId} painPersistsPostSession={painPersistsPostSession} saving={saveState === 'finishing'} editing={editingFeedback} onChange={changeFeedback} onSubmit={patch => void submitSessionFeedback(patch)} onCancel={() => { restoreFeedback(); setEditingFeedback(false); setError('') }} /> : <div className="session-dock"><div><small>SESSIONE PRONTA</small><b>{runner.session.title}</b></div><button className="button button--signal" disabled={saveState === 'starting'} onClick={startCurrentSession}><span>{saveState === 'starting' ? 'Avvio…' : 'Avvia sessione'}</span><Play size={17} /></button></div>}
