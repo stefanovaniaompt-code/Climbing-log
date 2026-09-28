@@ -148,3 +148,51 @@
   .athlete-home, .athlete-home__skeleton i { animation: none; }
   .athlete-home__week-progress > i span, .athlete-home__path-progress > i span { transition: none; }
 }
+
+/* Session runner: visual layer only. State, persistence and writes stay in the V2 runner. */
+.athlete-shell .screen--session { max-width: 760px; animation: athlete-page-in .28s ease-out both; }
+.athlete-shell .screen--session .screen-head { align-items: flex-start; margin-bottom: 18px; }
+.athlete-shell .screen--session .screen-head h1 { color: var(--athlete-deep-purple); font-size: clamp(32px, 8vw, 46px); line-height: .98; letter-spacing: -.055em; }
+.athlete-shell .screen--session .screen-head p { max-width: 560px; color: #716676; font-size: 14px; }
+.athlete-shell .screen--session .eyebrow { color: var(--athlete-purple); }
+.athlete-shell .session-status { overflow: hidden; margin-bottom: 14px; border: 0; background: var(--athlete-deep-purple); box-shadow: 0 10px 24px rgba(44, 16, 58, .16); }
+.athlete-shell .session-status__progress { padding: 17px 19px; }
+.athlete-shell .session-status__progress span { color: #cfbad8; }
+.athlete-shell .session-status__progress b { margin-top: 7px; color: #fff; font-size: 16px; }
+.athlete-shell .session-status .progress-line { height: 6px; margin-top: 14px; background: rgba(255, 255, 255, .16); }
+.athlete-shell .session-status .progress-line i { background: var(--athlete-mustard); }
+.athlete-shell .session-sound-toggle { min-height: 58px; border: 0; border-top: 1px solid rgba(255, 255, 255, .14); background: #3b174b; color: #e7dbe9; }
+.athlete-shell .session-sound-toggle.is-on { background: var(--athlete-mustard); color: var(--athlete-deep-purple); }
+.athlete-shell .session-exercise-list { gap: 13px; }
+.athlete-shell .session-exercise-card { overflow: hidden; padding: clamp(16px, 4vw, 22px); border: 1px solid rgba(85, 32, 111, .2); background: rgba(255, 255, 255, .92); box-shadow: 0 9px 24px rgba(44, 16, 58, .07); }
+.athlete-shell .session-exercise-card::before { width: 4px; background: var(--athlete-purple); }
+.athlete-shell .session-exercise-card.is-next { border-color: var(--athlete-mustard); box-shadow: 0 10px 26px rgba(105, 77, 0, .1); }
+.athlete-shell .session-exercise-card__head { grid-template-columns: 34px minmax(0, 1fr) auto; gap: 12px; }
+.athlete-shell .session-exercise-card__head h2 { color: var(--athlete-deep-purple); font-size: clamp(19px, 5vw, 24px); line-height: 1.12; }
+.athlete-shell .session-exercise-card__head p { color: #716676; font-size: 13px; line-height: 1.45; }
+.athlete-shell .uniform-prescription { margin-top: 18px; border-color: #d5c9da; background: #f8f5f9; }
+.athlete-shell .uniform-prescription > div { min-height: 84px; padding: 14px; }
+.athlete-shell .uniform-prescription small { color: #796c7d; font-size: 9px; }
+.athlete-shell .uniform-prescription b { margin-top: 9px; color: var(--athlete-deep-purple); font-size: 15px; line-height: 1.3; }
+.athlete-shell .variable-series { margin-top: 18px; border-color: #d5c9da; background: #f8f5f9; }
+.athlete-shell .variable-series__label { padding: 16px; }
+.athlete-shell .variable-series__label b { color: var(--athlete-deep-purple); font-size: 15px; }
+.athlete-shell .variable-series ol li { min-height: 55px; grid-template-columns: 38px 1fr; padding: 0 16px; }
+.athlete-shell .variable-series ol li b { color: var(--athlete-deep-purple); font-size: 14px; line-height: 1.35; white-space: normal; }
+.athlete-shell .exercise-guidance { margin-top: 18px; padding-top: 16px; border-top: 1px solid #d9cfdd; }
+.athlete-shell .exercise-guidance span { color: var(--athlete-purple); }
+.athlete-shell .exercise-guidance p { color: #3f3543; font-size: 14px; line-height: 1.55; }
+.athlete-shell .exercise-entry { margin-top: 18px; border-color: #d5c9da; background: #fbf9fc; }
+.athlete-shell .exercise-entry__fields input, .athlete-shell .exercise-entry__fields textarea { font-size: 16px; }
+.athlete-shell .exercise-entry__actions .button { min-height: 46px; background: var(--athlete-purple); }
+.athlete-shell .session-dock { bottom: calc(76px + env(safe-area-inset-bottom)); border-color: rgba(85, 32, 111, .22); background: rgba(255, 255, 255, .97); }
+.athlete-shell .session-dock .button--signal { min-height: 48px; background: var(--athlete-mustard); }
+.athlete-shell .completion-banner { margin-bottom: 12px; }
+
+@media (max-width: 560px) {
+  .athlete-shell .session-exercise-card__head { grid-template-columns: 28px minmax(0, 1fr); }
+  .athlete-shell .session-exercise-card__head > .tag { grid-column: 2; justify-self: start; }
+  .athlete-shell .uniform-prescription { grid-template-columns: 1fr 1fr; }
+  .athlete-shell .session-dock { align-items: stretch; flex-direction: column; }
+  .athlete-shell .session-dock .button { width: 100%; }
+}
