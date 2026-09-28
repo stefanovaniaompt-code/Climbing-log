@@ -1,12 +1,13 @@
 type AthleteAbstractVisualProps = {
   compact?: boolean
+  fill?: boolean
   route?: boolean
 }
 
-export function AthleteAbstractVisual({ compact = false, route = false }: AthleteAbstractVisualProps) {
+export function AthleteAbstractVisual({ compact = false, fill = false, route = false }: AthleteAbstractVisualProps) {
   return (
-    <div className={`athlete-abstract-visual${compact ? ' athlete-abstract-visual--compact' : ''}`} aria-hidden="true">
-      <svg viewBox="0 0 720 280" preserveAspectRatio="xMidYMid meet" role="presentation">
+    <div className={`athlete-abstract-visual${compact ? ' athlete-abstract-visual--compact' : ''}${fill ? ' athlete-abstract-visual--fill' : ''}`} aria-hidden="true">
+      <svg viewBox="0 0 720 280" preserveAspectRatio={fill ? 'xMidYMid slice' : 'xMidYMid meet'} role="presentation">
         <defs>
           <linearGradient id="athleteMountainFar" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#c9a7dc" />
