@@ -257,3 +257,61 @@
 @media (max-width: 430px) {
   .athlete-shell .session-feedback-scale { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
+
+.athlete-progress, .athlete-test-detail { max-width: 760px; margin: 0 auto; animation: athlete-page-in .28s ease-out both; }
+.athlete-progress__hero small, .athlete-progress__section-head small, .athlete-test-detail header small, .athlete-test-detail__history > div small { color: var(--athlete-purple); font: 700 10px/1 'IBM Plex Mono', monospace; letter-spacing: .1em; }
+.athlete-progress__hero h1, .athlete-test-detail header h1 { margin: 10px 0 0; color: var(--athlete-deep-purple); font-size: clamp(38px, 10vw, 56px); line-height: .95; letter-spacing: -.06em; }
+.athlete-progress__hero p, .athlete-test-detail header p { margin: 12px 0 0; color: #716676; font-size: 14px; line-height: 1.5; }
+.athlete-progress > .remote-test-panel { margin-top: 20px; }
+.athlete-progress__summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 20px 0; }
+.athlete-progress__summary > div { min-width: 0; padding: 15px 12px; border: 1px solid #d5c7db; background: #fff; }
+.athlete-progress__summary small, .athlete-progress__summary strong { display: block; }
+.athlete-progress__summary small { color: #776b7b; font: 700 8px/1.25 'IBM Plex Mono', monospace; }
+.athlete-progress__summary strong { margin-top: 8px; overflow-wrap: anywhere; color: var(--athlete-deep-purple); font: 700 clamp(18px, 5vw, 29px)/1 'IBM Plex Mono', monospace; }
+.athlete-progress__section-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin: 25px 0 12px; }
+.athlete-progress__section-head h2 { margin: 7px 0 0; color: var(--athlete-deep-purple); font-size: 24px; }
+.athlete-progress__section-head > span { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; background: #eadff0; color: var(--athlete-purple); font: 700 11px/1 'IBM Plex Mono', monospace; }
+.athlete-progress__groups { display: grid; gap: 12px; }
+.athlete-progress-card { width: 100%; padding: 18px; color: inherit; text-align: left; cursor: pointer; transition: transform .15s ease, box-shadow .15s ease; }
+.athlete-progress-card:active { transform: scale(.988); }
+.athlete-progress-card__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.athlete-progress-card__head small { color: #796d7d; font: 650 9px/1.35 'IBM Plex Mono', monospace; text-transform: uppercase; }
+.athlete-progress-card__head h3 { margin: 7px 0 0; color: var(--athlete-deep-purple); font-size: 20px; }
+.athlete-progress-card > p { margin: 6px 0 0; color: #796d7d; font-size: 11px; }
+.athlete-progress-values { display: grid; grid-template-columns: repeat(auto-fit, minmax(105px, 1fr)); gap: 8px; margin-top: 18px; }
+.athlete-progress-values > div { min-width: 0; padding: 12px; background: #f6f1f8; }
+.athlete-progress-values small, .athlete-progress-values strong, .athlete-progress-values em { display: block; }
+.athlete-progress-values small { color: #796d7d; font: 700 9px/1 'IBM Plex Mono', monospace; }
+.athlete-progress-values strong { margin-top: 7px; color: var(--athlete-deep-purple); font: 700 clamp(23px, 7vw, 34px)/1 'IBM Plex Mono', monospace; letter-spacing: -.05em; }
+.athlete-progress-values strong span { font-size: 11px; letter-spacing: 0; }
+.athlete-progress-values em { margin-top: 6px; color: #776b7b; font: 700 10px/1 'IBM Plex Mono', monospace; font-style: normal; }
+.athlete-progress-values em.is-positive { color: #24734d; }
+.athlete-progress-values em.is-negative { color: #a33131; }
+.athlete-real-chart { margin-top: 16px; padding: 12px 8px 8px; border: 1px solid #e0d5e4; background: #fbf9fc; }
+.athlete-real-chart svg { display: block; width: 100%; height: auto; max-height: 280px; }
+.athlete-real-chart.is-compact svg { max-height: 145px; }
+.athlete-real-chart__legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 5px; color: #716676; font-size: 10px; }
+.athlete-real-chart__legend span { display: flex; align-items: center; gap: 5px; }
+.athlete-real-chart__legend i { width: 8px; height: 8px; border-radius: 50%; }
+.athlete-progress__empty { margin-top: 22px; padding: 28px 20px; text-align: center; }
+.athlete-progress__empty svg { color: var(--athlete-purple); }
+.athlete-progress__empty h2 { color: var(--athlete-deep-purple); }
+.athlete-progress__empty p { color: #716676; }
+.athlete-progress__notice { display: flex; align-items: center; gap: 10px; margin-top: 14px; padding: 13px 14px; border-left: 3px solid var(--athlete-purple); background: #eee4f3; color: #53375f; font-size: 12px; }
+.athlete-progress__notice.is-error { border-color: #a33131; background: #f8e9e7; color: #8e2929; }
+.athlete-progress__loading { display: grid; gap: 8px; margin-top: 22px; }
+.athlete-progress__loading i { height: 72px; background: #eadff0; animation: athlete-shimmer 1.3s infinite; }
+.athlete-test-detail__back { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 22px; padding: 0; border: 0; background: transparent; color: var(--athlete-purple); font-size: 12px; font-weight: 750; cursor: pointer; }
+.athlete-test-detail__result, .athlete-test-detail__history { margin-top: 20px; padding: 18px; }
+.athlete-test-detail__history h2 { margin: 7px 0 0; color: var(--athlete-deep-purple); font-size: 21px; }
+.athlete-test-detail__history article { min-height: 58px; display: grid; grid-template-columns: minmax(110px, .6fr) minmax(0, 1.4fr); gap: 12px; align-items: center; border-bottom: 1px solid #e1d7e4; }
+.athlete-test-detail__history time { color: #716676; font-size: 11px; }
+.athlete-test-detail__history article > span { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
+.athlete-test-detail__history article b { color: var(--athlete-deep-purple); font: 700 11px/1.3 'IBM Plex Mono', monospace; }
+
+@media (max-width: 430px) {
+  .athlete-progress__summary { gap: 5px; }
+  .athlete-progress__summary > div { padding: 12px 8px; }
+  .athlete-test-detail__history article { grid-template-columns: 1fr; padding: 12px 0; }
+  .athlete-test-detail__history article > span { justify-content: flex-start; }
+}

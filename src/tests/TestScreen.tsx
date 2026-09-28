@@ -35,6 +35,7 @@ import {
 import { RemoteTestPanel } from './RemoteTestPanel'
 import { LiveTindeqPanel } from './LiveTindeqPanel'
 import { liveGripLabel } from './liveTestTemplates'
+import { AthleteProgressScreen } from './AthleteProgressScreen'
 import {
   buildRetestInput,
   buildTestPresentation,
@@ -590,22 +591,26 @@ export function TestScreen({
     }
   }
 
+  if (profile.role === 'athlete') {
+    return <AthleteProgressScreen
+      athleteName={athleteName}
+      presentation={presentation}
+      loading={state === 'loading'}
+      error={error}
+      assignedTests={<RemoteTestPanel profile={profile} athleteId={athleteId} onHistoryChanged={() => { void refresh() }} />}
+    />
+  }
+
   return (
     <div className="screen">
       <ScreenHeader
         eyebrow="TEST / RETEST / ANALYTICS"
         title={
           presentation?.sessions.length
-            ? profile.role === 'athlete'
-              ? 'I tuoi test e progressi.'
-              : `Progressi di ${athleteName}.`
+            ? `Progressi di ${athleteName}.`
             : 'Costruisci la prima baseline.'
         }
-        text={
-          profile.role === 'athlete'
-            ? 'Consulta risultati, andamento e differenze destra/sinistra. Le rilevazioni restano in sola lettura.'
-            : 'Registra test manuali, riusa lo stesso protocollo per il retest e confronta destra e sinistra nello stesso grafico.'
-        }
+        text="Registra test manuali, riusa lo stesso protocollo per il retest e confronta destra e sinistra nello stesso grafico."
         action={
           <div className="header-actions">
             <Tag
@@ -648,7 +653,7 @@ export function TestScreen({
             onChange={event =>
               setAthleteId(event.target.value)
             }
-            disabled={profile.role === 'athlete'}
+            disabled={false}
           >
             {data?.athletes.map(athlete => (
               <option
@@ -708,20 +713,6 @@ export function TestScreen({
           void refresh()
         }}
       />
-
-      {profile.role === 'athlete' && (
-        <div className="test-readonly-banner">
-          <ShieldCheck size={18} />
-          <div>
-            <b>Vista atleta in sola lettura</b>
-            <span>
-              Lo storico resta in sola lettura.
-              Le batterie a distanza assegnate dal coach
-              possono essere compilate direttamente qui.
-            </span>
-          </div>
-        </div>
-      )}
 
       {manageable && formOpen && (
         <Panel
