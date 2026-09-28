@@ -70,7 +70,7 @@ export function AthleteHomeScreen({ openSession, profile }: AthleteHomeScreenPro
   return (
     <div className="athlete-home">
       <section className="athlete-home__hero">
-        <div className="athlete-home__hero-copy"><p>CIAO {firstName.toUpperCase()}</p><h1>Oggi<br />si scala.</h1></div>
+        <div className="athlete-home__hero-copy"><p>CIAO {firstName.toUpperCase()}</p><h1>Oggi<br />si scala.<br /><span>duro.</span></h1></div>
         <div className="athlete-home__mountains"><AthleteAbstractVisual /></div>
       </section>
 
