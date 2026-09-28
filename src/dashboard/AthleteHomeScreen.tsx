@@ -1,638 +1,114 @@
 import { useEffect, useState } from 'react'
-import {
-  ArrowLeft,
-  ArrowRight,
-  ClipboardCheck,
-  Grip,
-  Play,
-  TriangleAlert,
-} from 'lucide-react'
+import { ArrowLeft, ArrowRight, ClipboardCheck, Play, TriangleAlert } from 'lucide-react'
+import { AthleteAbstractVisual } from '../athlete/AthleteAbstractVisual'
 import type { AppProfile } from '../onboarding/types'
-import { Metric, Panel, ScreenHeader, Tag } from '../shared/ui'
 import { selectCurrentWeek, summarizeWeek } from './athleteHome'
 import { loadAthleteHome } from './athleteHomeRepository'
-import {
-  blockForWeek,
-  buildAthleteWeekBlocks,
-  statusLabel,
-} from './athleteHomeNavigation'
+import { blockForWeek, buildAthleteWeekBlocks, statusLabel } from './athleteHomeNavigation'
 
 type AthleteHomeScreenProps = {
   openSession: (sessionId: string) => void
   profile: AppProfile
 }
 
-export function AthleteHomeScreen({
-  openSession,
-  profile,
-}: AthleteHomeScreenProps) {
+export function AthleteHomeScreen({ openSession, profile }: AthleteHomeScreenProps) {
   const programStorageKey = `cc-v2:program:${profile.userId}`
   const weekStorageKey = `cc-v2:week:${profile.userId}`
-
-  const [selectedProgramId, setSelectedProgramId] = useState(() => {
-    try {
-      return window.localStorage.getItem(programStorageKey) ?? ''
-    } catch {
-      return ''
-    }
-  })
-
-  const [selectedWeekId, setSelectedWeekId] = useState(() => {
-    try {
-      return window.localStorage.getItem(weekStorageKey) ?? ''
-    } catch {
-      return ''
-    }
-  })
-
-  const [home, setHome] =
-    useState<Awaited<ReturnType<typeof loadAthleteHome>> | undefined>()
+  const [selectedProgramId, setSelectedProgramId] = useState(() => readStoredValue(programStorageKey))
+  const [selectedWeekId, setSelectedWeekId] = useState(() => readStoredValue(weekStorageKey))
+  const [home, setHome] = useState<Awaited<ReturnType<typeof loadAthleteHome>> | undefined>()
   const [error, setError] = useState('')
   const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     let active = true
-
     setHome(undefined)
     setError('')
-
-    loadAthleteHome(
-      profile,
-      selectedWeekId || null,
-      selectedProgramId || null,
-    )
+    loadAthleteHome(profile, selectedWeekId || null, selectedProgramId || null)
       .then(value => {
         if (!active) return
-
         setHome(value)
-
-        if (value && value.program.id !== selectedProgramId) {
-          setSelectedProgramId(value.program.id)
-        }
-
-        if (
-          value &&
-          selectedWeekId &&
-          value.week.id !== selectedWeekId
-        ) {
-          setSelectedWeekId(value.week.id)
-        }
+        if (value && value.program.id !== selectedProgramId) setSelectedProgramId(value.program.id)
+        if (value && selectedWeekId && value.week.id !== selectedWeekId) setSelectedWeekId(value.week.id)
       })
       .catch(reason => {
         if (!active) return
-        setError(
-          reason instanceof Error
-            ? reason.message
-            : 'Programma non disponibile.',
-        )
+        setError(reason instanceof Error ? reason.message : 'Programma non disponibile.')
       })
+    return () => { active = false }
+  }, [profile, reloadKey, selectedProgramId, selectedWeekId])
 
-    return () => {
-      active = false
-    }
-  }, [
-    profile,
-    reloadKey,
-    selectedProgramId,
-    selectedWeekId,
-  ])
+  useEffect(() => storeValue(programStorageKey, selectedProgramId), [programStorageKey, selectedProgramId])
+  useEffect(() => storeValue(weekStorageKey, selectedWeekId), [selectedWeekId, weekStorageKey])
 
-  useEffect(() => {
-    try {
-      if (selectedProgramId) {
-        window.localStorage.setItem(
-          programStorageKey,
-          selectedProgramId,
-        )
-      } else {
-        window.localStorage.removeItem(programStorageKey)
-      }
-    } catch {
-      // Local storage can be unavailable.
-    }
-  }, [programStorageKey, selectedProgramId])
+  const firstName = profile.displayName.split(' ')[0]
 
-  useEffect(() => {
-    try {
-      if (selectedWeekId) {
-        window.localStorage.setItem(
-          weekStorageKey,
-          selectedWeekId,
-        )
-      } else {
-        window.localStorage.removeItem(weekStorageKey)
-      }
-    } catch {
-      // Local storage can be unavailable.
-    }
-  }, [selectedWeekId, weekStorageKey])
-
-  const today = new Intl.DateTimeFormat('it-IT', {
-    weekday: 'long',
-    day: '2-digit',
-    month: 'short',
-  })
-    .format(new Date())
-    .toUpperCase()
-
-  if (error) {
-    return (
-      <div className="screen">
-        <ScreenHeader
-          eyebrow={`ATLETA / ${today}`}
-          title={`Ciao, ${profile.displayName.split(' ')[0]}.`}
-          text="Il programma non è disponibile. Riprova tra poco."
-        />
-
-        <Panel
-          className="home-state home-state--error"
-          title="Programma non disponibile"
-          index="!"
-        >
-          <TriangleAlert size={24} />
-          <p>{error}</p>
-          <button
-            className="button button--secondary"
-            onClick={() => setReloadKey(value => value + 1)}
-          >
-            Riprova
-          </button>
-        </Panel>
-      </div>
-    )
-  }
-
-  if (home === undefined) {
-    return (
-      <div className="screen">
-        <ScreenHeader
-          eyebrow={`ATLETA / ${today}`}
-          title="Caricamento programma"
-          text="Aggiornamento in corso."
-        />
-
-        <Panel
-          className="home-state"
-          title="Caricamento programma"
-          index="..."
-        >
-          <div className="skeleton-stack" aria-label="Caricamento">
-            <span />
-            <span />
-            <span />
-          </div>
-        </Panel>
-      </div>
-    )
-  }
-
-  if (!home) {
-    return (
-      <div className="screen">
-        <ScreenHeader
-          eyebrow={`ATLETA / ${today}`}
-          title="Nessun programma attivo"
-          text="Contatta il coach per verificare la programmazione."
-        />
-
-        <Panel
-          className="home-state"
-          title="Nessun programma attivo"
-          index="00"
-        >
-          <ClipboardCheck size={25} />
-          <p>
-            Le nuove settimane compariranno qui dopo la pubblicazione del coach.
-          </p>
-        </Panel>
-      </div>
-    )
-  }
+  if (error) return <AthleteHomeState title={`Ciao, ${firstName}.`} message={error} error onRetry={() => setReloadKey(value => value + 1)} />
+  if (home === undefined) return <AthleteHomeState title="Caricamento programma" message="Aggiornamento in corso." loading />
+  if (!home) return <AthleteHomeState title="Nessun programma attivo" message="Le nuove settimane compariranno qui dopo la pubblicazione del coach." />
 
   const summary = summarizeWeek(home.sessions)
+  const progress = summary.total > 0 ? Math.round((summary.completed / summary.total) * 100) : 0
   const nextSession = summary.nextSession
   const currentWeek = selectCurrentWeek(home.weeks)
-  const todayIsoDay = ((new Date().getDay() + 6) % 7) + 1
-  const progress =
-    summary.total > 0
-      ? Math.round((summary.completed / summary.total) * 100)
-      : 0
-
-  const stageValues = home.sessions.map(session =>
-    session.status === 'completed'
-      ? 100
-      : session.status === 'in_progress'
-        ? 72
-        : session.status === 'skipped'
-          ? 10
-          : 34,
-  )
-
-  const nextIndex = nextSession
-    ? home.sessions.findIndex(session => session.id === nextSession.id)
-    : -1
-
-  const weekIndex = home.weeks.findIndex(
-    week => week.id === home.week.id,
-  )
-
-  const previousWeek =
-    weekIndex > 0
-      ? home.weeks[weekIndex - 1]
-      : null
-
-  const followingWeek =
-    weekIndex >= 0 && weekIndex < home.weeks.length - 1
-      ? home.weeks[weekIndex + 1]
-      : null
-
+  const weekIndex = home.weeks.findIndex(week => week.id === home.week.id)
+  const previousWeek = weekIndex > 0 ? home.weeks[weekIndex - 1] : null
+  const followingWeek = weekIndex >= 0 && weekIndex < home.weeks.length - 1 ? home.weeks[weekIndex + 1] : null
   const blocks = buildAthleteWeekBlocks(home.weeks)
-
   const currentBlock = blockForWeek(blocks, home.week.id)
   const blockWeeks = currentBlock?.weeks ?? [home.week]
-  const isCurrentWeek =
-    currentWeek?.id === home.week.id
+  const isCurrentWeek = currentWeek?.id === home.week.id
+  const programProgress = home.weeks.length > 0 ? Math.round(((weekIndex + 1) / home.weeks.length) * 100) : 0
 
   const selectBlock = (blockKey: string) => {
     const block = blocks.find(item => item.key === blockKey)
     if (!block) return
-
-    const currentInsideBlock =
-      currentWeek &&
-      block.weeks.some(week => week.id === currentWeek.id)
-        ? currentWeek
-        : null
-
-    setSelectedWeekId(
-      currentInsideBlock?.id ??
-        block.weeks[0]?.id ??
-        '',
-    )
+    const currentInsideBlock = currentWeek && block.weeks.some(week => week.id === currentWeek.id) ? currentWeek : null
+    setSelectedWeekId(currentInsideBlock?.id ?? block.weeks[0]?.id ?? '')
   }
 
   return (
-    <div className="screen">
-      <ScreenHeader
-        eyebrow={`ATLETA / ${today}`}
-        title={`Ciao, ${profile.displayName.split(' ')[0]}.`}
-        text="Seleziona blocco e settimana per aprire una sessione."
-        action={
-          <Tag tone={home.source === 'legacy-v1' ? 'success' : 'neutral'}>
-            {home.source === 'legacy-v1' ? 'ONLINE' : 'DEMO'}
-          </Tag>
-        }
-      />
+    <div className="athlete-home">
+      <section className="athlete-home__hero">
+        <div className="athlete-home__hero-copy"><p>CIAO {firstName.toUpperCase()}</p><h1>Oggi<br />si scala.</h1></div>
+        <div className="athlete-home__mountains"><AthleteAbstractVisual /></div>
+      </section>
 
-      <div className="readiness-strip">
-        <div className="readiness-strip__week">
-          <span>SETTIMANA</span>
-          <strong>{String(home.week.weekNumber).padStart(2, '0')}</strong>
-          <em>{home.program.name}</em>
+      <section className="athlete-card athlete-home__week-card">
+        <div className="athlete-home__week-head"><div><small>IL TUO PROGRAMMA · SETTIMANA {home.week.weekNumber}</small><h2>{home.program.name}</h2></div>{(home.week.phase || home.week.blockName) && <span>{home.week.phase || home.week.blockName}</span>}</div>
+        <div className="athlete-home__sessions">
+          {home.sessions.length === 0 ? <div className="athlete-home__empty"><ClipboardCheck size={20} /><span>Nessuna sessione in questa settimana.</span></div> : home.sessions.map(session => {
+            const disabled = session.status === 'skipped'
+            return <button key={session.id} disabled={disabled} onClick={() => openSession(session.id)}>
+              <strong>{String(session.order).padStart(2, '0')}</strong>
+              <span><b>{session.title}</b><small>{session.objective || `${session.exerciseCount} esercizi${session.durationMinutes ? ` · ${session.durationMinutes} min` : ''}`}</small></span>
+              <i className={session.status === 'completed' ? 'is-complete' : session.status === 'in_progress' ? 'is-progress' : ''} aria-label={statusLabel(session.status)} />
+              {!disabled && <ArrowRight size={16} />}
+            </button>
+          })}
         </div>
+        <div className="athlete-home__week-progress"><div><span>{summary.completed} completate · {summary.total - summary.completed} da fare</span><b>{progress}%</b></div><i><span style={{ width: `${progress}%` }} /></i></div>
+      </section>
 
-        <p>
-          {home.program.goal ||
-            home.week.blockName ||
-            home.week.phase ||
-            'Programma attivo'}
-          {' - '}
-          {summary.completed} sessioni completate su {summary.total}.
-        </p>
+      {nextSession && <button className="athlete-home__next" onClick={() => openSession(nextSession.id)}><span><small>{nextSession.status === 'in_progress' ? 'SESSIONE IN CORSO' : 'PROSSIMA SESSIONE'}</small><b>{nextSession.title}</b><em>{nextSession.exerciseCount} esercizi{nextSession.durationMinutes ? ` · ${nextSession.durationMinutes} min` : ''}</em></span><i><Play size={18} fill="currentColor" /></i></button>}
 
-        <Tag tone={progress === 100 ? 'success' : 'purple'}>
-          {progress}% completato
-        </Tag>
-      </div>
-
-      <div className="grid grid--2-1">
-        <Panel
-          className="session-hero"
-          title={
-            nextSession
-              ? 'Prossima sessione'
-              : home.sessions.length === 0
-                ? 'Settimana senza sessioni'
-                : 'Nessuna sessione da eseguire'
-          }
-          index="01"
-          action={
-            nextSession?.durationMinutes
-              ? <Tag tone="signal">{nextSession.durationMinutes} min</Tag>
-              : undefined
-          }
-        >
-          <div className="session-hero__title">
-            <Grip size={30} />
-
-            <div>
-              <small>
-                {home.week.phase ||
-                  home.week.blockName ||
-                  'ALLENAMENTO'}
-                {' - '}
-                W{String(home.week.weekNumber).padStart(2, '0')}
-                {nextSession
-                  ? `/D${String(nextSession.scheduledDay).padStart(2, '0')}`
-                  : ''}
-              </small>
-
-              <h2>
-                {nextSession?.title ??
-                  (home.sessions.length === 0
-                    ? 'Il coach non ha ancora inserito sessioni'
-                    : 'Tutte le sessioni disponibili sono state gestite')}
-              </h2>
-            </div>
-          </div>
-
-          <div className="session-facts">
-            <span>
-              <b>{nextSession?.exerciseCount ?? summary.exerciseCount}</b>
-              {' '}esercizi
-            </span>
-            <span>
-              <b>{nextSession?.order ?? summary.total}</b>
-              {' '}posizione
-            </span>
-            <span>
-              <b>{nextSession?.sessionRpe ?? '-'}</b>
-              {' '}RPE
-            </span>
-          </div>
-
-          {nextSession && (
-            <button
-              className="button button--signal button--wide"
-              onClick={() => openSession(nextSession.id)}
-            >
-              <Play size={17} fill="currentColor" />
-              <span>
-                {nextSession.status === 'in_progress'
-                  ? 'Riprendi sessione'
-                  : 'Apri sessione'}
-              </span>
-              <ArrowRight size={17} />
-            </button>
-          )}
-
-          {!nextSession && followingWeek && (
-            <button
-              className="button button--secondary button--wide"
-              onClick={() => setSelectedWeekId(followingWeek.id)}
-            >
-              <span>Vai alla settimana successiva</span>
-              <ArrowRight size={17} />
-            </button>
-          )}
-        </Panel>
-
-        <Panel
-          title="Percorso"
-          index="02"
-          action={
-            <div className="header-actions">
-              <button
-                className="icon-button"
-                disabled={!previousWeek}
-                onClick={() =>
-                  previousWeek &&
-                  setSelectedWeekId(previousWeek.id)
-                }
-                aria-label="Settimana precedente"
-                title="Settimana precedente"
-              >
-                <ArrowLeft size={17} />
-              </button>
-
-              <Tag tone={isCurrentWeek ? 'signal' : 'purple'}>
-                W{String(home.week.weekNumber).padStart(2, '0')} / {home.weeks.length}
-              </Tag>
-
-              <button
-                className="icon-button"
-                disabled={!followingWeek}
-                onClick={() =>
-                  followingWeek &&
-                  setSelectedWeekId(followingWeek.id)
-                }
-                aria-label="Settimana successiva"
-                title="Settimana successiva"
-              >
-                <ArrowRight size={17} />
-              </button>
-            </div>
-          }
-        >
-          <label className="athlete-block-select">
-            <span>Programma</span>
-            <select
-              value={home.program.id}
-              disabled={home.programs.length <= 1}
-              onChange={event => {
-                setSelectedProgramId(event.target.value)
-                setSelectedWeekId('')
-              }}
-            >
-              {home.programs.map(program => (
-                <option key={program.id} value={program.id}>
-                  {program.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="athlete-block-select">
-            <span>Blocco</span>
-            <select
-              value={currentBlock?.key ?? ''}
-              disabled={blocks.length <= 1}
-              onChange={event => selectBlock(event.target.value)}
-            >
-              {blocks.map(block => (
-                <option key={block.key} value={block.key}>
-                  {block.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="athlete-block-select">
-            <span>Settimana</span>
-            <select
-              value={home.week.id}
-              disabled={blockWeeks.length <= 1}
-              onChange={event =>
-                setSelectedWeekId(event.target.value)
-              }
-            >
-              {blockWeeks.map(week => (
-                <option key={week.id} value={week.id}>
-                  Settimana {week.weekNumber}
-                  {week.status === 'current' ? ' - corrente' : ''}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          {!isCurrentWeek && currentWeek && (
-            <button
-              className="text-button"
-              onClick={() => setSelectedWeekId(currentWeek.id)}
-            >
-              Torna alla settimana corrente
-            </button>
-          )}
-
-          <div className="week-days">
-            {['L', 'M', 'M', 'G', 'V', 'S', 'D'].map(
-              (day, index) => {
-                const scheduled = home.sessions.filter(
-                  session => session.scheduledDay === index + 1,
-                )
-                const isDone =
-                  scheduled.length > 0 &&
-                  scheduled.every(
-                    session => session.status === 'completed',
-                  )
-
-                return (
-                  <div
-                    key={`${day}${index}`}
-                    className={
-                      index + 1 === todayIsoDay
-                        ? 'today'
-                        : isDone
-                          ? 'done'
-                          : ''
-                    }
-                  >
-                    <span>{day}</span>
-                    <b>{index + 1}</b>
-                  </div>
-                )
-              },
-            )}
-          </div>
-
-          <div className="progress-line">
-            <span style={{ width: `${progress}%` }} />
-          </div>
-
-          <p className="muted-copy">
-            {summary.completed} di {summary.total} sessioni completate
-            {' - '}
-            {summary.exerciseCount} esercizi prescritti.
-          </p>
-
-          <p className="muted-copy">
-            {home.week.startDate
-              ? `Inizio settimana: ${new Intl.DateTimeFormat('it-IT', {
-                  day: '2-digit',
-                  month: 'short',
-                  year: 'numeric',
-                }).format(new Date(`${home.week.startDate}T12:00:00`))}`
-              : `Settimana ${home.week.weekNumber}`}
-          </p>
-        </Panel>
-      </div>
-
-      <div className="metric-grid metric-grid--4">
-        <Metric
-          label="Sessioni"
-          value={String(summary.completed).padStart(2, '0')}
-          unit={`/${String(summary.total).padStart(2, '0')}`}
-        />
-        <Metric
-          label="Esercizi"
-          value={String(summary.exerciseCount).padStart(2, '0')}
-        />
-        <Metric
-          label="Durata prevista"
-          value={String(summary.plannedMinutes)}
-          unit=" min"
-        />
-        <Metric
-          label="RPE medio"
-          value={summary.averageRpe?.toFixed(1) ?? '-'}
-          unit="/10"
-        />
-      </div>
-
-      <Panel
-        title="Sessioni della settimana"
-        index="03"
-        action={
-          <Tag tone={isCurrentWeek ? 'signal' : 'purple'}>
-            {isCurrentWeek ? 'SETTIMANA CORRENTE' : `SETTIMANA ${home.week.weekNumber}`}
-          </Tag>
-        }
-      >
-        <div className="athlete-week-overview">
-          <div>
-            <b>
-              {home.week.blockName ||
-                home.week.phase ||
-                home.program.name}
-            </b>
-            <p>
-              Apri una sessione specifica oppure riprendi quella già in corso.
-            </p>
-          </div>
-
-          {home.sessions.length === 0 ? (
-            <div className="empty-state empty-state--compact">
-              <ClipboardCheck size={20} />
-              <b>Nessuna sessione in questa settimana</b>
-              <span>
-                Puoi scegliere un'altra settimana o attendere un aggiornamento del coach.
-              </span>
-            </div>
-          ) : (
-            <div className="athlete-week-workouts">
-              {home.sessions.map((session, index) => (
-                <div
-                  className={`athlete-week-workout is-${session.status}${
-                    index === nextIndex ? ' is-next' : ''
-                  }`}
-                  key={session.id}
-                >
-                  <div className="athlete-week-workout__bar" aria-hidden="true">
-                    <i
-                      className={index === nextIndex ? 'is-next' : ''}
-                      style={{ width: `${stageValues[index]}%` }}
-                    />
-                  </div>
-                  <button
-                    className={`button ${
-                      session.status === 'in_progress'
-                        ? 'button--signal'
-                        : 'button--secondary'
-                    }`}
-                    disabled={session.status === 'skipped'}
-                    onClick={() => openSession(session.id)}
-                    title={
-                      session.status === 'skipped'
-                        ? 'Sessione marcata come saltata'
-                        : undefined
-                    }
-                  >
-                    <span>
-                      <small>
-                        GIORNO {String(session.scheduledDay).padStart(2, '0')}
-                        <em>{statusLabel(session.status)}</em>
-                      </small>
-                      <b>{session.title}</b>
-                    </span>
-                    {session.status !== 'skipped' && (
-                      <ArrowRight size={16} />
-                    )}
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+      <section className="athlete-card athlete-home__path">
+        <div className="athlete-home__path-head"><div><small>IL TUO PERCORSO</small><h2>{home.week.blockName || home.week.phase || home.program.name}</h2></div><strong>{weekIndex + 1}<span>/{home.weeks.length}</span></strong></div>
+        <div className="athlete-home__selectors">
+          {home.programs.length > 1 && <label><span>Programma</span><select value={home.program.id} onChange={event => { setSelectedProgramId(event.target.value); setSelectedWeekId('') }}>{home.programs.map(program => <option key={program.id} value={program.id}>{program.name}</option>)}</select></label>}
+          {blocks.length > 1 && <label><span>Blocco</span><select value={currentBlock?.key ?? ''} onChange={event => selectBlock(event.target.value)}>{blocks.map(block => <option key={block.key} value={block.key}>{block.label}</option>)}</select></label>}
+          {blockWeeks.length > 1 && <label><span>Settimana</span><select value={home.week.id} onChange={event => setSelectedWeekId(event.target.value)}>{blockWeeks.map(week => <option key={week.id} value={week.id}>Settimana {week.weekNumber}{week.status === 'current' ? ' · corrente' : ''}</option>)}</select></label>}
         </div>
-      </Panel>
+        <div className="athlete-home__path-progress"><i><span style={{ width: `${programProgress}%` }} /></i><small>{programProgress}% del programma</small></div>
+        <div className="athlete-home__week-nav"><button disabled={!previousWeek} onClick={() => previousWeek && setSelectedWeekId(previousWeek.id)}><ArrowLeft size={16} /> Precedente</button>{!isCurrentWeek && currentWeek && <button onClick={() => setSelectedWeekId(currentWeek.id)}>Settimana corrente</button>}<button disabled={!followingWeek} onClick={() => followingWeek && setSelectedWeekId(followingWeek.id)}>Successiva <ArrowRight size={16} /></button></div>
+      </section>
     </div>
   )
 }
+
+function AthleteHomeState({ title, message, error, loading, onRetry }: { title: string; message: string; error?: boolean; loading?: boolean; onRetry?: () => void }) {
+  return <div className="athlete-home athlete-home--state"><section className="athlete-home__hero"><div className="athlete-home__hero-copy"><p>CLIMBING COACH</p><h1>{title}</h1></div><div className="athlete-home__mountains"><AthleteAbstractVisual compact /></div></section><div className="athlete-card athlete-home__state">{error ? <TriangleAlert size={24} /> : <ClipboardCheck size={24} />}<p>{message}</p>{loading && <div className="athlete-home__skeleton"><i /><i /><i /></div>}{onRetry && <button onClick={onRetry}>Riprova</button>}</div></div>
+}
+
+function readStoredValue(key: string) { try { return window.localStorage.getItem(key) ?? '' } catch { return '' } }
+function storeValue(key: string, value: string) { try { if (value) window.localStorage.setItem(key, value); else window.localStorage.removeItem(key) } catch { /* Storage può essere disabilitato. */ } }
