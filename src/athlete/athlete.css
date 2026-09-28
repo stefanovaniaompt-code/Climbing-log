@@ -1,0 +1,85 @@
+.athlete-shell {
+  --athlete-purple: #55206f;
+  --athlete-deep-purple: #2c103a;
+  --athlete-mustard: #d6aa24;
+  --athlete-canvas: #f5eff8;
+  min-height: 100dvh;
+  background: var(--athlete-canvas);
+  color: #241b28;
+}
+
+.athlete-shell__header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  min-height: calc(62px + env(safe-area-inset-top));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: env(safe-area-inset-top) clamp(16px, 4vw, 28px) 0;
+  border-bottom: 1px solid rgba(85, 32, 111, .14);
+  background: rgba(247, 242, 250, .94);
+  backdrop-filter: blur(14px);
+}
+
+.athlete-shell__brand,
+.athlete-shell__tool,
+.athlete-shell__sync,
+.athlete-shell__profile {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.athlete-shell__brand { display: flex; align-items: center; gap: 10px; padding: 0; color: var(--athlete-deep-purple); }
+.athlete-shell__brand > span { width: 34px; height: 34px; display: grid; place-items: center; background: var(--athlete-deep-purple); color: #fff; font: 700 11px/1 'IBM Plex Mono', monospace; }
+.athlete-shell__brand b { font-size: 14px; letter-spacing: -.015em; }
+.athlete-shell__actions { display: flex; align-items: center; gap: 6px; }
+.athlete-shell__tool, .athlete-shell__sync, .athlete-shell__profile { min-width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; color: var(--athlete-deep-purple); }
+.athlete-shell__tool:active, .athlete-shell__sync:active { background: rgba(85, 32, 111, .08); }
+.athlete-shell__sync { gap: 3px; color: var(--athlete-purple); }
+.athlete-shell__sync span { font: 700 9px/1 'IBM Plex Mono', monospace; }
+.athlete-shell__profile span { width: 30px; height: 30px; display: grid; place-items: center; background: var(--athlete-purple); color: #fff; font: 700 10px/1 'IBM Plex Mono', monospace; }
+.athlete-shell__main { width: min(100%, 980px); margin: 0 auto; padding: 28px clamp(16px, 4vw, 32px) calc(104px + env(safe-area-inset-bottom)); }
+
+.athlete-bottom-nav {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 40;
+  min-height: calc(70px + env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: 7px max(10px, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(10px, env(safe-area-inset-left));
+  border-top: 1px solid rgba(85, 32, 111, .18);
+  background: rgba(251, 248, 252, .97);
+  box-shadow: 0 -8px 28px rgba(44, 16, 58, .08);
+  backdrop-filter: blur(18px);
+}
+
+.athlete-bottom-nav button { position: relative; min-width: 0; min-height: 56px; display: grid; place-items: center; align-content: center; gap: 4px; padding: 4px; border: 0; background: transparent; color: #706676; font-size: 11px; font-weight: 650; cursor: pointer; }
+.athlete-bottom-nav button::before { content: ''; position: absolute; top: -8px; width: 30px; height: 3px; background: transparent; transition: background .18s ease, width .18s ease; }
+.athlete-bottom-nav button.is-active { color: var(--athlete-purple); }
+.athlete-bottom-nav button.is-active::before { width: 44px; background: var(--athlete-mustard); }
+.athlete-bottom-nav__icon { position: relative; display: grid; place-items: center; }
+.athlete-bottom-nav__icon i { position: absolute; top: -7px; right: -11px; min-width: 17px; height: 17px; display: grid; place-items: center; padding: 0 4px; border-radius: 9px; background: var(--athlete-mustard); color: var(--athlete-deep-purple); font: 700 9px/1 'IBM Plex Mono', monospace; font-style: normal; }
+
+.athlete-abstract-visual { width: 100%; overflow: hidden; background: #f7f2fa; }
+.athlete-abstract-visual svg { display: block; width: 100%; height: auto; }
+.athlete-abstract-visual--compact svg { max-height: 170px; }
+.is-spinning { animation: athlete-spin .8s linear infinite; }
+@keyframes athlete-spin { to { transform: rotate(360deg); } }
+
+@media (min-width: 801px) {
+  .athlete-bottom-nav { left: 50%; width: min(100%, 980px); transform: translateX(-50%); border-inline: 1px solid rgba(85, 32, 111, .12); }
+}
+
+@media (max-width: 430px) {
+  .athlete-shell__brand b { display: none; }
+  .athlete-shell__main { padding-top: 20px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .athlete-bottom-nav button::before { transition: none; }
+  .is-spinning { animation: none; }
+}

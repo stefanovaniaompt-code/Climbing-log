@@ -34,6 +34,7 @@ import { AccountSecurityScreen } from './features/account/AccountSecurityScreen'
 import { CoachFeedbackScreen } from './feedback/CoachFeedbackScreen'
 import { MessagesScreen } from './messaging/MessagesScreen'
 import { useMessageNotifications } from './messaging/useMessageNotifications'
+import { AthleteShell, type AthleteView } from './athlete/AthleteShell'
 
 type ViewId = 'system' | 'home' | 'session' | 'dashboard' | 'athletes' | 'feedback' | 'messages' | 'builder' | 'library' | 'test' | 'migration' | 'account'
 
@@ -247,6 +248,29 @@ export default function App({ profile, onSignOut, initialMode }: { profile: AppP
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  const screen = <Screen goTo={navigate} goToAthlete={goToAthlete} openAthlete={openAthlete} openSession={openSession} profile={activeProfile} selectedAthleteId={selectedAthleteId} setSelectedAthleteId={setSelectedAthleteId} selectedSessionId={selectedSessionId} />
+
+  if (mode === 'athlete') {
+    return <>
+      <AthleteShell
+        profile={activeProfile}
+        view={view}
+        unreadCount={unreadCount}
+        pendingCount={pendingCount}
+        syncing={syncing}
+        canSwitchToCoach={modes.includes('coach')}
+        onNavigate={next => navigate(next as AthleteView)}
+        onAccount={() => navigate('account')}
+        onSignOut={onSignOut}
+        onSync={() => void synchronizePending()}
+        onSwitchToCoach={() => changeMode('coach')}
+      >
+        {screen}
+      </AthleteShell>
+      {messageToast && <div className="message-toast" role="status">{messageToast}</div>}
+    </>
+  }
+
   return (
     <div className="app-shell">
       <aside className={`sidebar ${menuOpen ? 'is-open' : ''}`}>
@@ -260,11 +284,11 @@ export default function App({ profile, onSignOut, initialMode }: { profile: AppP
         <div className="topbar">
           <button className="menu-button" onClick={() => setMenuOpen(!menuOpen)} aria-label="Apri navigazione"><Menu size={20} /></button>
           <div className="topbar__crumb"><span>CC</span><i>/</i><b>{viewMeta[view].label}</b></div>
-          <div className="topbar__tools">{modes.length > 1 ? <div className="mode-switch" aria-label="Modalità"><button className={mode === 'coach' ? 'active' : ''} onClick={() => changeMode('coach')}>Coach</button><button className={mode === 'athlete' ? 'active' : ''} onClick={() => changeMode('athlete')}>Atleta</button></div> : <span className="role-chip">{mode === 'coach' ? 'Coach' : 'Atleta'}</span>}<button className="sync-chip" onClick={() => void synchronizePending()} disabled={syncing || pendingCount === 0} title="Sincronizza la coda offline"><span className={`status-dot ${pendingCount ? 'status-dot--sync' : 'status-dot--ok'}`} />{syncing ? 'Sincronizzo…' : pendingCount ? `${pendingCount} in coda` : 'Cloud allineato'}</button><button className="icon-button message-indicator" aria-label={`Messaggi${unreadCount ? `, ${unreadCount} non letti` : ''}`} onClick={() => navigate(mode === 'coach' ? 'feedback' : 'messages')}><Mail size={17} />{unreadCount > 0 && <span>{unreadCount}</span>}</button><button className="icon-button" aria-label="Account e sicurezza" onClick={() => navigate('account')}><Settings2 size={17} /></button><button className="profile-button" onClick={() => void onSignOut()} title="Esci"><span>{initials}</span><LogOut size={14} /></button></div>
+          <div className="topbar__tools">{modes.length > 1 ? <div className="mode-switch" aria-label="Modalità"><button className="active" onClick={() => changeMode('coach')}>Coach</button><button onClick={() => changeMode('athlete')}>Atleta</button></div> : <span className="role-chip">Coach</span>}<button className="sync-chip" onClick={() => void synchronizePending()} disabled={syncing || pendingCount === 0} title="Sincronizza la coda offline"><span className={`status-dot ${pendingCount ? 'status-dot--sync' : 'status-dot--ok'}`} />{syncing ? 'Sincronizzo…' : pendingCount ? `${pendingCount} in coda` : 'Cloud allineato'}</button><button className="icon-button message-indicator" aria-label={`Messaggi${unreadCount ? `, ${unreadCount} non letti` : ''}`} onClick={() => navigate('feedback')}><Mail size={17} />{unreadCount > 0 && <span>{unreadCount}</span>}</button><button className="icon-button" aria-label="Account e sicurezza" onClick={() => navigate('account')}><Settings2 size={17} /></button><button className="profile-button" onClick={() => void onSignOut()} title="Esci"><span>{initials}</span><LogOut size={14} /></button></div>
         </div>
-        <main><Screen goTo={navigate} goToAthlete={goToAthlete} openAthlete={openAthlete} openSession={openSession} profile={activeProfile} selectedAthleteId={selectedAthleteId} setSelectedAthleteId={setSelectedAthleteId} selectedSessionId={selectedSessionId} /></main>
+        <main>{screen}</main>
         <nav className="bottom-nav" aria-label="Navigazione mobile">
-          {roleNavItems.filter(item => mode === 'coach' ? ['dashboard', 'athletes', 'feedback', 'test'].includes(item.id) : ['home', 'session', 'test', 'messages'].includes(item.id)).slice(0, 4).map(item => { const Icon = item.icon; return <button key={item.id} className={view === item.id ? 'active' : ''} onClick={() => navigate(item.id)}><Icon size={18} /><span>{item.shortLabel}</span>{(item.id === 'feedback' || item.id === 'messages') && unreadCount > 0 && <i>{unreadCount}</i>}</button> })}
+          {roleNavItems.filter(item => ['dashboard', 'athletes', 'feedback', 'test'].includes(item.id)).slice(0, 4).map(item => { const Icon = item.icon; return <button key={item.id} className={view === item.id ? 'active' : ''} onClick={() => navigate(item.id)}><Icon size={18} /><span>{item.shortLabel}</span>{item.id === 'feedback' && unreadCount > 0 && <i>{unreadCount}</i>}</button> })}
         </nav>
       </div>
       {menuOpen && <button className="scrim" aria-label="Chiudi navigazione" onClick={() => setMenuOpen(false)} />}
