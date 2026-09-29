@@ -264,35 +264,82 @@
 .athlete-timer-launch__summary em { margin-top: 6px; color: #cdbdd3; font: 600 9px/1.2 'IBM Plex Mono', monospace; font-style: normal; }
 .athlete-timer-launch__summary > strong { color: var(--athlete-mustard); font-size: 12px; }
 .athlete-timer-launch__control { border: 0; border-left: 1px solid rgba(255, 255, 255, .18); background: var(--athlete-mustard); color: var(--athlete-deep-purple); cursor: pointer; }
-.athlete-timer-focus { position: fixed; inset: 0; z-index: 100; min-height: 100dvh; display: grid; grid-template-rows: auto 1fr auto; padding: max(18px, env(safe-area-inset-top)) clamp(18px, 5vw, 30px) max(18px, env(safe-area-inset-bottom)); background: var(--athlete-deep-purple); color: #fff; animation: athlete-timer-enter .22s ease-out both; }
-.athlete-timer-focus::before { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at 50% 42%, rgba(214, 170, 36, .12), transparent 36%); }
-.athlete-timer-focus header, .athlete-timer-focus footer, .athlete-timer-focus__body { position: relative; z-index: 1; }
-.athlete-timer-focus header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
-.athlete-timer-focus header small { color: var(--athlete-mustard); font: 700 10px/1 'IBM Plex Mono', monospace; letter-spacing: .12em; }
-.athlete-timer-focus header h2 { max-width: 520px; margin: 8px 0 0; color: #fff; font-size: clamp(20px, 6vw, 30px); line-height: 1.12; }
-.athlete-timer-focus header button { width: 44px; height: 44px; flex: 0 0 auto; display: grid; place-items: center; border: 1px solid rgba(255, 255, 255, .24); background: transparent; color: #fff; cursor: pointer; }
-.athlete-timer-focus__body { display: grid; place-items: center; align-content: center; gap: clamp(20px, 5vh, 38px); }
-.athlete-timer-focus__phase { color: var(--athlete-mustard); text-align: center; font: 700 clamp(14px, 4vw, 19px)/1 'IBM Plex Mono', monospace; letter-spacing: .16em; text-transform: uppercase; }
-.athlete-timer-focus__ring { --timer-progress: 0deg; width: min(72vw, 360px); aspect-ratio: 1; display: grid; place-items: center; padding: 13px; border-radius: 50%; background: conic-gradient(var(--athlete-mustard) var(--timer-progress), rgba(255, 255, 255, .13) 0); box-shadow: 0 0 0 1px rgba(255, 255, 255, .1), 0 24px 65px rgba(0, 0, 0, .28); }
-.athlete-timer-focus__ring > div { width: 100%; height: 100%; display: grid; place-items: center; align-content: center; border-radius: 50%; background: #260e33; }
-.athlete-timer-focus__ring strong { font: 700 clamp(72px, 22vw, 132px)/.82 'IBM Plex Mono', monospace; letter-spacing: -.09em; font-variant-numeric: tabular-nums; }
-.athlete-timer-focus__ring span { margin-top: 18px; color: #d6c5dc; font: 700 11px/1.35 'IBM Plex Mono', monospace; letter-spacing: .07em; text-align: center; text-transform: uppercase; }
-.athlete-timer-focus__body > p { margin: 0; color: #cdbdd3; font-size: 13px; }
-.athlete-timer-focus footer { width: min(100%, 560px); justify-self: center; display: grid; grid-template-columns: minmax(0, 1fr) minmax(120px, .42fr); gap: 10px; }
-.athlete-timer-focus footer button { min-height: 62px; display: flex; align-items: center; justify-content: center; gap: 10px; border: 1px solid rgba(255, 255, 255, .24); color: #fff; font-weight: 750; cursor: pointer; }
-.athlete-timer-focus__primary { background: var(--athlete-mustard); color: var(--athlete-deep-purple) !important; }
-.athlete-timer-focus__reset { background: rgba(255, 255, 255, .06); }
+.athlete-timer-focus { --athlete-purple: #55206f; --athlete-deep-purple: #2c103a; --athlete-mustard: #d6aa24; position: fixed; inset: 0; z-index: 1000; width: auto; height: 100dvh; min-height: 100dvh; box-sizing: border-box; overflow-x: hidden; overflow-y: auto; padding: max(18px, env(safe-area-inset-top)) clamp(18px, 5vw, 30px) max(24px, env(safe-area-inset-bottom)); background: radial-gradient(circle at 50% 25%, #55206f 0%, #2c103a 48%, #16081e 100%); color: #fff; animation: athlete-timer-enter .42s cubic-bezier(.2,.8,.2,1) both; }
+.athlete-timer-focus::before { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at 50% 36%, rgba(214,170,36,.1), transparent 34%); }
+.athlete-timer-focus__geometry { position: absolute; pointer-events: none; border: 1px solid rgba(214,170,36,.13); transform: rotate(38deg); }
+.athlete-timer-focus__geometry--a { width: 220px; height: 220px; top: -100px; right: -110px; background: rgba(214,170,36,.035); }
+.athlete-timer-focus__geometry--b { width: 150px; height: 150px; bottom: 80px; left: -120px; border-color: rgba(255,255,255,.07); }
+.athlete-timer-focus header, .athlete-timer-focus__body { position: relative; z-index: 1; }
+.athlete-timer-focus header { width: min(100%, 440px); margin: 0 auto; display: grid; grid-template-columns: 40px 1fr 40px; align-items: center; gap: 14px; }
+.athlete-timer-focus header button { width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.09); border-radius: 50%; background: rgba(255,255,255,.04); color: #fff; cursor: pointer; }
+.athlete-timer-focus__switch { min-height: 46px; display: grid; grid-template-columns: 1fr 1fr; padding: 3px; border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.06); }
+.athlete-timer-focus header .athlete-timer-focus__switch button { width: auto; height: auto; min-height: 38px; border: 0; border-radius: 0; background: transparent; color: rgba(255,255,255,.62); font-size: 10px; font-weight: 800; letter-spacing: .08em; }
+.athlete-timer-focus header .athlete-timer-focus__switch button.is-active { background: var(--athlete-mustard); color: var(--athlete-deep-purple); }
+.athlete-timer-focus__panels { width: min(100%, 440px); min-height: calc(100dvh - 92px); margin: 0 auto; }
+.athlete-timer-focus__body { width: min(100%, 440px); min-height: calc(100dvh - 92px); margin: 0 auto; display: flex; flex-direction: column; padding-top: 20px; }
+.athlete-timer-focus__panels.is-timer .athlete-timer-focus__exercise-panel, .athlete-timer-focus__panels.is-exercise .athlete-timer-focus__timer-panel { display: none; }
+.athlete-timer-focus__panels.is-timer .athlete-timer-focus__timer-panel { animation: athlete-timer-panel-from-right .28s cubic-bezier(.2,.8,.2,1) both; }
+.athlete-timer-focus__panels.is-exercise .athlete-timer-focus__exercise-panel { animation: athlete-timer-panel-from-left .28s cubic-bezier(.2,.8,.2,1) both; }
+.athlete-timer-focus__intro { text-align: center; }
+.athlete-timer-focus__intro small { color: var(--athlete-mustard); font: 700 11px/1 'IBM Plex Mono', monospace; letter-spacing: .11em; }
+.athlete-timer-focus__intro h2 { max-width: 330px; margin: 12px auto 0; color: #fff; font-size: 26px; font-weight: 650; line-height: 1.05; letter-spacing: -.04em; }
+.athlete-timer-focus__intro p { margin: 8px 0 0; color: rgba(255,255,255,.55); font-size: 12px; font-weight: 500; }
+.athlete-timer-focus__exercise-progress { margin-top: 18px; }
+.athlete-timer-focus__exercise-progress > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: rgba(255,255,255,.6); font: 700 9px/1 'IBM Plex Mono', monospace; letter-spacing: .08em; }
+.athlete-timer-focus__exercise-progress > div strong { color: #fff; font-size: 11px; }
+.athlete-timer-focus__exercise-progress > i, .athlete-timer-focus__mini > i { height: 6px; display: block; margin-top: 9px; overflow: hidden; background: rgba(255,255,255,.12); }
+.athlete-timer-focus__exercise-progress > i b, .athlete-timer-focus__mini > i b { height: 100%; display: block; background: var(--athlete-mustard); transition: width .3s linear; }
+.athlete-timer-focus__ring { --timer-progress: 0deg; width: 268px; height: 268px; flex: 0 0 auto; display: grid; place-items: center; margin: 28px auto 0; padding: 18px; border-radius: 50%; background: conic-gradient(from -90deg, var(--athlete-mustard) 0deg, var(--athlete-mustard) var(--timer-progress), rgba(255,255,255,.1) var(--timer-progress), rgba(255,255,255,.1) 360deg); box-shadow: 0 0 50px rgba(214,170,36,.08); }
+.athlete-timer-focus__ring > div { width: 100%; height: 100%; display: grid; place-items: center; align-content: center; border-radius: 50%; background: #210b2d; }
+.athlete-timer-focus__phase { text-align: center; }
+.athlete-timer-focus__phase small { display: block; color: var(--athlete-mustard); font: 700 11px/1 'IBM Plex Mono', monospace; letter-spacing: .11em; text-transform: uppercase; }
+.athlete-timer-focus__phase strong { display: block; margin-top: 10px; color: #fff; font: 650 64px/1 'IBM Plex Mono', monospace; letter-spacing: -.07em; font-variant-numeric: tabular-nums; }
+.athlete-timer-focus__phase span { display: block; margin-top: 12px; color: rgba(255,255,255,.45); font: 600 11px/1.3 'IBM Plex Mono', monospace; letter-spacing: .08em; text-transform: uppercase; }
+.athlete-timer-focus__next { margin-top: 28px; padding: 15px 16px; border: 1px solid rgba(255,255,255,.15); background: rgba(255,255,255,.07); }
+.athlete-timer-focus__next > small { color: rgba(255,255,255,.45); font: 700 9px/1 'IBM Plex Mono', monospace; letter-spacing: .08em; }
+.athlete-timer-focus__next > div { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 6px; }
+.athlete-timer-focus__next strong { color: #fff; font-size: 14px; }
+.athlete-timer-focus__next svg { color: var(--athlete-mustard); }
+.athlete-timer-focus__controls { display: grid; grid-template-columns: 72px 1fr 72px; align-items: center; gap: 16px; margin-top: 24px; }
+.athlete-timer-focus__controls > button { min-height: 48px; border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.05); color: rgba(255,255,255,.7); font-weight: 700; cursor: pointer; }
+.athlete-timer-focus__controls .athlete-timer-focus__main { width: 78px; height: 78px; min-height: 78px; margin: 0 auto; border: 0; border-radius: 50%; background: linear-gradient(135deg, #d6aa24, #ffd64f); color: #210b2d; box-shadow: 0 10px 34px rgba(214,170,36,.22); }
+.athlete-timer-focus__skip { width: 100%; min-height: 48px; margin-top: 20px; border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.05); color: rgba(255,255,255,.65); font-size: 10px; font-weight: 700; letter-spacing: .08em; cursor: pointer; }
+.athlete-timer-focus__complete { min-height: 52px; display: flex; align-items: center; justify-content: center; gap: 9px; margin-top: 28px; border: 0; background: var(--athlete-mustard); color: var(--athlete-deep-purple); font-size: 11px; font-weight: 800; letter-spacing: .065em; cursor: pointer; }
+.athlete-timer-focus__complete svg { transform: rotate(180deg); }
+.athlete-timer-focus__status { margin: auto 0 0; padding-top: 28px; color: rgba(255,255,255,.35); text-align: center; font: 700 10px/1 'IBM Plex Mono', monospace; letter-spacing: .08em; }
+.athlete-timer-focus__exercise-panel { min-height: calc(100dvh - 112px); margin-top: 20px; padding: clamp(18px, 5vw, 26px); background: #fff; color: var(--athlete-deep-purple); box-shadow: 0 24px 70px rgba(0,0,0,.24); }
+.athlete-timer-focus__exercise-panel > div:first-child > small { color: var(--athlete-purple); font: 800 10px/1 'IBM Plex Mono', monospace; letter-spacing: .1em; }
+.athlete-timer-focus__exercise-panel > div:first-child > h2 { margin: 10px 0 0; color: var(--athlete-deep-purple); font-size: 26px; line-height: 1.08; letter-spacing: -.04em; }
+.athlete-timer-focus__exercise-panel .athlete-prescription { margin-top: 22px; }
+.athlete-timer-focus__exercise-panel .athlete-prescription-head { color: var(--athlete-purple); }
+.athlete-timer-focus__exercise-panel .athlete-prescription-index { color: #6d6171; }
+.athlete-timer-focus__exercise-panel .athlete-prescription-value, .athlete-timer-focus__exercise-panel .athlete-prescription-meta strong { color: var(--athlete-deep-purple); }
+.athlete-timer-focus__guidance { margin: 18px 0 0; padding-top: 16px; border-top: 1px solid rgba(85,32,111,.14); color: #3f3045; font-size: 15px; line-height: 1.65; }
+.athlete-timer-focus__mini { width: 100%; display: grid; grid-template-columns: 1fr auto; gap: 12px 18px; margin-top: 22px; padding: 15px 16px; border: 0; background: var(--athlete-deep-purple); color: #fff; text-align: left; cursor: pointer; }
+.athlete-timer-focus__mini span:last-of-type { text-align: right; }
+.athlete-timer-focus__mini small, .athlete-timer-focus__mini strong { display: block; }
+.athlete-timer-focus__mini small { color: #cdbdd3; font: 700 8px/1 'IBM Plex Mono', monospace; letter-spacing: .08em; }
+.athlete-timer-focus__mini strong { margin-top: 6px; font: 700 19px/1 'IBM Plex Mono', monospace; }
+.athlete-timer-focus__mini > i { grid-column: 1 / -1; width: 100%; margin-top: 2px; }
+.athlete-timer-focus.is-work { background: radial-gradient(circle at 50% 30%, #682c86 0%, #351344 42%, #210b2d 72%, #15071d 100%); }
 .athlete-timer-focus.is-work.is-running .athlete-timer-focus__ring { animation: athlete-timer-pulse 1.4s ease-in-out infinite; }
-@keyframes athlete-timer-enter { from { opacity: 0; transform: scale(.985); } }
-@keyframes athlete-timer-pulse { 50% { box-shadow: 0 0 0 7px rgba(214, 170, 36, .09), 0 24px 65px rgba(0, 0, 0, .28); } }
+.athlete-timer-focus.is-ending .athlete-timer-focus__ring, .athlete-timer-focus.is-ending .athlete-timer-focus__phase { animation: athlete-timer-urgency .7s ease-in-out infinite; }
+@keyframes athlete-timer-enter { from { opacity: 0; transform: translateY(28px) scale(.985); } }
+@keyframes athlete-timer-panel-from-right { from { opacity: 0; transform: translateX(24px); } }
+@keyframes athlete-timer-panel-from-left { from { opacity: 0; transform: translateX(-24px); } }
+@keyframes athlete-timer-pulse { 50% { filter: drop-shadow(0 0 22px rgba(214,170,36,.38)); transform: scale(1.022); } }
+@keyframes athlete-timer-urgency { 50% { transform: scale(1.025); filter: drop-shadow(0 0 22px rgba(214,170,36,.38)); } }
 
-@media (max-width: 430px) {
-  .athlete-timer-focus footer { grid-template-columns: 1fr; }
-  .athlete-timer-focus__reset { min-height: 48px !important; }
+@media (max-width: 380px), (max-height: 720px) {
+  .athlete-timer-focus__body { padding-top: 12px; }
+  .athlete-timer-focus__intro h2 { font-size: 22px; }
+  .athlete-timer-focus__ring { width: 232px; height: 232px; margin-top: 18px; }
+  .athlete-timer-focus__next { margin-top: 18px; }
+  .athlete-timer-focus__controls { margin-top: 18px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .athlete-timer-focus, .athlete-timer-focus.is-work.is-running .athlete-timer-focus__ring { animation: none; }
+  .athlete-timer-focus, .athlete-timer-focus.is-work.is-running .athlete-timer-focus__ring, .athlete-timer-focus.is-ending .athlete-timer-focus__ring, .athlete-timer-focus.is-ending .athlete-timer-focus__phase { animation: none; }
 }
 
 .athlete-shell .session-feedback-form { gap: 20px; margin-top: 18px; overflow: hidden; border: 1px solid rgba(85, 32, 111, .2); background: #fff; box-shadow: 0 12px 30px rgba(44, 16, 58, .09); }

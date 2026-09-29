@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
-import { createExerciseTimerState, restartExerciseTimerState, tickExerciseTimer, type ExerciseTimerState, type SessionRunnerData } from './sessionRunner'
+import { advanceExerciseTimer, createExerciseTimerState, restartExerciseTimerState, tickExerciseTimer, type ExerciseTimerState, type SessionRunnerData } from './sessionRunner'
 import { playTimerAudioCue, timerAudioCueForTransition } from './timerAudio'
 
 type SessionExercise = SessionRunnerData['exercises'][number]
@@ -11,6 +11,8 @@ type SessionTimerController = {
   toggleSound: () => void
   toggleTimer: (exercise: SessionExercise) => void
   resetTimer: (exercise: SessionExercise) => void
+  adjustTimer: (exerciseId: string, seconds: number) => void
+  skipTimerPhase: (exerciseId: string) => void
 }
 
 export function useSessionTimer(): SessionTimerController {
@@ -97,7 +99,17 @@ const resetTimer = (exercise: SessionRunnerData['exercises'][number]) => {
   setTimerState(createExerciseTimerState(exercise))
 }
 
-
-  return { timerState, setTimerState, soundEnabled, toggleSound, toggleTimer, resetTimer }
+const adjustTimer = (exerciseId: string, seconds: number) => {
+  setTimerState(current => current?.exerciseId === exerciseId && current.phase !== 'complete'
+    ? { ...current, remaining: Math.max(1, current.remaining + seconds) }
+    : current)
 }
 
+const skipTimerPhase = (exerciseId: string) => {
+  setTimerState(current => current?.exerciseId === exerciseId
+    ? advanceExerciseTimer(current)
+    : current)
+}
+
+  return { timerState, setTimerState, soundEnabled, toggleSound, toggleTimer, resetTimer, adjustTimer, skipTimerPhase }
+}
