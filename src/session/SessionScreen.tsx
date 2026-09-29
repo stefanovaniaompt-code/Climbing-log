@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Check, ClipboardCheck, Play, ShieldCheck, TriangleAlert, Volume2, VolumeX } from 'lucide-react'
+import { Check, ClipboardCheck, Play, ShieldCheck, TriangleAlert } from 'lucide-react'
 import { OUTBOX_CHANGED_EVENT } from '../outbox'
 import type { AppProfile } from '../onboarding/types'
-import { Panel, ScreenHeader, Tag } from '../shared/ui'
+import { Panel } from '../shared/ui'
+import { AthleteAbstractVisual } from '../athlete/AthleteAbstractVisual'
 import { useScreenWakeLock } from '../shared/hooks/useScreenWakeLock'
 import { firstOpenExerciseIndex, restoreExerciseTimerSnapshot, summarizeRunner, type SessionRunnerData } from './sessionRunner'
 import { autosaveSessionDraft, beginSession, loadSessionRunner, saveExerciseProgress, saveSessionFeedback } from './sessionRunnerRepository'
@@ -15,7 +16,7 @@ import { useExerciseProgress } from './useExerciseProgress'
 
 export function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId: string }) {
   const [runner, setRunner] = useState<SessionRunnerData | null | undefined>(undefined)
-  const { timerState, setTimerState, soundEnabled, toggleSound, toggleTimer, resetTimer } = useSessionTimer()
+  const { timerState, setTimerState, toggleTimer, resetTimer } = useSessionTimer()
   const [outcome, setOutcome] = useState<CompletionOutcome | null>(null)
   const [sessionRpe, setSessionRpe] = useState('')
   const [sessionNote, setSessionNote] = useState('')
@@ -439,14 +440,26 @@ export function SessionScreen({ profile, sessionId }: { profile: AppProfile; ses
   }
 
   return (
-    <div className="screen screen--session">
-      <ScreenHeader eyebrow="SESSIONE" title={runner.session.title} text={[runner.session.objective, runner.session.durationMinutes ? String(runner.session.durationMinutes) + ' min' : ''].filter(Boolean).join(' · ')} action={wakeLockStatus === 'active' ? <Tag tone="success">SCHERMO ATTIVO</Tag> : undefined} />
-      <div className="session-status session-status--compact">
-        <div className="session-status__progress"><span>ESERCIZI DELLA SESSIONE</span><b>{String(runner.exercises.length).padStart(2, '0')} · {summary.completed} registrati</b><div className="progress-line"><i style={{ width: String(summary.percentage) + '%' }} /></div></div>
-        {canEdit && <button className={`session-sound-toggle ${soundEnabled ? 'is-on' : ''}`} onClick={toggleSound} aria-pressed={soundEnabled}>{soundEnabled ? <Volume2 size={22} /> : <VolumeX size={22} />}<span>{soundEnabled ? 'AUDIO ATTIVO' : 'AUDIO DISATTIVATO'}</span></button>}
-      </div>
+    <div className="screen screen--session athlete-session">
+      <section className="athlete-session__hero">
+        <AthleteAbstractVisual compact dramatic fill />
+        <div className="athlete-session__hero-body">
+          <div className="athlete-session__hero-meta">
+            <span>SESSIONE</span>
+            {wakeLockStatus === 'active' && <span className="athlete-session__wake">SCHERMO ATTIVO</span>}
+          </div>
+          <h1>{runner.session.title}</h1>
+          {runner.session.durationMinutes && <p className="athlete-session__duration">Durata prevista · {runner.session.durationMinutes} min</p>}
+          {runner.session.objective && <div className="athlete-session__objective"><small>OBIETTIVO</small><p>{runner.session.objective}</p></div>}
+          <div className="athlete-session__progress">
+            <div><span>{summary.completed} di {runner.exercises.length} esercizi</span><strong>{summary.percentage}%</strong></div>
+            <div className="athlete-session__progress-line"><i style={{ width: String(summary.percentage) + '%' }} /></div>
+          </div>
+        </div>
+      </section>
 
-      <div className="session-exercise-list">
+      <div className="athlete-session__section-head"><span>ESERCIZI</span><strong>{String(runner.exercises.length).padStart(2, '0')}</strong></div>
+      <div className="session-exercise-list athlete-session__exercise-list">
         {runner.exercises.map(exercise => (
           <SessionExerciseCard
             key={exercise.id}
@@ -465,7 +478,7 @@ export function SessionScreen({ profile, sessionId }: { profile: AppProfile; ses
         ))}
       </div>
 
-      {runner.session.status === 'completed' && !editingFeedback ? <div className="completion-banner completion-banner--editable"><ShieldCheck size={19} /><div><b>{runner.session.completionOutcome === 'not_completed' ? 'Sessione non completata' : 'Sessione completata'}</b><span>Il feedback è stato salvato.</span></div><button className="button button--secondary" onClick={() => { restoreFeedback(); setEditingFeedback(true); setSaveState('idle') }}>Modifica feedback</button></div> : runner.session.logId || editingFeedback ? <SessionFeedbackPanel programType={runner.session.programType} exercises={runner.exercises} outcome={outcome} sessionRpe={sessionRpe} notes={sessionNote} painPresent={painPresent} painVas={painVas} painExerciseId={painExerciseId} painPersistsPostSession={painPersistsPostSession} saving={saveState === 'finishing'} editing={editingFeedback} onChange={changeFeedback} onSubmit={patch => void submitSessionFeedback(patch)} onCancel={() => { restoreFeedback(); setEditingFeedback(false); setError('') }} /> : <div className="session-dock"><div><small>SESSIONE PRONTA</small><b>{runner.session.title}</b></div><button className="button button--signal" disabled={saveState === 'starting'} onClick={startCurrentSession}><span>{saveState === 'starting' ? 'Avvio…' : 'Avvia sessione'}</span><Play size={17} /></button></div>}
+      {runner.session.status === 'completed' && !editingFeedback ? <div className="completion-banner completion-banner--editable"><ShieldCheck size={19} /><div><b>{runner.session.completionOutcome === 'not_completed' ? 'Sessione non completata' : 'Sessione completata'}</b><span>Il feedback è stato salvato.</span></div><button className="button button--secondary" onClick={() => { restoreFeedback(); setEditingFeedback(true); setSaveState('idle') }}>Modifica feedback</button></div> : runner.session.logId || editingFeedback ? <SessionFeedbackPanel programType={runner.session.programType} exercises={runner.exercises} outcome={outcome} sessionRpe={sessionRpe} notes={sessionNote} painPresent={painPresent} painVas={painVas} painExerciseId={painExerciseId} painPersistsPostSession={painPersistsPostSession} saving={saveState === 'finishing'} editing={editingFeedback} onChange={changeFeedback} onSubmit={patch => void submitSessionFeedback(patch)} onCancel={() => { restoreFeedback(); setEditingFeedback(false); setError('') }} /> : <div className="athlete-session__start"><div><small>PRONTO PER INIZIARE</small><b>{runner.session.title}</b></div><button className="button button--signal" disabled={saveState === 'starting'} onClick={startCurrentSession}><span>{saveState === 'starting' ? 'Avvio…' : 'Avvia sessione'}</span><Play size={19} fill="currentColor" /></button></div>}
 
       {error && <div className={'completion-banner ' + (saveState === 'queued' ? 'completion-banner--queued' : 'completion-banner--error')}><TriangleAlert size={19} /><div><b>{saveState === 'queued' ? 'Sessione in attesa di sincronizzazione' : 'Operazione non completata'}</b><span>{error}</span></div></div>}
       {saveState === 'saved' && <div className="completion-banner"><Check size={19} /><div><b>Esito salvato</b><span>La sessione e gli esercizi eseguiti sono stati registrati.</span></div></div>}

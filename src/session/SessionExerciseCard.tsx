@@ -1,7 +1,6 @@
 import { useState, type CSSProperties } from 'react'
-import { Check, Pause, Play, Save, TimerReset, X } from 'lucide-react'
-import { Tag } from '../shared/ui'
-import { createExerciseTimerState, exerciseTimerPhaseLabel, exerciseTimerProgressLabel, formatPrescription, getExerciseTimerConfig, getRestSeconds, getSetCount, getVariableSeries, timerPhaseDuration, type ExerciseTimerState, type SessionRunnerData } from './sessionRunner'
+import { Check, ChevronDown, Pause, Play, Save, TimerReset, X } from 'lucide-react'
+import { createExerciseTimerState, exerciseTimerPhaseLabel, exerciseTimerProgressLabel, getExerciseTimerConfig, getRestSeconds, getSetCount, getVariableSeries, timerPhaseDuration, type ExerciseTimerState, type SessionRunnerData } from './sessionRunner'
 import type { ExerciseInputDraft } from './sessionLocalDraft'
 import type { ExerciseSaveState } from './useExerciseProgress'
 
@@ -36,43 +35,32 @@ export function SessionExerciseCard({ exercise, coachNotes, canEdit, isNext, tim
   return <article
     id={`exercise-${exercise.id}`}
     className={
-      'session-exercise-card ' +
-      (exercise.progress?.completed ? ' is-recorded' : '') +
+      'session-exercise-card athlete-card athlete-exercise-card ' +
+      (exercise.progress?.completed ? ' is-recorded athlete-exercise-card-complete' : '') +
       (isNext ? ' is-next' : '')
     }
     key={exercise.id}
   >
-    <div className="session-exercise-card__head">
-      <span>{String(exercise.order).padStart(2, '0')}</span>
-      <div>
-        <h2>{exercise.name}</h2>
-        <p>{formatPrescription(exercise)}</p>
-      </div>
-      {exercise.progress?.completed
-        ? (
-          <Tag
-            tone={
-              exercise.progress.syncState === 'queued'
-                ? 'warning'
-                : 'success'
-            }
-          >
-            {exercise.progress.syncState === 'queued'
-              ? 'IN CODA'
-              : 'REGISTRATO'}
-          </Tag>
-        )
-        : isNext
-          ? <Tag tone="signal">PROSSIMO</Tag>
-          : <Tag tone="purple">{getSetCount(exercise)} serie</Tag>}
-    </div>
-    {variableSeries.length > 0 ? <div className="variable-series"><div className="variable-series__label"><b>Carichi differenti</b><span>Una riga per ogni serie</span></div><ol>{variableSeries.map((series, index) => <li key={series + index}><span>{String(index + 1).padStart(2, '0')}</span><b>{series}</b></li>)}</ol></div> : <div className="uniform-prescription"><div><small>STRUTTURA</small><b>{getSetCount(exercise)} serie</b></div><div><small>DOSE</small><b>{dose}</b></div><div><small>CARICO</small><b>{load}</b></div><div><small>RECUPERO</small><b>{getRestSeconds(exercise)} sec</b></div></div>}
-    <div className="exercise-guidance"><span>Indicazioni</span><p>{exercise.instructions || coachNotes || 'Segui la prescrizione e interrompi in caso di dolore.'}</p></div>
+    <div className="athlete-exercise-card__body">
+      <span className={`athlete-exercise-status${exercise.progress?.completed ? ' athlete-exercise-status-complete' : ''}`}>{exercise.progress?.completed ? <Check size={18} strokeWidth={3} /> : exercise.order}</span>
+      <div className="athlete-exercise-card__content">
+        <div className="athlete-exercise-card__title-row">
+          <h2>{exercise.name}</h2>
+          {canEdit && !exercise.progress?.completed && timerConfig && activeTimer && <button className="athlete-exercise-timer-button" onClick={() => setTimerFocus(true)}>TIMER</button>}
+          {canEdit && !exercise.progress?.completed && !timerConfig && <button className="athlete-exercise-complete-button" disabled={exerciseSaveState === 'saving'} onClick={() => void onRecordExercise(exercise)}><Check size={13} strokeWidth={3} />{exerciseSaveState === 'saving' ? 'SALVO…' : 'COMPLETA'}</button>}
+        </div>
+
+        {variableSeries.length > 0 ? <div className="athlete-prescription">
+          <div className="athlete-prescription-table">
+            <div className="athlete-prescription-head"><span>SERIE</span><span>PRESCRIZIONE</span></div>
+            {variableSeries.map((series, index) => <div className="athlete-prescription-row" key={series + index}><span className="athlete-prescription-index">{String(index + 1).padStart(2, '0')}</span><span className="athlete-prescription-value">{series}</span></div>)}
+          </div>
+          <div className="athlete-prescription-meta"><div><span className="athlete-prescription-meta-label">SERIE</span><strong>{getSetCount(exercise)}</strong></div><div><span className="athlete-prescription-meta-label">CARICO</span><strong>{load}</strong></div><div><span className="athlete-prescription-meta-label">RECUPERO</span><strong>{getRestSeconds(exercise)} sec</strong></div></div>
+        </div> : <div className="athlete-prescription"><p className="athlete-prescription-dose">{dose}</p><div className="athlete-prescription-meta"><div><span className="athlete-prescription-meta-label">SERIE</span><strong>{getSetCount(exercise)}</strong></div><div><span className="athlete-prescription-meta-label">CARICO</span><strong>{load}</strong></div><div><span className="athlete-prescription-meta-label">RECUPERO</span><strong>{getRestSeconds(exercise)} sec</strong></div></div></div>}
+
+        {exercise.progress?.completed && <p className="athlete-exercise-complete-label">{exercise.progress.syncState === 'queued' ? 'IN CODA' : 'COMPLETATO'}</p>}
+        {(exercise.instructions || coachNotes) && <p className="exercise-guidance">{exercise.instructions || coachNotes}</p>}
     {canEdit && timerConfig && activeTimer && <>
-      <section className={`athlete-timer-launch is-${activeTimer.phase}${activeTimer.running ? ' is-running' : ''}`} aria-label={`Timer ${exercise.name}`}>
-        <button className="athlete-timer-launch__summary" onClick={() => setTimerFocus(true)}><span><small>{exerciseTimerPhaseLabel(activeTimer)}</small><b>{timerLabel}</b><em>{exerciseTimerProgressLabel(activeTimer)}</em></span><strong>Apri timer</strong></button>
-        <button className="athlete-timer-launch__control" onClick={() => { setTimerFocus(true); onToggleTimer(exercise) }} aria-label={`${activeTimer.running ? 'Metti in pausa' : 'Avvia'} il timer di ${exercise.name}`}>{activeTimer.running ? <Pause size={22} fill="currentColor" /> : <Play size={22} fill="currentColor" />}</button>
-      </section>
       {timerFocus && <div className={`athlete-timer-focus is-${activeTimer.phase}${activeTimer.running ? ' is-running' : ''}`} role="dialog" aria-modal="true" aria-label={`Timer ${exercise.name}`}>
         <header><div><small>TIMER ESERCIZIO</small><h2>{exercise.name}</h2></div><button onClick={() => setTimerFocus(false)} aria-label="Chiudi timer"><X size={24} /></button></header>
         <div className="athlete-timer-focus__body">
@@ -84,7 +72,9 @@ export function SessionExerciseCard({ exercise, coachNotes, canEdit, isNext, tim
       </div>}
     </>}
     {canEdit && !exercise.progress?.completed && (
-      <div className="exercise-entry">
+      <details className="exercise-entry athlete-exercise__entry">
+        <summary><span>RPE E NOTE</span><ChevronDown size={18} /></summary>
+        <div className="athlete-exercise__entry-body">
         <div className="exercise-entry__fields">
           <label>
             <span>RPE esercizio</span>
@@ -149,7 +139,8 @@ export function SessionExerciseCard({ exercise, coachNotes, canEdit, isNext, tim
               : 'Registra esercizio'}
           </button>
         </div>
-      </div>
+        </div>
+      </details>
     )}
 
     {exercise.progress?.completed && (
@@ -176,6 +167,7 @@ export function SessionExerciseCard({ exercise, coachNotes, canEdit, isNext, tim
         </div>
       </div>
     )}
-
+      </div>
+    </div>
   </article>
 }
