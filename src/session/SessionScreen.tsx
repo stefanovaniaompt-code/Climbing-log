@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Check, ClipboardCheck, Play, ShieldCheck, TriangleAlert } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { ArrowLeft, Check, ClipboardCheck, Play, ShieldCheck, TriangleAlert } from 'lucide-react'
 import { OUTBOX_CHANGED_EVENT } from '../outbox'
 import type { AppProfile } from '../onboarding/types'
 import { Panel } from '../shared/ui'
@@ -25,6 +26,7 @@ export function SessionScreen({ profile, sessionId }: { profile: AppProfile; ses
   const [painExerciseId, setPainExerciseId] = useState('')
   const [painPersistsPostSession, setPainPersistsPostSession] = useState<boolean | null>(null)
   const [editingFeedback, setEditingFeedback] = useState(false)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [saveState, setSaveState] = useState<'idle' | 'starting' | 'finishing' | 'saved' | 'queued' | 'error'>('idle')
   const [error, setError] = useState('')
   const { exerciseInputs, setExerciseInputs, exerciseSaveStates, setExerciseSaveStates, updateExerciseInput, recordExercise } = useExerciseProgress({ profile, runner, setRunner, timerState, setTimerState, setError })
@@ -64,6 +66,7 @@ export function SessionScreen({ profile, sessionId }: { profile: AppProfile; ses
         setPainExerciseId(data.session.painExerciseId ?? '')
         setPainPersistsPostSession(data.session.painPersistsPostSession)
         setEditingFeedback(false)
+        setFeedbackOpen(false)
         setDraftReady(true)
         return
       }
@@ -430,6 +433,7 @@ export function SessionScreen({ profile, sessionId }: { profile: AppProfile; ses
       setPainExerciseId(values.pain_exercise_id ?? '')
       setPainPersistsPostSession(values.pain_persists_post_session)
       setEditingFeedback(false)
+      setFeedbackOpen(false)
       setSaveState('saved')
       setTimerState(null)
       clearSessionLocalDraft(draftStorageKey)
@@ -437,6 +441,15 @@ export function SessionScreen({ profile, sessionId }: { profile: AppProfile; ses
       setSaveState('error')
       setError(reason instanceof Error ? reason.message : 'Chiusura non riuscita.')
     }
+  }
+
+  const closeFeedback = () => {
+    if (editingFeedback) {
+      restoreFeedback()
+      setEditingFeedback(false)
+    }
+    setFeedbackOpen(false)
+    setError('')
   }
 
   return (
@@ -480,10 +493,25 @@ export function SessionScreen({ profile, sessionId }: { profile: AppProfile; ses
         ))}
       </div>
 
-      {runner.session.status === 'completed' && !editingFeedback ? <div className="completion-banner completion-banner--editable"><ShieldCheck size={19} /><div><b>{runner.session.completionOutcome === 'not_completed' ? 'Sessione non completata' : 'Sessione completata'}</b><span>Il feedback è stato salvato.</span></div><button className="button button--secondary" onClick={() => { restoreFeedback(); setEditingFeedback(true); setSaveState('idle') }}>Modifica feedback</button></div> : runner.session.logId || editingFeedback ? <SessionFeedbackPanel programType={runner.session.programType} sessionTitle={runner.session.title} exercises={runner.exercises} outcome={outcome} sessionRpe={sessionRpe} notes={sessionNote} painPresent={painPresent} painVas={painVas} painExerciseId={painExerciseId} painPersistsPostSession={painPersistsPostSession} saving={saveState === 'finishing'} editing={editingFeedback} onChange={changeFeedback} onSubmit={patch => void submitSessionFeedback(patch)} onCancel={() => { restoreFeedback(); setEditingFeedback(false); setError('') }} /> : <div className="athlete-session__start"><div><small>PRONTO PER INIZIARE</small><b>{runner.session.title}</b></div><button className="button button--signal" disabled={saveState === 'starting'} onClick={startCurrentSession}><span>{saveState === 'starting' ? 'Avvio…' : 'Avvia sessione'}</span><Play size={19} fill="currentColor" /></button></div>}
+      {runner.session.status === 'completed' ? <div className="completion-banner completion-banner--editable"><ShieldCheck size={19} /><div><b>{runner.session.completionOutcome === 'not_completed' ? 'Sessione non completata' : 'Sessione completata'}</b><span>Il feedback è stato salvato.</span></div><button className="button button--secondary" onClick={() => { restoreFeedback(); setEditingFeedback(true); setFeedbackOpen(true); setSaveState('idle'); setError('') }}>Modifica feedback</button></div> : runner.session.logId ? <div className="athlete-session__finish"><div><small>FINE SESSIONE</small><b>Hai concluso l'allenamento?</b></div><button className="button" onClick={() => { setEditingFeedback(false); setFeedbackOpen(true); setSaveState('idle'); setError('') }}><span>Completa allenamento</span><Check size={19} /></button></div> : <div className="athlete-session__start"><div><small>PRONTO PER INIZIARE</small><b>{runner.session.title}</b></div><button className="button button--signal" disabled={saveState === 'starting'} onClick={startCurrentSession}><span>{saveState === 'starting' ? 'Avvio…' : 'Avvia sessione'}</span><Play size={19} fill="currentColor" /></button></div>}
 
       {error && <div className={'completion-banner ' + (saveState === 'queued' ? 'completion-banner--queued' : 'completion-banner--error')}><TriangleAlert size={19} /><div><b>{saveState === 'queued' ? 'Sessione in attesa di sincronizzazione' : 'Operazione non completata'}</b><span>{error}</span></div></div>}
       {saveState === 'saved' && <div className="completion-banner"><Check size={19} /><div><b>Esito salvato</b><span>La sessione e gli esercizi eseguiti sono stati registrati.</span></div></div>}
+
+      {feedbackOpen && createPortal(
+        <div className="athlete-shell athlete-feedback-overlay" role="dialog" aria-modal="true" aria-label="Feedback fine sessione">
+          <header className="athlete-feedback-overlay__top">
+            <button type="button" aria-label="Torna alla sessione" onClick={closeFeedback}><ArrowLeft size={20} /></button>
+            <span>{editingFeedback ? 'Modifica feedback' : 'Feedback'}</span>
+            <i aria-hidden="true" />
+          </header>
+          <main className="athlete-feedback-overlay__body">
+            <SessionFeedbackPanel programType={runner.session.programType} sessionTitle={runner.session.title} exercises={runner.exercises} outcome={outcome} sessionRpe={sessionRpe} notes={sessionNote} painPresent={painPresent} painVas={painVas} painExerciseId={painExerciseId} painPersistsPostSession={painPersistsPostSession} saving={saveState === 'finishing'} editing={editingFeedback} onChange={changeFeedback} onSubmit={patch => void submitSessionFeedback(patch)} onCancel={closeFeedback} />
+            {error && <div className={'completion-banner ' + (saveState === 'queued' ? 'completion-banner--queued' : 'completion-banner--error')}><TriangleAlert size={19} /><div><b>{saveState === 'queued' ? 'Sessione in attesa di sincronizzazione' : 'Operazione non completata'}</b><span>{error}</span></div></div>}
+          </main>
+        </div>,
+        document.body,
+      )}
     </div>
   )
 }

@@ -197,7 +197,7 @@
 .athlete-session__hero h1 { margin: 13px 0 0; color: var(--athlete-deep-purple); font-size: clamp(30px, 8vw, 46px); line-height: .98; letter-spacing: -.05em; }
 .athlete-session__duration { margin: 9px 0 0; color: #736978; font-size: 14px; }
 .athlete-session__objective { margin-top: 20px; padding: 15px 16px; border-left: 4px solid var(--athlete-mustard); background: #f7f1f9; }
-.athlete-session__objective small, .athlete-session__section-head span, .athlete-session__start small { color: var(--athlete-purple); font: 700 10px/1 'IBM Plex Mono', monospace; letter-spacing: .13em; }
+.athlete-session__objective small, .athlete-session__section-head span, .athlete-session__start small, .athlete-session__finish small { color: var(--athlete-purple); font: 700 10px/1 'IBM Plex Mono', monospace; letter-spacing: .13em; }
 .athlete-session__objective p { margin: 7px 0 0; color: #3f3045; font-size: 14px; line-height: 1.5; }
 .athlete-session__progress { margin-top: 20px; }
 .athlete-session__progress span, .athlete-session__progress strong { color: var(--athlete-deep-purple); font-size: 13px; }
@@ -241,9 +241,10 @@
 .athlete-exercise__entry-body { padding: 14px; }
 .athlete-shell .exercise-entry__fields input, .athlete-shell .exercise-entry__fields textarea { font-size: 16px; }
 .athlete-shell .exercise-entry__actions .button { min-height: 46px; background: var(--athlete-purple); }
-.athlete-session__start { display: grid; gap: 15px; margin-top: 18px; padding: 18px; border: 1px solid #d8cadf; background: #fff; box-shadow: 0 10px 25px rgba(44, 16, 58, .07); }
-.athlete-session__start b { display: block; margin-top: 7px; color: var(--athlete-deep-purple); font-size: 17px; }
-.athlete-session__start .button { min-height: 56px; display: flex; align-items: center; justify-content: center; gap: 9px; background: var(--athlete-mustard); color: var(--athlete-deep-purple); }
+.athlete-session__start, .athlete-session__finish { display: grid; gap: 15px; margin-top: 18px; padding: 18px; border: 1px solid #d8cadf; background: #fff; box-shadow: 0 10px 25px rgba(44, 16, 58, .07); }
+.athlete-session__start b, .athlete-session__finish b { display: block; margin-top: 7px; color: var(--athlete-deep-purple); font-size: 17px; }
+.athlete-session__start .button, .athlete-session__finish .button { min-height: 56px; display: flex; align-items: center; justify-content: center; gap: 9px; background: var(--athlete-mustard); color: var(--athlete-deep-purple); }
+.athlete-session__finish .button { background: var(--athlete-purple); color: #fff; }
 .athlete-shell .completion-banner { margin-top: 16px; margin-bottom: 12px; }
 
 @media (max-width: 520px) {
@@ -342,7 +343,14 @@
   .athlete-timer-focus, .athlete-timer-focus.is-work.is-running .athlete-timer-focus__ring, .athlete-timer-focus.is-ending .athlete-timer-focus__ring, .athlete-timer-focus.is-ending .athlete-timer-focus__phase { animation: none; }
 }
 
+.athlete-feedback-overlay { position: fixed; inset: 0; z-index: 1100; min-height: 100dvh; overflow-x: hidden; overflow-y: auto; background: linear-gradient(180deg, #f5eff8 0%, #eee5f2 100%); color: var(--athlete-deep-purple); animation: athlete-feedback-overlay-in .32s cubic-bezier(.2,.8,.2,1) both; }
+.athlete-feedback-overlay__top { position: sticky; top: 0; z-index: 2; min-height: 62px; display: grid; grid-template-columns: 42px minmax(0, 1fr) 42px; align-items: center; gap: 12px; padding: max(10px, env(safe-area-inset-top)) 16px 10px; border-bottom: 1px solid rgba(85,32,111,.13); background: rgba(249,246,251,.94); backdrop-filter: blur(16px); }
+.athlete-feedback-overlay__top button { width: 42px; height: 42px; display: grid; place-items: center; border: 1px solid rgba(85,32,111,.18); border-radius: 50%; background: #fff; color: var(--athlete-deep-purple); cursor: pointer; }
+.athlete-feedback-overlay__top span { overflow: hidden; color: var(--athlete-deep-purple); font: 750 12px/1 'IBM Plex Mono', monospace; letter-spacing: .08em; text-align: center; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+.athlete-feedback-overlay__top i { width: 42px; }
+.athlete-feedback-overlay__body { width: min(100%, 520px); margin: 0 auto; padding: 18px 16px max(30px, env(safe-area-inset-bottom)); }
 .athlete-shell .session-feedback-form { display: block; margin-top: 22px; overflow: hidden; border: 1px solid rgba(85,32,111,.16); background: linear-gradient(180deg, #fcfafd 0%, #f6f1f8 100%); box-shadow: 0 14px 34px rgba(44,16,58,.09); }
+.athlete-feedback-overlay .session-feedback-form { margin-top: 0; }
 .athlete-feedback-header { display: flex; align-items: flex-start; gap: 14px; padding: 22px 20px; border-bottom: 1px solid rgba(85,32,111,.12); background: #fff; animation: athlete-feedback-heading-in .34s ease both; }
 .athlete-feedback-header > span { width: 44px; height: 44px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 50%; background: var(--athlete-mustard); color: var(--athlete-deep-purple); }
 .athlete-feedback-header small { color: var(--athlete-purple); font: 750 9px/1 'IBM Plex Mono', monospace; letter-spacing: .09em; }
@@ -370,6 +378,7 @@
 .athlete-shell .athlete-feedback-save { min-height: 54px; display: flex; align-items: center; justify-content: center; gap: 9px; border: 1px solid rgba(117,83,0,.12); background: linear-gradient(180deg, #e1b72d 0%, var(--athlete-mustard) 100%); color: var(--athlete-deep-purple); font-size: 11px; font-weight: 800; letter-spacing: .065em; box-shadow: 0 10px 22px rgba(181,139,20,.17); }
 .athlete-shell .athlete-feedback-cancel { min-height: 46px; border: 1px solid #cdbfd3; background: #fff; color: var(--athlete-purple); }
 @keyframes athlete-feedback-heading-in { from { opacity: 0; transform: translateY(10px); } }
+@keyframes athlete-feedback-overlay-in { from { opacity: 0; transform: translateY(22px); } }
 @keyframes athlete-feedback-section-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes athlete-feedback-choice-pop { 0% { transform: scale(.96); } 65% { transform: scale(1.025); } 100% { transform: scale(1); } }
 @keyframes athlete-feedback-pain-in { from { opacity: 0; transform: translateY(-8px); max-height: 0; } to { opacity: 1; transform: translateY(0); max-height: 900px; } }
@@ -379,7 +388,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .athlete-feedback-header, .athlete-feedback-section, .athlete-feedback-pain-reveal, .athlete-shell .athlete-feedback-choice.active, .athlete-shell .athlete-feedback-scale button.active { animation: none; opacity: 1; }
+  .athlete-feedback-overlay, .athlete-feedback-header, .athlete-feedback-section, .athlete-feedback-pain-reveal, .athlete-shell .athlete-feedback-choice.active, .athlete-shell .athlete-feedback-scale button.active { animation: none; opacity: 1; }
 }
 
 .athlete-progress, .athlete-test-detail { max-width: 760px; margin: 0 auto; animation: athlete-page-in .28s ease-out both; }
