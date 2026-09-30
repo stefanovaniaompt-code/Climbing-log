@@ -30,6 +30,10 @@ export type ProgramBuilderData = {
 
 export const nextSequence = (values: number[]) => Math.max(0, ...values) + 1
 
+export function latestWeek(weeks: BuilderWeek[]) {
+  return weeks.reduce<BuilderWeek | null>((latest, week) => !latest || week.weekNumber > latest.weekNumber ? week : latest, null)
+}
+
 export function prescriptionSummary(exercise: BuilderSessionExercise) {
   const sets = Number(exercise.prescription.sets) || 1
   const reps = Number(exercise.prescription.reps)

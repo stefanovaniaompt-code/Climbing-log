@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { ChevronDown, Layers3, Plus, Save, Settings2, ShieldCheck, TimerReset, TriangleAlert, Users } from 'lucide-react'
+import { ChevronDown, Copy, Layers3, Plus, Save, Settings2, ShieldCheck, TimerReset, TriangleAlert, Users } from 'lucide-react'
 import type { AppProfile } from '../onboarding/types'
 import { Panel, ScreenHeader, Tag } from '../shared/ui'
-import { canPublishProgram, prescriptionSummary, type ProgramBuilderData } from './programBuilder'
-import { addExercise, createProgram, createSession, createWeek, loadProgramBuilder, publishProgram, updateExercise, updateSessionDetails, updateWeekDetails, type ExercisePatch } from './programBuilderRepository'
+import { canPublishProgram, latestWeek, prescriptionSummary, type ProgramBuilderData } from './programBuilder'
+import { addExercise, createProgram, createSession, createWeek, duplicateWeek, loadProgramBuilder, publishProgram, updateExercise, updateSessionDetails, updateWeekDetails, type ExercisePatch } from './programBuilderRepository'
 import { ExerciseTestTargetPanel } from './ExerciseTestTargetPanel'
 
 export function BuilderScreen({ profile, selectedAthleteId }: { profile: AppProfile; selectedAthleteId: string }) {
@@ -74,6 +74,11 @@ export function BuilderScreen({ profile, selectedAthleteId }: { profile: AppProf
     void run(async () => { const id = await createProgram(profile, athleteId, newProgram.name, newProgram.goal, newProgram.programType); setProgramId(id); setNewProgram({ name: '', goal: '', programType: 'athlete' }) }, 'Bozza creata. Ora aggiungi una settimana.')
   }
   const addWeek = () => void run(async () => { const id = await createWeek(profile, programId, weeks.map(week => week.weekNumber)); setWeekId(id) }, 'Settimana aggiunta senza modificare le precedenti.')
+  const duplicatePreviousWeek = () => {
+    const sourceWeek = latestWeek(weeks)
+    if (!sourceWeek) return
+    void run(async () => { const id = await duplicateWeek(profile, sourceWeek.id); setWeekId(id) }, `Settimana ${sourceWeek.weekNumber + 1} creata copiando la settimana ${sourceWeek.weekNumber}.`)
+  }
   const addSession = () => void run(async () => { const id = await createSession(profile, weekId, sessions.map(item => item.order)); setSessionId(id) }, 'Sessione aggiunta.')
   const submitExercise = (event: FormEvent) => {
     event.preventDefault()
@@ -103,6 +108,7 @@ export function BuilderScreen({ profile, selectedAthleteId }: { profile: AppProf
     {program && <div className="builder-layout">
       <Panel className="week-rail" title="Settimane" index="01">
         {weeks.map(week => <button className={week.id === weekId ? 'active' : ''} key={week.id} onClick={() => setWeekId(week.id)}><span>W{String(week.weekNumber).padStart(2, '0')}</span><b>{week.blockName || `Settimana ${week.weekNumber}`}</b><em>{week.phase || week.status}</em></button>)}
+        {!!weeks.length && <button className="add-row" disabled={state === 'saving'} onClick={duplicatePreviousWeek}><Copy size={15} /> Duplica precedente</button>}
         <button className="add-row" disabled={state === 'saving'} onClick={addWeek}><Plus size={15} /> Aggiungi</button>
       </Panel>
       <div className="builder-main">
@@ -141,4 +147,3 @@ export function BuilderScreen({ profile, selectedAthleteId }: { profile: AppProf
     {message && <div className="completion-banner"><ShieldCheck size={19} /><div><b>Program Builder aggiornato</b><span>{message}</span></div></div>}
   </div>
 }
-

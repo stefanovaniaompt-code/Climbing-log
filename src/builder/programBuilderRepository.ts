@@ -82,6 +82,14 @@ export async function createWeek(profile: AppProfile, programId: string, existin
   return result.data.id as string
 }
 
+export async function duplicateWeek(profile: AppProfile, sourceWeekId: string) {
+  assertCoach(profile); if (isDemo(profile)) return 'demo-w'
+  const result = await supabase!.rpc('clone_training_week', { source_week_id: sourceWeekId })
+  if (result.error) throw result.error
+  if (typeof result.data !== 'string') throw new Error('La settimana duplicata non è stata restituita correttamente.')
+  return result.data
+}
+
 export async function createSession(profile: AppProfile, weekId: string, existingOrders: number[]) {
   assertCoach(profile); if (isDemo(profile)) return 'demo-s'
   const order = nextSequence(existingOrders)
