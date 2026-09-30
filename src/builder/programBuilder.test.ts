@@ -3,7 +3,7 @@ import { canPublishProgram, latestWeek, nextSequence, prescriptionSummary, type 
 
 describe('program builder', () => {
   it('calcola il prossimo ordine senza sovrascrivere elementi esistenti', () => expect(nextSequence([1, 3, 2])).toBe(4))
-  it('individua la settimana piu recente anche se non e ordinata', () => expect(latestWeek([
+  it('individua la settimana più recente anche se non è ordinata', () => expect(latestWeek([
     { id: 'w3', programId: 'p', weekNumber: 3, blockName: null, phase: null, status: 'planned' },
     { id: 'w1', programId: 'p', weekNumber: 1, blockName: null, phase: null, status: 'planned' },
   ])?.id).toBe('w3'))
