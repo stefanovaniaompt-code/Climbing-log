@@ -342,25 +342,44 @@
   .athlete-timer-focus, .athlete-timer-focus.is-work.is-running .athlete-timer-focus__ring, .athlete-timer-focus.is-ending .athlete-timer-focus__ring, .athlete-timer-focus.is-ending .athlete-timer-focus__phase { animation: none; }
 }
 
-.athlete-shell .session-feedback-form { gap: 20px; margin-top: 18px; overflow: hidden; border: 1px solid rgba(85, 32, 111, .2); background: #fff; box-shadow: 0 12px 30px rgba(44, 16, 58, .09); }
-.athlete-shell .session-feedback-form .panel__head { min-height: 64px; margin: 0; padding: 14px 18px; border: 0; background: var(--athlete-deep-purple); color: #fff; }
-.athlete-shell .session-feedback-form .panel__head > span { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; background: var(--athlete-mustard); color: var(--athlete-deep-purple); }
-.athlete-shell .session-feedback-form .panel__head h2 { margin: 0 auto 0 0; font-size: 18px; }
-.athlete-shell .session-feedback-form fieldset, .athlete-shell .session-feedback-form label { margin-inline: clamp(16px, 4vw, 24px); }
-.athlete-shell .session-feedback-form legend, .athlete-shell .session-feedback-form label > span { margin-bottom: 10px; color: var(--athlete-deep-purple); font-size: 14px; line-height: 1.4; }
-.athlete-shell .session-outcome-choice { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.athlete-shell .session-outcome-choice > button { min-height: 54px; display: grid; place-items: center; padding: 10px; border: 1px solid #cdbed3; background: #faf8fb; color: var(--athlete-deep-purple); font-size: 15px; font-weight: 750; text-align: center; }
-.athlete-shell .session-outcome-choice > button.active { border-color: var(--athlete-purple); background: #eadcf0; color: var(--athlete-purple); box-shadow: inset 0 -3px var(--athlete-purple); }
-.athlete-shell .session-feedback-scale { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
-.athlete-shell .session-feedback-scale button { min-width: 0; min-height: 42px; border: 1px solid #cdbed3; background: #faf8fb; color: var(--athlete-deep-purple); font: 700 13px/1 'IBM Plex Mono', monospace; cursor: pointer; }
-.athlete-shell .session-feedback-scale button.active { border-color: var(--athlete-purple); background: var(--athlete-purple); color: #fff; transform: translateY(-2px); box-shadow: 0 3px 0 #c5a9d1; }
-.athlete-shell .session-feedback-form select, .athlete-shell .session-feedback-form textarea { min-height: 48px; padding: 11px 12px; border: 1px solid #ac9bb4; background: #fff; color: var(--athlete-deep-purple); font-size: 16px; }
-.athlete-shell .session-feedback-form textarea { min-height: 96px; resize: vertical; }
-.athlete-shell .session-feedback-form .session-submit { width: auto; min-height: 52px; margin: 0 clamp(16px, 4vw, 24px); background: var(--athlete-mustard); color: var(--athlete-deep-purple); }
-.athlete-shell .session-feedback-form > .button--secondary { margin: -8px clamp(16px, 4vw, 24px) 20px; }
+.athlete-shell .session-feedback-form { display: block; margin-top: 22px; overflow: hidden; border: 1px solid rgba(85,32,111,.16); background: linear-gradient(180deg, #fcfafd 0%, #f6f1f8 100%); box-shadow: 0 14px 34px rgba(44,16,58,.09); }
+.athlete-feedback-header { display: flex; align-items: flex-start; gap: 14px; padding: 22px 20px; border-bottom: 1px solid rgba(85,32,111,.12); background: #fff; animation: athlete-feedback-heading-in .34s ease both; }
+.athlete-feedback-header > span { width: 44px; height: 44px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 50%; background: var(--athlete-mustard); color: var(--athlete-deep-purple); }
+.athlete-feedback-header small { color: var(--athlete-purple); font: 750 9px/1 'IBM Plex Mono', monospace; letter-spacing: .09em; }
+.athlete-feedback-header h2 { margin: 8px 0 0; color: var(--athlete-deep-purple); font-size: clamp(21px, 6vw, 28px); line-height: 1.05; letter-spacing: -.035em; }
+.athlete-feedback-content { padding: 0 clamp(18px, 5vw, 26px) 24px; }
+.athlete-feedback-section { padding: 24px 0; border-bottom: 1px solid rgba(85,32,111,.12); opacity: 0; animation: athlete-feedback-section-in .38s ease forwards; }
+.athlete-feedback-section:nth-of-type(1) { animation-delay: .07s; }
+.athlete-feedback-section:nth-of-type(2) { animation-delay: .11s; }
+.athlete-feedback-section:nth-of-type(3) { animation-delay: .15s; }
+.athlete-feedback-section:nth-of-type(4) { animation-delay: .19s; }
+.athlete-feedback-section > p { margin: 0 0 16px; color: var(--athlete-purple); font: 750 10px/1 'IBM Plex Mono', monospace; letter-spacing: .08em; }
+.athlete-shell .athlete-feedback-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.athlete-shell .athlete-feedback-choice { min-height: 48px; padding: 0 12px; border: 1px solid #d3c6d8; background: #fff; color: #716676; font-size: 12px; font-weight: 700; cursor: pointer; transition: transform .12s ease, border-color .2s ease, background .2s ease, color .2s ease; }
+.athlete-shell .athlete-feedback-choice:active { transform: scale(.965); }
+.athlete-shell .athlete-feedback-choice.active { border-color: var(--athlete-purple); background: #eee3f2; color: var(--athlete-purple); box-shadow: inset 0 0 0 1px rgba(85,32,111,.05), 0 5px 12px rgba(44,16,58,.045); animation: athlete-feedback-choice-pop .26s cubic-bezier(.34,1.56,.64,1); }
+.athlete-shell .athlete-feedback-scale { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 7px; }
+.athlete-shell .athlete-feedback-scale button { min-width: 0; min-height: 42px; border: 1px solid #d3c6d8; background: #fff; color: var(--athlete-deep-purple); font: 700 13px/1 'IBM Plex Mono', monospace; cursor: pointer; transition: transform .12s ease, background .2s ease; }
+.athlete-shell .athlete-feedback-scale button:active { transform: scale(.9); }
+.athlete-shell .athlete-feedback-scale button.active { border-color: var(--athlete-mustard); background: var(--athlete-mustard); color: var(--athlete-deep-purple); box-shadow: 0 6px 14px rgba(181,139,20,.18); animation: athlete-feedback-choice-pop .28s cubic-bezier(.34,1.56,.64,1); }
+.athlete-shell .athlete-feedback-section select, .athlete-shell .athlete-feedback-section textarea { width: 100%; min-height: 50px; padding: 12px 14px; border: 1px solid #cdbfd3; background: #fff; color: var(--athlete-deep-purple); font-size: 16px; outline: 0; }
+.athlete-shell .athlete-feedback-section select:focus, .athlete-shell .athlete-feedback-section textarea:focus { border-color: var(--athlete-purple); }
+.athlete-shell .athlete-feedback-section textarea { min-height: 108px; resize: vertical; line-height: 1.5; }
+.athlete-feedback-pain-reveal { overflow: hidden; animation: athlete-feedback-pain-in .34s ease both; }
+.athlete-feedback-actions { display: grid; gap: 9px; padding-top: 28px; }
+.athlete-shell .athlete-feedback-save { min-height: 54px; display: flex; align-items: center; justify-content: center; gap: 9px; border: 1px solid rgba(117,83,0,.12); background: linear-gradient(180deg, #e1b72d 0%, var(--athlete-mustard) 100%); color: var(--athlete-deep-purple); font-size: 11px; font-weight: 800; letter-spacing: .065em; box-shadow: 0 10px 22px rgba(181,139,20,.17); }
+.athlete-shell .athlete-feedback-cancel { min-height: 46px; border: 1px solid #cdbfd3; background: #fff; color: var(--athlete-purple); }
+@keyframes athlete-feedback-heading-in { from { opacity: 0; transform: translateY(10px); } }
+@keyframes athlete-feedback-section-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes athlete-feedback-choice-pop { 0% { transform: scale(.96); } 65% { transform: scale(1.025); } 100% { transform: scale(1); } }
+@keyframes athlete-feedback-pain-in { from { opacity: 0; transform: translateY(-8px); max-height: 0; } to { opacity: 1; transform: translateY(0); max-height: 900px; } }
 
 @media (max-width: 430px) {
-  .athlete-shell .session-feedback-scale { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .athlete-shell .athlete-feedback-scale { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .athlete-feedback-header, .athlete-feedback-section, .athlete-feedback-pain-reveal, .athlete-shell .athlete-feedback-choice.active, .athlete-shell .athlete-feedback-scale button.active { animation: none; opacity: 1; }
 }
 
 .athlete-progress, .athlete-test-detail { max-width: 760px; margin: 0 auto; animation: athlete-page-in .28s ease-out both; }
