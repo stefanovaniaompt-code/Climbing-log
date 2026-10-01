@@ -132,10 +132,39 @@
 .coach-dashboard__progress p { max-width: 340px; margin: 16px 0 0; color: var(--muted); font-size: 13px; line-height: 1.65; }
 .coach-dashboard__progress button { width: fit-content; display: flex; align-items: center; gap: 8px; margin-top: auto; padding: 20px 0 0; border: 0; background: transparent; color: var(--purple-700); font-size: 10px; font-weight: 650; letter-spacing: .07em; cursor: pointer; }
 
+.coach-athletes { max-width: 1540px; margin: 0 auto; padding: 20px 8px 46px; }
+.coach-athletes__intro { margin-top: 8px; }
+.coach-kicker { margin: 0; color: var(--purple-700); font: 650 11px/1 'IBM Plex Mono', monospace; letter-spacing: .12em; }
+.coach-athletes__intro h1 { display: flex; align-items: center; gap: 16px; margin: 13px 0 0; color: var(--ink); font: 650 58px/.95 'Space Grotesk', sans-serif; letter-spacing: -.05em; }
+.coach-athletes__intro h1 span { width: 17px; height: 17px; flex: 0 0 17px; border-radius: 50%; background: var(--mustard-500); }
+.coach-athletes__intro > p:last-child { margin: 13px 0 0; color: var(--muted); font-size: 14px; }
+.coach-athletes__search { width: min(580px, 100%); height: 48px; display: flex; align-items: center; gap: 12px; margin-top: 28px; padding: 0 16px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); }
+.coach-athletes__search input { width: 100%; border: 0; outline: 0; background: transparent; color: var(--ink); font: 500 12px/1.2 'Space Grotesk', sans-serif; }
+.coach-athletes__search input::placeholder { color: var(--muted); }
+.coach-athletes__list { margin-top: 16px; }
+.coach-athlete-row { display: grid; grid-template-columns: minmax(280px, 1fr) 150px 160px 170px; align-items: center; gap: 20px; padding: 24px; border: 1px solid var(--line); background: var(--surface); }
+.coach-athlete-row + .coach-athlete-row { margin-top: 10px; }
+.coach-athlete-row__identity { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.coach-athlete-row__avatar { width: 58px; height: 58px; flex: 0 0 58px; display: grid; place-items: center; border-radius: 50%; background: var(--purple-100); color: var(--purple-950); font-size: 18px; font-weight: 650; }
+.coach-athlete-row h2 { margin: 0; color: var(--ink); font-size: 19px; font-weight: 650; }
+.coach-athlete-row__tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 9px; }
+.coach-athlete-row__tags span { padding: 5px 10px; background: var(--purple-100); color: var(--purple-700); font: 650 8px/1 'IBM Plex Mono', monospace; letter-spacing: .06em; }
+.coach-athlete-row__data span, .coach-athlete-row__data b { display: block; }
+.coach-athlete-row__data span { color: var(--muted); font: 650 8px/1 'IBM Plex Mono', monospace; letter-spacing: .08em; }
+.coach-athlete-row__data b { margin-top: 9px; color: var(--ink); font-size: 13px; }
+.coach-athlete-row__open { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border: 0; background: var(--purple-700); color: #fff; font: 650 10px/1 'IBM Plex Mono', monospace; letter-spacing: .07em; cursor: pointer; transition: background .18s ease, transform .18s ease; }
+.coach-athlete-row__open:hover { background: var(--purple-950); transform: translateY(-1px); }
+.coach-athletes__loading, .coach-athletes__empty { min-height: 130px; display: grid; place-items: center; align-content: center; gap: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); }
+.coach-athletes__empty b { color: var(--ink); }
+.coach-athletes__management { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 24px; }
+.coach-athletes__management > :last-child { grid-column: 1 / -1; }
+
 @media (max-width: 1100px) {
   .coach-dashboard__metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .coach-dashboard__lower { grid-template-columns: 1fr 1fr; }
   .coach-dashboard__progress { grid-column: 1 / -1; }
+  .coach-athlete-row { grid-template-columns: minmax(250px, 1fr) 130px 160px; }
+  .coach-athlete-row__data:nth-of-type(2) { display: none; }
 }
 
 @media (max-width: 800px) {
@@ -158,6 +187,12 @@
   .coach-dashboard__focus h2 { font-size: 34px; letter-spacing: .16em; }
   .coach-dashboard__metrics, .coach-dashboard__lower { grid-template-columns: 1fr; }
   .coach-dashboard__progress { grid-column: auto; }
+  .coach-athletes { padding-inline: 0; }
+  .coach-athletes__intro h1 { font-size: 48px; }
+  .coach-athlete-row { grid-template-columns: 1fr; }
+  .coach-athlete-row__data { display: none; }
+  .coach-athletes__management { grid-template-columns: 1fr; }
+  .coach-athletes__management > :last-child { grid-column: auto; }
 }
 
 @media (max-width: 430px) {
