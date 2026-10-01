@@ -22,7 +22,13 @@ const demoRows: CoachDashboardRows = {
     { id: 'w-a', program_id: 'p-a', week_number: 3, status: 'current', start_date: '2026-08-31' },
     { id: 'w-b', program_id: 'p-b', week_number: 5, status: 'current', start_date: '2026-08-31' },
   ],
-  sessions: [{ id: 's-a1', training_week_id: 'w-a' }, { id: 's-a2', training_week_id: 'w-a' }, { id: 's-b1', training_week_id: 'w-b' }, { id: 's-b2', training_week_id: 'w-b' }, { id: 's-b3', training_week_id: 'w-b' }],
+  sessions: [
+    { id: 's-a1', training_week_id: 'w-a', session_order: 1, title: 'Forza dita', scheduled_day: 2 },
+    { id: 's-a2', training_week_id: 'w-a', session_order: 2, title: 'Potenza', scheduled_day: 4 },
+    { id: 's-b1', training_week_id: 'w-b', session_order: 1, title: 'Capacità anaerobica', scheduled_day: 1 },
+    { id: 's-b2', training_week_id: 'w-b', session_order: 2, title: 'Tecnica', scheduled_day: 3 },
+    { id: 's-b3', training_week_id: 'w-b', session_order: 3, title: 'Scalata libera', scheduled_day: 6 },
+  ],
   logs: [
     { id: 'l-a1', session_id: 's-a1', athlete_id: 'demo-a', status: 'completed', session_rpe: 7, started_at: '2026-09-02T10:00:00Z', completed_at: '2026-09-02T11:00:00Z', created_at: '2026-09-02T10:00:00Z' },
     { id: 'l-b1', session_id: 's-b1', athlete_id: 'demo-b', status: 'completed', session_rpe: 9.2, started_at: '2026-09-03T10:00:00Z', completed_at: '2026-09-03T11:00:00Z', created_at: '2026-09-03T10:00:00Z' },
@@ -58,7 +64,7 @@ export async function loadCoachDashboard(profile: AppProfile): Promise<CoachDash
     weeks = (weeksResult.data ?? []) as CoachDashboardRows['weeks']
     const weekIds = weeks.map(item => item.id)
     if (weekIds.length) {
-      const sessionsResult = await supabase.from('sessions').select('id,training_week_id').in('training_week_id', weekIds)
+      const sessionsResult = await supabase.from('sessions').select('id,training_week_id,session_order,title,scheduled_day').in('training_week_id', weekIds)
       if (sessionsResult.error) throw sessionsResult.error
       sessions = (sessionsResult.data ?? []) as CoachDashboardRows['sessions']
     }

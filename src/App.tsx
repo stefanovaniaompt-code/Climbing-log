@@ -1,16 +1,13 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  BookOpen,
-  ClipboardCheck,
+  BarChart3,
+  CalendarDays,
+  Dumbbell,
   Home,
   KeyRound,
-  LogOut,
   Mail,
-  Menu,
-  Mountain,
-  Settings2,
-  SlidersHorizontal,
+  MessageSquare,
   TestTube2,
   TimerReset,
   Users,
@@ -35,8 +32,9 @@ import { CoachFeedbackScreen } from './feedback/CoachFeedbackScreen'
 import { MessagesScreen } from './messaging/MessagesScreen'
 import { useMessageNotifications } from './messaging/useMessageNotifications'
 import { AthleteShell, type AthleteView } from './athlete/AthleteShell'
+import { CoachShell } from './coach/CoachShell'
 
-type ViewId = 'system' | 'home' | 'session' | 'dashboard' | 'athletes' | 'feedback' | 'messages' | 'builder' | 'library' | 'test' | 'migration' | 'account'
+type ViewId = 'system' | 'home' | 'session' | 'dashboard' | 'athletes' | 'feedback' | 'messages' | 'builder' | 'library' | 'test' | 'progress' | 'migration' | 'account'
 
 type NavItem = {
   id: ViewId
@@ -50,12 +48,13 @@ type NavItem = {
 const navItems: NavItem[] = [
   { id: 'home', label: 'Home atleta', shortLabel: 'Home', icon: Home, group: 'Allenamento', roles: ['athlete'] },
   { id: 'session', label: 'Sessione', shortLabel: 'Sessione', icon: TimerReset, group: 'Allenamento', roles: ['athlete'] },
-  { id: 'dashboard', label: 'Coach dashboard', shortLabel: 'Coach', icon: Users, group: 'Coaching', roles: ['coach'] },
-  { id: 'athletes', label: 'Atleti e inviti', shortLabel: 'Atleti', icon: Mail, group: 'Coaching', roles: ['coach'] },
-  { id: 'feedback', label: 'Feedback', shortLabel: 'Feedback', icon: ClipboardCheck, group: 'Coaching', roles: ['coach'] },
-  { id: 'builder', label: 'Program builder', shortLabel: 'Builder', icon: SlidersHorizontal, group: 'Coaching', roles: ['coach'] },
-  { id: 'library', label: 'Libreria esercizi', shortLabel: 'Esercizi', icon: BookOpen, group: 'Coaching', roles: ['coach'] },
+  { id: 'dashboard', label: 'Dashboard', shortLabel: 'Coach', icon: Home, group: 'Coaching', roles: ['coach'] },
+  { id: 'athletes', label: 'Atleti', shortLabel: 'Atleti', icon: Users, group: 'Coaching', roles: ['coach'] },
+  { id: 'builder', label: 'Programmi', shortLabel: 'Programmi', icon: CalendarDays, group: 'Coaching', roles: ['coach'] },
   { id: 'test', label: 'Test / retest', shortLabel: 'Test', icon: TestTube2, group: 'Analisi', roles: ['athlete', 'coach'] },
+  { id: 'progress', label: 'Progressi', shortLabel: 'Progressi', icon: BarChart3, group: 'Analisi', roles: ['coach'] },
+  { id: 'library', label: 'Esercizi', shortLabel: 'Esercizi', icon: Dumbbell, group: 'Coaching', roles: ['coach'] },
+  { id: 'feedback', label: 'Feedback', shortLabel: 'Feedback', icon: MessageSquare, group: 'Coaching', roles: ['coach'] },
   { id: 'messages', label: 'Messaggi', shortLabel: 'Messaggi', icon: Mail, group: 'Comunicazione', roles: ['athlete'] },
   { id: 'account', label: 'Account e sicurezza', shortLabel: 'Account', icon: KeyRound, group: 'Account', roles: ['athlete', 'coach'] },
 ]
@@ -75,11 +74,12 @@ const viewMeta: Record<ViewId, { label: string; component: (props: ScreenProps) 
   system: { label: 'Sistema UI', component: () => <SystemScreen /> },
   home: { label: 'Home atleta', component: ({ openSession, profile }) => <HomeScreen openSession={openSession} profile={profile} /> },
   session: { label: 'Sessione', component: ({ profile, selectedSessionId }) => <SessionScreen profile={profile} sessionId={selectedSessionId} /> },
-  dashboard: { label: 'Coach dashboard', component: ({ profile, goTo, openAthlete }) => <DashboardScreen profile={profile} openAthletes={() => goTo('athletes')} openAthlete={openAthlete} /> },
+  dashboard: { label: 'Dashboard coach', component: ({ profile, goTo }) => <DashboardScreen profile={profile} openPrograms={() => goTo('builder')} openFeedback={() => goTo('feedback')} openProgress={() => goTo('progress')} /> },
   athletes: { label: 'Atleti e inviti', component: ({ profile, goTo, selectedAthleteId, setSelectedAthleteId, goToAthlete }) => <AthleteManagementScreen profile={profile} selectedAthleteId={selectedAthleteId} setSelectedAthleteId={setSelectedAthleteId} openDashboard={() => goTo('dashboard')} openAthleteArea={goToAthlete} /> },
   builder: { label: 'Program builder', component: ({ profile, selectedAthleteId }) => <BuilderScreen profile={profile} selectedAthleteId={selectedAthleteId} /> },
   library: { label: 'Libreria esercizi', component: ({ profile }) => <LibraryScreen profile={profile} /> },
   test: { label: 'Test / retest', component: ({ profile, selectedAthleteId }) => <TestScreen profile={profile} selectedAthleteId={selectedAthleteId} /> },
+  progress: { label: 'Progressi', component: ({ profile, selectedAthleteId }) => <TestScreen profile={profile} selectedAthleteId={selectedAthleteId} /> },
   feedback: { label: 'Feedback', component: ({ profile }) => <CoachFeedbackScreen profile={profile} /> },
   messages: { label: 'Messaggi', component: ({ profile }) => <MessagesScreen profile={profile} /> },
   migration: { label: 'Migrazione', component: () => <MigrationScreen /> },
@@ -125,8 +125,6 @@ export default function App({ profile, onSignOut, initialMode }: { profile: AppP
     `app-view:${profile.userId}`,
     updateUnsafeView,
   )
-  const groups = [...new Set(roleNavItems.map(item => item.group))]
-  const initials = profile.displayName.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase() || 'CC'
 
   const changeMode = (next: AppRole) => {
     if (!modes.includes(next)) return
@@ -271,28 +269,24 @@ export default function App({ profile, onSignOut, initialMode }: { profile: AppP
     </>
   }
 
-  return (
-    <div className="app-shell">
-      <aside className={`sidebar ${menuOpen ? 'is-open' : ''}`}>
-        <div className="brand"><div className="brand__mark"><Mountain size={22} /></div><div><b>CLIMBING<br />COACH</b><span>TRAINING SYSTEM</span></div></div>
-        <nav aria-label="Navigazione prototipo">
-          {groups.map(group => <div className="nav-group" key={group}><small>{group}</small>{roleNavItems.filter(item => item.group === group).map(item => { const Icon = item.icon; const messageItem = item.id === 'feedback' || item.id === 'messages'; return <button key={item.id} className={view === item.id ? 'active' : ''} onClick={() => navigate(item.id)}><Icon size={17} /><span>{item.label}</span><i>{messageItem && unreadCount ? unreadCount : item.id === 'migration' ? '!' : ''}</i></button> })}</div>)}
-        </nav>
-        <div className="sidebar__foot"><div><span className={`status-dot ${pendingCount ? 'status-dot--sync' : 'status-dot--ok'}`} /><b>{profile.workspaceName}</b></div><small>{dataRuntime.isConfigured ? 'Supabase collegato' : 'Demo locale'} · {pendingCount ? `${pendingCount} modifiche in coda` : 'coda vuota'}</small></div>
-      </aside>
-      <div className="app-main">
-        <div className="topbar">
-          <button className="menu-button" onClick={() => setMenuOpen(!menuOpen)} aria-label="Apri navigazione"><Menu size={20} /></button>
-          <div className="topbar__crumb"><span>CC</span><i>/</i><b>{viewMeta[view].label}</b></div>
-          <div className="topbar__tools">{modes.length > 1 ? <div className="mode-switch" aria-label="Modalità"><button className="active" onClick={() => changeMode('coach')}>Coach</button><button onClick={() => changeMode('athlete')}>Atleta</button></div> : <span className="role-chip">Coach</span>}<button className="sync-chip" onClick={() => void synchronizePending()} disabled={syncing || pendingCount === 0} title="Sincronizza la coda offline"><span className={`status-dot ${pendingCount ? 'status-dot--sync' : 'status-dot--ok'}`} />{syncing ? 'Sincronizzo…' : pendingCount ? `${pendingCount} in coda` : 'Cloud allineato'}</button><button className="icon-button message-indicator" aria-label={`Messaggi${unreadCount ? `, ${unreadCount} non letti` : ''}`} onClick={() => navigate('feedback')}><Mail size={17} />{unreadCount > 0 && <span>{unreadCount}</span>}</button><button className="icon-button" aria-label="Account e sicurezza" onClick={() => navigate('account')}><Settings2 size={17} /></button><button className="profile-button" onClick={() => void onSignOut()} title="Esci"><span>{initials}</span><LogOut size={14} /></button></div>
-        </div>
-        <main>{screen}</main>
-        <nav className="bottom-nav" aria-label="Navigazione mobile">
-          {roleNavItems.filter(item => ['dashboard', 'athletes', 'feedback', 'test'].includes(item.id)).slice(0, 4).map(item => { const Icon = item.icon; return <button key={item.id} className={view === item.id ? 'active' : ''} onClick={() => navigate(item.id)}><Icon size={18} /><span>{item.shortLabel}</span>{item.id === 'feedback' && unreadCount > 0 && <i>{unreadCount}</i>}</button> })}
-        </nav>
-      </div>
-      {menuOpen && <button className="scrim" aria-label="Chiudi navigazione" onClick={() => setMenuOpen(false)} />}
-      {messageToast && <div className="message-toast" role="status">{messageToast}</div>}
-    </div>
-  )
+  return <>
+    <CoachShell
+      profile={activeProfile}
+      view={view}
+      section={viewMeta[view].label}
+      items={roleNavItems.filter(item => ['dashboard', 'athletes', 'builder', 'test', 'progress', 'library', 'feedback'].includes(item.id))}
+      menuOpen={menuOpen}
+      unreadCount={unreadCount}
+      canSwitchToAthlete={modes.includes('athlete')}
+      onMenuToggle={() => setMenuOpen(value => !value)}
+      onNavigate={next => navigate(next as ViewId)}
+      onAccount={() => navigate('account')}
+      onFeedback={() => navigate('feedback')}
+      onSignOut={() => void onSignOut()}
+      onSwitchToAthlete={() => changeMode('athlete')}
+    >
+      {screen}
+    </CoachShell>
+    {messageToast && <div className="message-toast" role="status">{messageToast}</div>}
+  </>
 }

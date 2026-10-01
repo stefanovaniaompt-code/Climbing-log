@@ -31,6 +31,17 @@ export type CoachDashboardData = {
   needsReview: number
   adherenceTrend: number[]
   relationshipDistribution: { active: number; inactive: number; pending: number }
+  activePrograms: number
+  completedSessions: number
+  completedTests: number
+  nextSession: {
+    athleteId: string
+    athleteName: string
+    title: string
+    date: string | null
+    weekNumber: number
+    sessionOrder: number
+  } | null
 }
 
 export type CoachDashboardRows = {
@@ -38,7 +49,7 @@ export type CoachDashboardRows = {
   profiles: Array<{ id: string; full_name: string | null; first_name: string | null; last_name: string | null }>
   programs: Array<{ id: string; athlete_id: string; name: string; status: string; created_at: string }>
   weeks: Array<{ id: string; program_id: string; week_number: number; status: string; start_date: string | null }>
-  sessions: Array<{ id: string; training_week_id: string }>
+  sessions: Array<{ id: string; training_week_id: string; session_order: number; title: string; scheduled_day: number }>
   logs: Array<{ id: string; session_id: string; athlete_id: string; status: string; session_rpe: number | string | null; started_at: string | null; completed_at: string | null; created_at: string }>
   tests: Array<{ id: string; athlete_id: string; tested_at: string }>
 }
@@ -125,6 +136,21 @@ export function buildCoachDashboard(rows: CoachDashboardRows, source: CoachDashb
     return Math.round(completed / sessionIds.size * 100)
   })
 
+  const activeAthleteIds = new Set(active.map(athlete => athlete.id))
+  const activePrograms = rows.programs.filter(program => program.status === 'active' && activeAthleteIds.has(program.athlete_id))
+  const completedSessionIds = new Set(rows.logs.filter(log => log.status === 'completed').map(log => log.session_id))
+  const upcomingSessions = activePrograms.flatMap(program => rows.weeks
+    .filter(week => week.program_id === program.id && (week.status === 'current' || week.status === 'planned'))
+    .flatMap(week => rows.sessions
+      .filter(session => session.training_week_id === week.id && !completedSessionIds.has(session.id))
+      .map(session => {
+        const date = week.start_date
+          ? new Date(new Date(`${week.start_date}T12:00:00`).getTime() + (session.scheduled_day - 1) * 86_400_000).toISOString().slice(0, 10)
+          : null
+        return { athleteId: program.athlete_id, athleteName: displayName(profiles.get(program.athlete_id)), title: session.title, date, weekNumber: week.week_number, sessionOrder: session.session_order }
+      })))
+    .sort((a, b) => (a.date ?? '9999-12-31').localeCompare(b.date ?? '9999-12-31') || a.weekNumber - b.weekNumber || a.sessionOrder - b.sessionOrder)
+
   return {
     source,
     athletes,
@@ -138,5 +164,9 @@ export function buildCoachDashboard(rows: CoachDashboardRows, source: CoachDashb
       inactive: athletes.filter(athlete => athlete.relationshipStatus === 'inactive').length,
       pending: athletes.filter(athlete => athlete.relationshipStatus === 'pending').length,
     },
+    activePrograms: activePrograms.length,
+    completedSessions: completedSessionIds.size,
+    completedTests: rows.tests.length,
+    nextSession: upcomingSessions[0] ?? null,
   }
 }
