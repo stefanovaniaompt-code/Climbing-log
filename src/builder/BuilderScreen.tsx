@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { ChevronDown, Copy, Layers3, Plus, Save, Settings2, ShieldCheck, TimerReset, TriangleAlert, Users } from 'lucide-react'
+import { ArrowLeft, ArrowRight, CalendarDays, ChevronDown, Copy, Layers3, Plus, Save, Settings2, ShieldCheck, TimerReset, TriangleAlert, Users } from 'lucide-react'
 import type { AppProfile } from '../onboarding/types'
 import { Panel, ScreenHeader, Tag } from '../shared/ui'
 import { canPublishProgram, latestWeek, prescriptionSummary, type ProgramBuilderData } from './programBuilder'
@@ -7,6 +7,8 @@ import { addExercise, createProgram, createSession, createWeek, duplicateWeek, l
 import { ExerciseTestTargetPanel } from './ExerciseTestTargetPanel'
 
 export function BuilderScreen({ profile, selectedAthleteId }: { profile: AppProfile; selectedAthleteId: string }) {
+  const [showBuilder, setShowBuilder] = useState(Boolean(selectedAthleteId))
+  const [creatingProgram, setCreatingProgram] = useState(false)
   const [data, setData] = useState<ProgramBuilderData | null>(null)
   const [athleteId, setAthleteId] = useState(selectedAthleteId)
   const [programId, setProgramId] = useState('')
@@ -40,7 +42,10 @@ export function BuilderScreen({ profile, selectedAthleteId }: { profile: AppProf
     if (!data.athletes.some(athlete => athlete.id === athleteId)) setAthleteId(data.athletes[0]?.id ?? '')
   }, [data, athleteId, selectedAthleteId])
   const athletePrograms = data?.programs.filter(program => program.athleteId === athleteId) ?? []
-  useEffect(() => { if (!athletePrograms.some(program => program.id === programId)) setProgramId(athletePrograms[0]?.id ?? '') }, [athleteId, data, programId])
+  useEffect(() => {
+    if (creatingProgram) return
+    if (!athletePrograms.some(program => program.id === programId)) setProgramId(athletePrograms[0]?.id ?? '')
+  }, [athleteId, athletePrograms, creatingProgram, programId])
   const weeks = data?.weeks.filter(week => week.programId === programId) ?? []
   useEffect(() => { if (!weeks.some(week => week.id === weekId)) setWeekId(weeks[0]?.id ?? '') }, [programId, data, weekId])
   const sessions = data?.sessions.filter(session => session.weekId === weekId) ?? []
@@ -71,7 +76,7 @@ export function BuilderScreen({ profile, selectedAthleteId }: { profile: AppProf
   const submitProgram = (event: FormEvent) => {
     event.preventDefault()
     if (!athleteId || !newProgram.name.trim()) return
-    void run(async () => { const id = await createProgram(profile, athleteId, newProgram.name, newProgram.goal, newProgram.programType); setProgramId(id); setNewProgram({ name: '', goal: '', programType: 'athlete' }) }, 'Bozza creata. Ora aggiungi una settimana.')
+    void run(async () => { const id = await createProgram(profile, athleteId, newProgram.name, newProgram.goal, newProgram.programType); setProgramId(id); setCreatingProgram(false); setNewProgram({ name: '', goal: '', programType: 'athlete' }) }, 'Bozza creata. Ora aggiungi una settimana.')
   }
   const addWeek = () => void run(async () => { const id = await createWeek(profile, programId, weeks.map(week => week.weekNumber)); setWeekId(id) }, 'Settimana aggiunta senza modificare le precedenti.')
   const duplicatePreviousWeek = () => {
@@ -96,11 +101,14 @@ export function BuilderScreen({ profile, selectedAthleteId }: { profile: AppProf
 
   if (state === 'loading' && !data) return <div className="screen"><ScreenHeader eyebrow="PROGRAMMA" title="Caricamento programma" text="Aggiornamento dati in corso." /><div className="skeleton-stack"><span /><span /><span /></div></div>
 
+  if (!showBuilder) return <ProgramsOverview activePrograms={data?.programs.filter(item => item.status === 'active').length ?? 0} onOpen={() => { setCreatingProgram(false); setShowBuilder(true) }} onCreate={() => { setProgramId(''); setCreatingProgram(true); setShowBuilder(true) }} />
+
   return <div className="screen">
+    <button className="coach-programs__back" onClick={() => setShowBuilder(false)}><ArrowLeft size={16} /> Programmi</button>
     <ScreenHeader eyebrow="PROGRAMMA" title={program?.name ?? 'Nuovo programma'} text="Modifica settimane, sessioni ed esercizi." action={<div className="header-actions"><Tag tone={data?.source === 'legacy-v1' ? 'success' : 'neutral'}>{data?.source === 'legacy-v1' ? 'ONLINE' : 'DEMO'}</Tag><button className="button button--primary" disabled={!program || state === 'saving' || program.status === 'active'} onClick={publish}><Save size={16} /> {program?.status === 'active' ? 'Pubblicato' : 'Pubblica'}</button></div>} />
     <div className="builder-toolbar">
       <label><span>Atleta</span><select value={athleteId} onChange={event => setAthleteId(event.target.value)} disabled={state === 'saving'}>{data?.athletes.map(athlete => <option key={athlete.id} value={athlete.id}>{athlete.name}</option>)}</select></label>
-      <label><span>Programma</span><select value={programId} onChange={event => setProgramId(event.target.value)} disabled={state === 'saving'}><option value="">Nuova bozza…</option>{athletePrograms.map(item => <option key={item.id} value={item.id}>{item.name} · {item.status}</option>)}</select></label>
+      <label><span>Programma</span><select value={programId} onChange={event => { setProgramId(event.target.value); setCreatingProgram(!event.target.value) }} disabled={state === 'saving'}><option value="">Nuova bozza…</option>{athletePrograms.map(item => <option key={item.id} value={item.id}>{item.name} · {item.status}</option>)}</select></label>
       {program && <div className="builder-program-status"><small>STATO</small><Tag tone={program.status === 'active' ? 'success' : program.status === 'draft' ? 'signal' : 'neutral'}>{program.status}</Tag><span>{program.goal || 'Obiettivo da definire'}</span></div>}
     </div>
     {!data?.athletes.length && <Panel title="Nessun atleta attivo" index="00"><div className="empty-state"><Users size={22} /><b>Collega o riattiva un atleta</b><span>Il builder mostra soltanto le relazioni coach-atleta attive.</span></div></Panel>}
@@ -145,5 +153,32 @@ export function BuilderScreen({ profile, selectedAthleteId }: { profile: AppProf
     </div>}
     {error && <div className="completion-banner completion-banner--error"><TriangleAlert size={19} /><div><b>Operazione non completata</b><span>{error}</span></div></div>}
     {message && <div className="completion-banner"><ShieldCheck size={19} /><div><b>Program Builder aggiornato</b><span>{message}</span></div></div>}
+  </div>
+}
+
+function ProgramsOverview({ activePrograms, onOpen, onCreate }: { activePrograms: number; onOpen: () => void; onCreate: () => void }) {
+  return <div className="coach-programs">
+    <header className="coach-programs__intro">
+      <p className="coach-kicker">// PROCESS</p>
+      <div>
+        <section><h1>PROGRAMMI <span aria-hidden="true" /></h1><p>Pianificazione dei percorsi di allenamento e gestione delle sessioni.</p></section>
+        <button onClick={onCreate}><Plus size={16} /> NUOVO PROGRAMMA</button>
+      </div>
+    </header>
+    <section className="coach-programs__cards">
+      <article className="coach-programs__builder-card">
+        <Layers3 size={23} />
+        <p>PROGRAM BUILDER</p>
+        <h2>COSTRUISCI PROGRAMMA</h2>
+        <span>Crea settimane, sessioni ed esercizi all'interno del percorso dell'atleta.</span>
+        <button onClick={onOpen}>APRI BUILDER <ArrowRight size={15} /></button>
+      </article>
+      <article className="coach-programs__metric-card">
+        <CalendarDays size={23} />
+        <p>PROGRAMMI ATTIVI</p>
+        <strong>{String(activePrograms).padStart(2, '0')}</strong>
+        <span>Percorsi attualmente in corso.</span>
+      </article>
+    </section>
   </div>
 }
