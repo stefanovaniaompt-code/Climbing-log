@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { ArrowLeft, ArrowRight, Check, Mail, Plus, Search, ShieldCheck, SlidersHorizontal, TestTube2, Trash2, TriangleAlert, Users } from 'lucide-react'
 import type { AppProfile } from '../onboarding/types'
 import { ConfirmDialog, Panel, ScreenHeader, Tag } from '../shared/ui'
-import { createManagedAthlete, decideCoachLinkRequest, inviteAthlete, loadAthleteManagement, removeAthleteRelationship, resolveInvitationEmail, revokeInvitation, setAthleteStatus, type AthleteManagementData } from './athleteManagementRepository'
+import { createManagedAthlete, decideCoachLinkRequest, inviteAthlete, loadAthleteManagement, removeAthleteRelationship, resolveInvitationEmail, revokeInvitation, type AthleteManagementData } from './athleteManagementRepository'
 
 type Props = { profile: AppProfile; selectedAthleteId: string; setSelectedAthleteId: (id: string) => void; openDashboard: () => void; openAthleteArea: (view: 'builder' | 'test', athleteId: string) => void }
 
@@ -55,16 +55,6 @@ export function AthleteManagementScreen({ profile, selectedAthleteId, setSelecte
       setMessage(accept ? 'Richiesta accettata: atleta collegato.' : 'Richiesta rifiutata.')
       setData(await loadAthleteManagement(profile))
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Richiesta non aggiornata.') }
-    finally { setState('idle') }
-  }
-
-  const changeStatus = async (id: string, status: 'active' | 'inactive') => {
-    setState('saving'); setError(''); setMessage('')
-    try {
-      await setAthleteStatus(profile, id, status)
-      setMessage(status === 'active' ? 'Atleta riattivato.' : 'Atleta sospeso. Storico e allenamenti restano intatti.')
-      setData(await loadAthleteManagement(profile))
-    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Stato non aggiornato.') }
     finally { setState('idle') }
   }
 

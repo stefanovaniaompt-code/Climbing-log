@@ -548,6 +548,32 @@ textarea { width: calc(100% - 36px); min-height: 76px; padding: 10px; resize: ve
   align-items: stretch;
 }
 
+/* Program Builder workflow */
+.week-rail button.week-type--load { border-top: 3px solid var(--purple-700); }
+.week-rail button.week-type--deload { border-top: 3px solid var(--mustard-500); background: #f7f0dc; }
+.text-button.danger { color: #9a263b; }
+.builder-details select { height: 36px; border: 1px solid var(--line-strong); background: #fff; }
+.builder-load-adjust { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0; padding: 10px; border: 1px solid var(--line); background: var(--purple-100); }
+.builder-load-adjust input { width: 72px; height: 34px; }
+.builder-load-adjust span { flex: 1; min-width: 190px; font-size: 10px; color: var(--muted); }
+.structured-prescription { margin: 14px 0; padding-top: 12px; border-top: 1px solid var(--line); }
+.structured-prescription__head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font: 600 9px/1 'IBM Plex Mono', monospace; }
+.structured-prescription__row { display: grid; grid-template-columns: 1.2fr .8fr .7fr .7fr 28px; gap: 5px; margin-bottom: 6px; }
+.structured-prescription__row input { min-width: 0; height: 34px; padding: 0 6px; border: 1px solid var(--line); }
+.structured-prescription__row button { border: 1px solid var(--line); background: #fff; color: #9a263b; }
+.builder-calendar { display: grid; grid-template-columns: .8fr 1fr 1fr 1.5fr auto; gap: 8px; }
+.builder-calendar select, .builder-calendar input { min-width: 0; height: 40px; padding: 0 9px; border: 1px solid var(--line-strong); background: #fff; }
+.builder-calendar__events > div { display: grid; grid-template-columns: 110px 190px 1fr 32px; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+.builder-calendar__events em { color: var(--muted); font-style: normal; }
+.builder-calendar__events button { border: 0; background: transparent; color: #9a263b; }
+@media (max-width: 700px) {
+  .builder-calendar { grid-template-columns: 1fr; }
+  .builder-calendar__events > div { grid-template-columns: 1fr auto; }
+  .builder-calendar__events span, .builder-calendar__events em { grid-column: 1 / -1; }
+  .structured-prescription__row { grid-template-columns: 1fr 1fr; }
+  .structured-prescription__row button { min-height: 34px; }
+}
+
 .athlete-week-overview > div:first-child > b { font-size: 14px; }
 .athlete-week-overview > div:first-child > p {
   margin: 7px 0 0;

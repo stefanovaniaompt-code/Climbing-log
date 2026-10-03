@@ -482,6 +482,18 @@ export function formatPrescription(exercise: RunnerExercise): string {
 export function getVariableSeries(
   exercise: RunnerExercise,
 ): string[] {
+  const steps = exercise.prescription.steps
+  if (Array.isArray(steps) && steps.length) {
+    return steps.map((value, index) => {
+      const row = value && typeof value === 'object' && !Array.isArray(value) ? value as JsonRecord : {}
+      const load = Number(row.loadKg)
+      const reps = positiveInteger(row.reps)
+      const seconds = positiveInteger(row.seconds)
+      const label = textValue(row.label) || `Set ${index + 1}`
+      const dose = reps ? `${reps} rep` : seconds ? `${seconds} sec` : ''
+      return [Number.isFinite(load) && load >= 0 ? `${load} kg` : '', dose].filter(Boolean).join(' × ') || label
+    })
+  }
   const derived =
     getDerivedSetTargets(
       exercise,
