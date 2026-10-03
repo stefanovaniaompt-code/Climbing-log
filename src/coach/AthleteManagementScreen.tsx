@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { ArrowLeft, ArrowRight, Check, Mail, Plus, Search, ShieldCheck, SlidersHorizontal, TestTube2, Trash2, TriangleAlert, Users } from 'lucide-react'
 import type { AppProfile } from '../onboarding/types'
 import { ConfirmDialog, Panel, ScreenHeader, Tag } from '../shared/ui'
-import { createManagedAthlete, decideCoachLinkRequest, inviteAthlete, loadAthleteManagement, removeAthleteRelationship, resolveInvitationEmail, revokeInvitation, type AthleteManagementData } from './athleteManagementRepository'
+import { createManagedAthlete, decideCoachLinkRequest, inviteAthlete, loadAthleteManagement, removeAthleteRelationship, resolveInvitationEmail, revokeInvitation, setAthleteStatus, type AthleteManagementData } from './athleteManagementRepository'
 
 type Props = { profile: AppProfile; selectedAthleteId: string; setSelectedAthleteId: (id: string) => void; openDashboard: () => void; openAthleteArea: (view: 'builder' | 'test', athleteId: string) => void }
 
@@ -58,6 +58,16 @@ export function AthleteManagementScreen({ profile, selectedAthleteId, setSelecte
     finally { setState('idle') }
   }
 
+  const changeStatus = async (id: string, status: 'active' | 'inactive') => {
+    setState('saving'); setError(''); setMessage('')
+    try {
+      await setAthleteStatus(profile, id, status)
+      setMessage(status === 'active' ? 'Atleta riattivato.' : 'Atleta sospeso. Storico e allenamenti restano intatti.')
+      setData(await loadAthleteManagement(profile))
+    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Stato non aggiornato.') }
+    finally { setState('idle') }
+  }
+
   const revoke = async (id: string) => {
     setState('saving'); setError(''); setMessage('')
     try { await revokeInvitation(profile, id); setMessage('Invito revocato senza cancellare alcun dato.'); setData(await loadAthleteManagement(profile)) }
@@ -109,7 +119,7 @@ export function AthleteManagementScreen({ profile, selectedAthleteId, setSelecte
           <div className="coach-athlete-row__identity"><span className="coach-athlete-row__avatar">{athlete.initials}</span><div><h2>{athlete.name}</h2><div className="coach-athlete-row__tags"><span>{athlete.status === 'active' ? 'ATTIVO' : athlete.status === 'pending' ? 'IN ATTESA' : 'SOSPESO'}</span><span>{athlete.appAccessActive ? 'ACCESSO APP' : 'ACCESSO DA ATTIVARE'}</span></div></div></div>
           <DataCell label="PROGRAMMA" value={athlete.status === 'active' ? 'ATTIVO' : 'NON ATTIVO'} />
           <DataCell label="ACCOUNT" value={athlete.appAccessActive ? 'COLLEGATO' : 'DA INVITARE'} />
-          <button className="coach-athlete-row__open" onClick={() => { setEmail(athlete.email ?? ''); setSelectedAthleteId(athlete.id) }}>VEDI PROGRESSI <ArrowRight size={16} /></button>
+          <div className="coach-athlete-row__actions"><button className="coach-athlete-row__open" onClick={() => { setEmail(athlete.email ?? ''); setSelectedAthleteId(athlete.id) }}>VEDI PROGRESSI <ArrowRight size={16} /></button><button className="coach-athlete-row__status" disabled={state === 'saving'} onClick={() => void changeStatus(athlete.id, athlete.status === 'active' ? 'inactive' : 'active')}>{athlete.status === 'active' ? 'SOSPENDI' : 'RIATTIVA'}</button></div>
         </article>)}
       </section>
       <div className="coach-athletes__management">

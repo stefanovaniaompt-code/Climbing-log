@@ -154,6 +154,10 @@
 .coach-athlete-row__data b { margin-top: 9px; color: var(--ink); font-size: 13px; }
 .coach-athlete-row__open { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border: 0; background: var(--purple-700); color: #fff; font: 650 10px/1 'IBM Plex Mono', monospace; letter-spacing: .07em; cursor: pointer; transition: background .18s ease, transform .18s ease; }
 .coach-athlete-row__open:hover { background: var(--purple-950); transform: translateY(-1px); }
+.coach-athlete-row__actions { display: grid; gap: 7px; }
+.coach-athlete-row__status { min-height: 34px; border: 1px solid var(--purple-700); background: transparent; color: var(--purple-700); font: 650 9px/1 'IBM Plex Mono', monospace; letter-spacing: .07em; cursor: pointer; }
+.coach-athlete-row__status:hover { background: var(--purple-100); }
+.coach-athlete-row__status:disabled { cursor: wait; opacity: .55; }
 .coach-athletes__loading, .coach-athletes__empty { min-height: 130px; display: grid; place-items: center; align-content: center; gap: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); }
 .coach-athletes__empty b { color: var(--ink); }
 .coach-athletes__management { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 24px; }
