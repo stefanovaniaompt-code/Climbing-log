@@ -566,6 +566,97 @@ textarea { width: calc(100% - 36px); min-height: 76px; padding: 10px; resize: ve
 .builder-calendar__events > div { display: grid; grid-template-columns: 110px 190px 1fr 32px; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
 .builder-calendar__events em { color: var(--muted); font-style: normal; }
 .builder-calendar__events button { border: 0; background: transparent; color: #9a263b; }
+
+/* Coach program builder — UI Lab layout */
+.coach-builder { width: min(100%, 1720px); margin: 0 auto; }
+.coach-builder .builder-toolbar { margin: 0 0 16px; border-color: #d2c5da; background: #faf8fc; box-shadow: none; }
+.coach-builder__hero { position: relative; min-height: 188px; display: flex; justify-content: space-between; gap: 28px; overflow: hidden; margin-bottom: 16px; border: 1px solid #d2c4dd; background: #e7d9ee; padding: 26px 28px; }
+.coach-builder__hero-pattern { position: absolute; inset: 0; opacity: .55; background: linear-gradient(135deg, transparent 0 60%, rgba(85,32,111,.08) 60% 61%, transparent 61%), linear-gradient(45deg, rgba(214,170,36,.12), transparent 35%); }
+.coach-builder__hero-content, .coach-builder__hero-actions { position: relative; z-index: 1; }
+.coach-builder__hero-content > p, .coach-builder__session-head small, .coach-builder__week-head small { margin: 0; color: #6d5b78; font: 650 10px/1 'IBM Plex Mono', monospace; letter-spacing: .09em; }
+.coach-builder__hero-title { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 8px; }
+.coach-builder__hero-title h1 { margin: 0; color: #210b2d; font: 650 clamp(30px,3.1vw,43px)/1 'Space Grotesk', sans-serif; letter-spacing: -.05em; }
+.coach-builder__goal { min-width: min(760px, 64vw); display: grid; grid-template-columns: 32px 118px minmax(0,1fr); align-items: center; margin-top: 24px; border: 1px solid #e3cf96; background: rgba(255,246,221,.95); }
+.coach-builder__goal > span { display: grid; place-items: center; align-self: stretch; background: #ffefc3; color: #d6aa24; font-size: 22px; }
+.coach-builder__goal > b { align-self: stretch; display: flex; align-items: center; border-right: 1px solid #e3cf96; padding: 0 15px; color: #684f0a; font: 650 10px/1 'IBM Plex Mono', monospace; letter-spacing: .07em; }
+.coach-builder__goal > p { margin: 0; padding: 15px 18px; color: #210b2d; font-size: 13px; font-weight: 550; }
+.coach-builder__hero-actions { display: flex; align-items: flex-start; gap: 10px; }
+.coach-builder__hero-actions .button { min-height: 44px; white-space: nowrap; }
+.coach-builder__layout { display: grid; grid-template-columns: minmax(350px, 510px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.coach-builder__structure, .coach-builder__editor { min-width: 0; border: 1px solid #d2c5da; background: #f0e8f4; }
+.coach-builder__structure > header { display: flex; justify-content: space-between; gap: 20px; align-items: center; border-bottom: 1px solid #d2c5da; padding: 20px; }
+.coach-builder__structure > header h2 { margin: 0; color: #210b2d; font-size: 16px; }
+.coach-builder__structure > header p { margin: 5px 0 0; color: #716878; font-size: 11px; }
+.coach-builder__structure > header button, .coach-builder__week-head button, .coach-builder__session-head button { min-height: 36px; display: flex; align-items: center; justify-content: center; gap: 7px; border: 1px solid #bda9cb; background: #faf8fc; color: #55206f; padding: 0 12px; font: 650 9px/1 'IBM Plex Mono', monospace; letter-spacing: .05em; cursor: pointer; }
+.coach-builder__weeks { display: grid; grid-template-columns: repeat(6, minmax(44px,1fr)); gap: 6px; padding: 18px 20px; border-bottom: 1px solid #d2c5da; }
+.coach-builder__weeks button { min-height: 60px; display: grid; place-content: center; gap: 8px; border: 1px solid #d7cdd9; background: #fcfafd; color: #210b2d; cursor: pointer; }
+.coach-builder__weeks button b { font: 650 11px/1 'IBM Plex Mono', monospace; }
+.coach-builder__weeks button span { color: #55206f; font: 650 9px/1 'IBM Plex Mono', monospace; }
+.coach-builder__weeks button.week-type--deload span { color: #a77e00; }
+.coach-builder__weeks button.active { border-color: #55206f; background: #55206f; color: #fff; }
+.coach-builder__weeks button.active span { color: #fff; }
+.coach-builder__week-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; border-left: 5px solid #55206f; border-bottom: 1px solid #d2c5da; background: #e7d9ee; padding: 19px 20px; }
+.coach-builder__week-head.week-type--deload { border-left-color: #d6aa24; background: #fff2d7; }
+.coach-builder__week-head h3 { margin: 7px 0 0; color: #210b2d; font-size: 19px; line-height: 1.15; }
+.coach-builder__week-head span { display: block; margin-top: 7px; color: #55206f; font: 650 9px/1 'IBM Plex Mono', monospace; }
+.coach-builder__week-head.week-type--deload span { color: #9a7400; }
+.coach-builder__week-head > div:last-child { display: flex; gap: 6px; }
+.coach-builder__week-head button.danger, .coach-builder__session-head button.danger { color: #8d2438; border-color: #d9b7bf; }
+.coach-builder .builder-details--week { grid-template-columns: 1fr 1fr; margin: 0; border: 0; border-bottom: 1px solid #d2c5da; background: #faf8fc; padding: 15px 20px; }
+.coach-builder .builder-details--week .danger { display: none; }
+.coach-builder .builder-load-adjust { margin: 0; border: 0; border-bottom: 1px solid #d2c5da; background: #ece3f1; padding: 14px 20px; }
+.coach-builder__session-list { display: grid; gap: 10px; padding: 16px; }
+.coach-builder__session-list > button { width: 100%; min-height: 92px; display: grid; grid-template-columns: 58px minmax(0,1fr) 26px; align-items: center; overflow: hidden; border: 1px solid #d3c8d8; background: #fcfafd; padding: 0 14px 0 0; text-align: left; cursor: pointer; }
+.coach-builder__session-list > button > b { height: 100%; display: grid; place-items: center; border-right: 1px solid #ded6e1; background: #f0eaf3; color: #55206f; font: 650 18px/1 'IBM Plex Mono', monospace; }
+.coach-builder__session-list > button > span { min-width: 0; padding: 12px 16px; }
+.coach-builder__session-list strong, .coach-builder__session-list small { display: block; }
+.coach-builder__session-list strong { overflow: hidden; color: #210b2d; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.coach-builder__session-list small { margin-top: 7px; overflow: hidden; color: #706775; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.coach-builder__session-list > button.active { border-color: #7a4690; background: #e9dff0; }
+.coach-builder__session-list > button.active > b { background: #e1d1ea; }
+.coach-builder__add-session { width: calc(100% - 32px); min-height: 48px; display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0 16px 16px; border: 1px dashed #a987bc; background: #faf8fc; color: #55206f; font: 650 10px/1 'IBM Plex Mono', monospace; cursor: pointer; }
+.coach-builder__editor { background: #f0e8f4; }
+.coach-builder__session-head { min-height: 112px; display: flex; justify-content: space-between; align-items: center; gap: 20px; border-left: 5px solid #55206f; padding: 20px 24px; }
+.coach-builder__session-head h2 { margin: 8px 0 0; color: #210b2d; font-size: clamp(23px,2.2vw,30px); letter-spacing: -.04em; }
+.coach-builder__session-head p { margin: 8px 0 0; color: #706775; font-size: 13px; }
+.coach-builder__tabs { display: grid; grid-template-columns: repeat(3,1fr); border-block: 1px solid #d2c5da; background: #faf8fc; }
+.coach-builder__tabs > * { min-height: 48px; display: grid; place-items: center; border-right: 1px solid #d2c5da; color: #766b7d; font: 650 9px/1 'IBM Plex Mono', monospace; letter-spacing: .06em; }
+.coach-builder__tabs > b { position: relative; color: #55206f; }
+.coach-builder__tabs > b::after { content: ''; position: absolute; inset: auto 0 -1px; height: 3px; background: #d6aa24; }
+.coach-builder .builder-details--session { grid-template-columns: 1.2fr 1.4fr .6fr .6fr; margin: 0; border: 0; border-bottom: 1px solid #d2c5da; background: #ece3f1; padding: 16px 20px; }
+.coach-builder .exercise-block { width: calc(100% - 32px); min-height: 78px; margin: 12px 16px; box-shadow: none; }
+.coach-builder .exercise-adder { margin: 16px; border: 1px solid #d2c5da; background: #ece3f1; padding: 14px; }
+.coach-builder__inspector { width: auto; margin: 16px; border-color: #c8b9d4; box-shadow: none; }
+.coach-builder__inspector .panel__body { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
+.coach-builder__inspector .inspector-notes, .coach-builder__inspector .structured-prescription, .coach-builder__inspector .builder-test-target, .coach-builder__inspector .button--wide, .coach-builder__inspector .empty-state { grid-column: 1 / -1; }
+
+@media (max-width: 1400px) {
+  .coach-builder__hero { flex-direction: column; }
+  .coach-builder__hero-actions { align-items: center; }
+  .coach-builder__goal { min-width: 0; width: 100%; }
+}
+@media (max-width: 1120px) {
+  .coach-builder__layout { grid-template-columns: minmax(310px, .8fr) minmax(0, 1.2fr); }
+  .coach-builder__inspector .panel__body { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media (max-width: 820px) {
+  .coach-builder__layout { grid-template-columns: 1fr; }
+  .coach-builder__hero { padding: 22px 18px; }
+  .coach-builder__goal { grid-template-columns: 38px 1fr; }
+  .coach-builder__goal > b { border-right: 0; }
+  .coach-builder__goal > p { grid-column: 1 / -1; border-top: 1px solid #e3cf96; }
+  .coach-builder__weeks { grid-template-columns: repeat(4,minmax(44px,1fr)); }
+  .coach-builder .builder-details--session { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 560px) {
+  .coach-builder .builder-toolbar { grid-template-columns: 1fr; }
+  .coach-builder__hero-actions { flex-wrap: wrap; }
+  .coach-builder__hero-actions .button { flex: 1; }
+  .coach-builder__tabs { grid-template-columns: 1fr; }
+  .coach-builder__tabs > span { display: none; }
+  .coach-builder__inspector .panel__body { grid-template-columns: 1fr; }
+  .coach-builder .builder-details--week, .coach-builder .builder-details--session { grid-template-columns: 1fr; }
+}
 @media (max-width: 700px) {
   .builder-calendar { grid-template-columns: 1fr; }
   .builder-calendar__events > div { grid-template-columns: 1fr auto; }
