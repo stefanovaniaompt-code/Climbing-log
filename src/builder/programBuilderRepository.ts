@@ -2,7 +2,7 @@ import { dataRuntime } from '../dataRuntime'
 import { supabase } from '../lib/supabase'
 import type { AppProfile } from '../onboarding/types'
 import { normalizeProgramType, type ProgramType } from '../programs/programType'
-import { nextSequence, type PrescriptionStep, type ProgramBuilderData, type WeekLoadType } from './programBuilder'
+import { mergePrescriptionForUpdate, nextSequence, type PrescriptionStep, type ProgramBuilderData, type WeekLoadType } from './programBuilder'
 
 const demo: ProgramBuilderData = {
   source: 'demo',
@@ -26,13 +26,16 @@ export async function loadProgramBuilder(profile: AppProfile): Promise<ProgramBu
   if (isDemo(profile)) return demo
 
   const [relationsResult, programsResult, libraryResult] = await Promise.all([
-    supabase!.from('coach_athletes').select('athlete_id').eq('coach_id', profile.userId).eq('status', 'active'),
+    supabase!.from('coach_athletes').select('athlete_id,status').eq('coach_id', profile.userId),
     supabase!.from('programs').select('id,athlete_id,name,goal,program_type,status,start_date,end_date').eq('coach_id', profile.userId).order('updated_at', { ascending: false }),
     supabase!.from('exercise_library').select('id,name,category,default_instructions,default_prescription').eq('coach_id', profile.userId).eq('archived', false).order('name'),
   ])
   for (const result of [relationsResult, programsResult, libraryResult]) if (result.error) throw result.error
 
-  const athleteIds = (relationsResult.data ?? []).map(row => row.athlete_id as string)
+  const athleteIds = Array.from(new Set([
+    ...(relationsResult.data ?? []).map(row => row.athlete_id as string),
+    ...(programsResult.data ?? []).map(row => row.athlete_id as string),
+  ]))
   const profilesResult = athleteIds.length
     ? await supabase!.from('athletes').select('id,first_name,last_name').in('id', athleteIds)
     : { data: [], error: null }
@@ -139,7 +142,7 @@ export type ExercisePatch = { sets: number; reps: number; seconds: number; loadK
 export async function updateExercise(profile: AppProfile, exerciseId: string, currentPrescription: Record<string, unknown>, patch: ExercisePatch) {
   assertCoach(profile); if (isDemo(profile)) return
   const result = await supabase!.from('session_exercises').update({
-    prescription: { ...currentPrescription, sets: patch.steps.length || patch.sets, reps: patch.reps || undefined, seconds: patch.seconds || undefined, loadKg: patch.loadKg || undefined, steps: patch.steps.length ? patch.steps : undefined },
+    prescription: mergePrescriptionForUpdate(currentPrescription, patch),
     target_rpe_min: Math.max(0, patch.rpe - 1),
     target_rpe_max: patch.rpe,
     rest_seconds: patch.restSeconds,

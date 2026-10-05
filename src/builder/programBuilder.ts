@@ -19,6 +19,7 @@ export type BuilderSessionExercise = {
   instructions: string | null
 }
 export type PrescriptionStep = { label: string; reps: number; seconds: number; loadKg: number | null }
+export type PrescriptionEditorValues = { sets: number; reps: number; seconds: number; loadKg: number; steps: PrescriptionStep[] }
 export type ProgramCalendarEvent = { id: string; programId: string; eventType: 'travel' | 'off' | 'unavailable' | 'note'; startDate: string; endDate: string; note: string }
 
 export type ProgramBuilderData = {
@@ -41,10 +42,7 @@ export function latestWeek(weeks: BuilderWeek[]) {
 export function prescriptionSummary(exercise: BuilderSessionExercise) {
   const steps = getPrescriptionSteps(exercise.prescription)
   if (steps.length) return steps.map(formatPrescriptionStep).join(' · ')
-  const sets = Number(exercise.prescription.sets) || 1
-  const reps = Number(exercise.prescription.reps)
-  const seconds = Number(exercise.prescription.seconds)
-  const load = Number(exercise.prescription.loadKg)
+  const { sets, reps, seconds, loadKg: load } = readPrescriptionEditorValues(exercise.prescription)
   const effort = exercise.targetRpeMax ? `RPE ${exercise.targetRpeMax}` : null
   return [
     `${sets} serie`,
@@ -52,6 +50,46 @@ export function prescriptionSummary(exercise: BuilderSessionExercise) {
     load > 0 ? `${load} kg` : null,
     effort,
   ].filter(Boolean).join(' · ')
+}
+
+export function readPrescriptionEditorValues(prescription: Record<string, unknown>) {
+  const steps = getPrescriptionSteps(prescription)
+  const dose = String(prescription.dose ?? '')
+  const repsFromDose = dose.match(/(\d+(?:[.,]\d+)?)\s*(?:rep|ripetizion)/i)
+  const secondsFromDose = dose.match(/(\d+(?:[.,]\d+)?)\s*(?:s|sec|second)/i)
+  const legacyLoad = Number(String(prescription.load_value ?? '').replace(',', '.'))
+  const modernLoad = Number(prescription.loadKg)
+  return {
+    sets: steps.length || Math.max(1, Number(prescription.sets) || 1),
+    reps: Math.max(0, Number(prescription.reps) || Number(repsFromDose?.[1]?.replace(',', '.')) || 0),
+    seconds: Math.max(0, Number(prescription.seconds) || Number(secondsFromDose?.[1]?.replace(',', '.')) || 0),
+    loadKg: Number.isFinite(modernLoad) && modernLoad > 0 ? modernLoad : Number.isFinite(legacyLoad) && legacyLoad > 0 ? legacyLoad : 0,
+    steps,
+  }
+}
+
+export function mergePrescriptionForUpdate(current: Record<string, unknown>, next: PrescriptionEditorValues) {
+  const previous = readPrescriptionEditorValues(current)
+  const doseChanged = previous.reps !== next.reps || previous.seconds !== next.seconds
+  const loadChanged = previous.loadKg !== next.loadKg
+  const timer = current.timer && typeof current.timer === 'object' && !Array.isArray(current.timer)
+    ? { ...(current.timer as Record<string, unknown>) }
+    : null
+  if (timer && previous.seconds !== next.seconds && next.seconds > 0) timer.work_seconds = next.seconds
+  if (timer && previous.reps !== next.reps && next.reps > 0) timer.repetitions = next.reps
+  const dose = [next.reps > 0 ? `${next.reps} ripetizioni` : '', next.seconds > 0 ? `${next.seconds} sec` : ''].filter(Boolean).join(' · ')
+  return {
+    ...current,
+    sets: next.steps.length || next.sets,
+    reps: next.reps,
+    seconds: next.seconds,
+    loadKg: next.loadKg,
+    steps: next.steps.length ? next.steps : undefined,
+    dose: doseChanged ? dose || null : current.dose,
+    load_value: loadChanged ? next.loadKg > 0 ? String(next.loadKg) : null : current.load_value,
+    unit: loadChanged ? next.loadKg > 0 ? 'kg' : null : current.unit,
+    timer: timer ?? current.timer,
+  }
 }
 
 export function getPrescriptionSteps(prescription: Record<string, unknown>): PrescriptionStep[] {
