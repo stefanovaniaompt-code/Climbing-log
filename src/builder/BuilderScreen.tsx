@@ -138,28 +138,28 @@ export function BuilderScreen({ profile, selectedAthleteId }: { profile: AppProf
     return () => window.clearTimeout(timer)
   }, [profile, exercise, patch])
 
-  const run = async (operation: () => Promise<void>, success: string) => {
+  const run = async <T,>(operation: () => Promise<T>, success: string, onSuccess?: (result: T) => void) => {
     setState('saving'); setError(''); setMessage('')
-    try { await operation(); await refresh(); setMessage(success) } catch (reason) { setError(reason instanceof Error ? reason.message : 'Operazione non completata.') } finally { setState('idle') }
+    try { const result = await operation(); await refresh(); onSuccess?.(result); setMessage(success) } catch (reason) { setError(reason instanceof Error ? reason.message : 'Operazione non completata.') } finally { setState('idle') }
   }
   const submitProgram = (event: FormEvent) => {
     event.preventDefault()
     if (!athleteId || !newProgram.name.trim()) return
-    void run(async () => { const id = await createProgram(profile, athleteId, newProgram.name, newProgram.goal, newProgram.programType); setProgramId(id); setCreatingProgram(false); setNewProgram({ name: '', goal: '', programType: 'athlete' }); try { window.localStorage.removeItem(draftKey) } catch { /* ignore */ } }, 'Bozza creata. Ora aggiungi una settimana.')
+    void run(() => createProgram(profile, athleteId, newProgram.name, newProgram.goal, newProgram.programType), 'Bozza creata. Ora aggiungi una settimana.', id => { setProgramId(id); setCreatingProgram(false); setNewProgram({ name: '', goal: '', programType: 'athlete' }); try { window.localStorage.removeItem(draftKey) } catch { /* ignore */ } })
   }
-  const addWeek = () => void run(async () => { const id = await createWeek(profile, programId, weeks.map(week => week.weekNumber)); setWeekId(id) }, 'Settimana aggiunta senza modificare le precedenti.')
+  const addWeek = () => void run(() => createWeek(profile, programId, weeks.map(week => week.weekNumber)), 'Settimana aggiunta senza modificare le precedenti.', setWeekId)
   const duplicatePreviousWeek = () => {
     const sourceWeek = weeks.find(item => item.id === weekId)
     if (!sourceWeek) return
     setState('saving'); setError(''); setMessage('')
     void duplicateWeek(profile, sourceWeek.id).then(async id => { await refresh(); setWeekId(id); setMessage(`Settimana ${sourceWeek.weekNumber + 1} creata con sessioni ed esercizi indipendenti.`) }).catch(reason => setError(reason instanceof Error ? reason.message : 'Duplicazione non completata.')).finally(() => setState('idle'))
   }
-  const addSession = () => void run(async () => { const id = await createSession(profile, weekId, sessions.map(item => item.order)); setSessionId(id) }, 'Sessione aggiunta.')
+  const addSession = () => void run(() => createSession(profile, weekId, sessions.map(item => item.order)), 'Sessione aggiunta.', setSessionId)
   const submitExercise = (event: FormEvent) => {
     event.preventDefault()
     const libraryExercise = data?.library.find(item => item.id === libraryId)
     if (!sessionId || (!libraryExercise && !newExercise.trim())) return
-    void run(async () => { const id = await addExercise(profile, sessionId, exercises.map(item => item.order), newExercise, libraryExercise); setExerciseId(id); setNewExercise(''); setLibraryId('') }, 'Esercizio aggiunto alla sessione.')
+    void run(() => addExercise(profile, sessionId, exercises.map(item => item.order), newExercise, libraryExercise), 'Esercizio aggiunto alla sessione.', id => { setExerciseId(id); setNewExercise(''); setLibraryId('') })
   }
   const confirmDelete = () => deleteTarget && void run(async () => { if (deleteTarget.kind === 'week') { await deleteWeek(profile, deleteTarget.id); setWeekId('') } else { await deleteSession(profile, deleteTarget.id); setSessionId('') }; setDeleteTarget(null) }, `${deleteTarget?.kind === 'week' ? 'Settimana' : 'Sessione'} eliminata.`)
   const applyLoadAdjustment = (scope: 'week' | 'session') => void run(() => adjustLoads(profile, scope, scope === 'week' ? weekId : sessionId, loadPercentage), `Carichi ${loadPercentage >= 0 ? 'aumentati' : 'ridotti'} del ${Math.abs(loadPercentage)}%.`)

@@ -53,19 +53,57 @@ export function prescriptionSummary(exercise: BuilderSessionExercise) {
 }
 
 export function readPrescriptionEditorValues(prescription: Record<string, unknown>) {
-  const steps = getPrescriptionSteps(prescription)
   const dose = String(prescription.dose ?? '')
+  // Older imports store variable prescriptions as prose in `dose` (for example
+  // "32,5 kg × 10 · 35 kg × 8 …") rather than in the structured `steps` array.
+  // Recover those rows for the coach editor without changing the stored record.
+  const structuredSteps = getPrescriptionSteps(prescription)
+  const steps = structuredSteps.length ? structuredSteps : parseDoseSteps(dose)
   const repsFromDose = dose.match(/(\d+(?:[.,]\d+)?)\s*(?:rep|ripetizion)/i)
   const secondsFromDose = dose.match(/(\d+(?:[.,]\d+)?)\s*(?:s|sec|second)/i)
   const legacyLoad = Number(String(prescription.load_value ?? '').replace(',', '.'))
   const modernLoad = Number(prescription.loadKg)
+  const firstStep = steps[0]
+  const timer = prescription.timer && typeof prescription.timer === 'object' && !Array.isArray(prescription.timer)
+    ? prescription.timer as Record<string, unknown>
+    : {}
   return {
     sets: steps.length || Math.max(1, Number(prescription.sets) || 1),
-    reps: Math.max(0, Number(prescription.reps) || Number(repsFromDose?.[1]?.replace(',', '.')) || 0),
-    seconds: Math.max(0, Number(prescription.seconds) || Number(secondsFromDose?.[1]?.replace(',', '.')) || 0),
-    loadKg: Number.isFinite(modernLoad) && modernLoad > 0 ? modernLoad : Number.isFinite(legacyLoad) && legacyLoad > 0 ? legacyLoad : 0,
+    reps: Math.max(0, Number(prescription.reps) || firstStep?.reps || Number(repsFromDose?.[1]?.replace(',', '.')) || Number(timer.repetitions) || 0),
+    seconds: Math.max(0, Number(prescription.seconds) || firstStep?.seconds || Number(secondsFromDose?.[1]?.replace(',', '.')) || 0),
+    loadKg: Number.isFinite(modernLoad) && modernLoad > 0 ? modernLoad : firstStep?.loadKg ?? (Number.isFinite(legacyLoad) && legacyLoad > 0 ? legacyLoad : 0),
     steps,
   }
+}
+
+function parseDoseSteps(dose: string): PrescriptionStep[] {
+  const sequence = dose.match(/^\s*(\d+(?:\s*[-–→]\s*\d+){1,})(?:\s*(?:blocchi|rep(?:etizioni)?))?\s*$/i)
+  if (sequence) {
+    return sequence[1].split(/\s*[-–→]\s*/).map((value, index) => ({
+      label: `Set ${index + 1}`,
+      reps: Number(value),
+      seconds: 0,
+      loadKg: null,
+    }))
+  }
+  const rows = dose.split(/\s*[·•;]\s*/).map(value => value.trim()).filter(Boolean)
+  if (rows.length < 2) return []
+  const parsed = rows.map((row, index): PrescriptionStep | null => {
+    const match = row.match(/^(?:(\d+(?:[.,]\d+)?)\s*(kg|kgs)?\s*[×x]\s*)?(\d+(?:[.,]\d+)?)\s*(rep(?:etizioni)?|ripetizioni|sec(?:ondi)?|s)?$/i)
+    if (!match) return null
+    const first = match[1] ? Number(match[1].replace(',', '.')) : null
+    const quantity = Number((match[3] ?? '').replace(',', '.'))
+    const unit = (match[4] ?? '').toLowerCase()
+    if (!Number.isFinite(quantity)) return null
+    const isSeconds = unit.startsWith('s')
+    return {
+      label: `Set ${index + 1}`,
+      reps: isSeconds ? 0 : quantity,
+      seconds: isSeconds ? quantity : 0,
+      loadKg: first,
+    }
+  })
+  return parsed.every((step): step is PrescriptionStep => step !== null) ? parsed : []
 }
 
 export function mergePrescriptionForUpdate(current: Record<string, unknown>, next: PrescriptionEditorValues) {

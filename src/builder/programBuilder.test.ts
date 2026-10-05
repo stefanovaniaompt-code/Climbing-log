@@ -10,6 +10,29 @@ describe('program builder', () => {
   it('riassume una prescrizione', () => expect(prescriptionSummary({ id: 'e', sessionId: 's', exerciseId: null, order: 1, name: 'Hang', prescription: { sets: 4, seconds: 5, loadKg: 20 }, targetRpeMin: 7, targetRpeMax: 8, restSeconds: 120, instructions: null })).toBe('4 serie · 5 sec · 20 kg · RPE 8'))
   it('legge prescrizioni strutturate senza dipendere dal nome esercizio', () => expect(getPrescriptionSteps({ steps: [{ label: 'Salita', loadKg: 32.5, reps: 10 }, { label: 'Picco', loadKg: 45, reps: 3 }] })).toEqual([{ label: 'Salita', loadKg: 32.5, reps: 10, seconds: 0 }, { label: 'Picco', loadKg: 45, reps: 3, seconds: 0 }]))
   it('legge carichi, serie e ripetizioni delle programmazioni storiche', () => expect(readPrescriptionEditorValues({ sets: 5, dose: '3 rep', load_value: '27.5', unit: 'kg' })).toEqual({ sets: 5, reps: 3, seconds: 0, loadKg: 27.5, steps: [] }))
+  it('recupera progressioni variabili dalle prescrizioni storiche salvate in dose', () => {
+    const values = readPrescriptionEditorValues({ sets: 5, dose: '32,5 kg × 10 · 35 kg × 8 · 37,5 kg × 6 · 40 kg × 4 · 45 kg × 3', load_value: 'carichi calcolati su 1RM 50,4 kg' })
+    expect(values).toEqual({
+      sets: 5,
+      reps: 10,
+      seconds: 0,
+      loadKg: 32.5,
+      steps: [
+        { label: 'Set 1', loadKg: 32.5, reps: 10, seconds: 0 },
+        { label: 'Set 2', loadKg: 35, reps: 8, seconds: 0 },
+        { label: 'Set 3', loadKg: 37.5, reps: 6, seconds: 0 },
+        { label: 'Set 4', loadKg: 40, reps: 4, seconds: 0 },
+        { label: 'Set 5', loadKg: 45, reps: 3, seconds: 0 },
+      ],
+    })
+  })
+  it('recupera ripetizioni/tenute dal timer e le piramidi legacy', () => {
+    expect(readPrescriptionEditorValues({ sets: 6, dose: '1 × 16 sec', load_value: '26', timer: { repetitions: 1, work_seconds: 16 } })).toMatchObject({ sets: 6, reps: 1, seconds: 16, loadKg: 26 })
+    expect(readPrescriptionEditorValues({ sets: 6, dose: '4–2–1–1–2–4 blocchi' })).toMatchObject({ sets: 6, reps: 4, steps: [
+      { label: 'Set 1', reps: 4 }, { label: 'Set 2', reps: 2 }, { label: 'Set 3', reps: 1 },
+      { label: 'Set 4', reps: 1 }, { label: 'Set 5', reps: 2 }, { label: 'Set 6', reps: 4 },
+    ] })
+  })
   it('non altera una prescrizione storica al solo caricamento', () => {
     const current = { sets: 4, dose: '6 ripetizioni · tenuta 5 s a 90°', load_type: 'bodyweight', timer: { work_seconds: 5, repetitions: 6 } }
     const values = readPrescriptionEditorValues(current)
