@@ -1865,6 +1865,55 @@ textarea {
   flex: 1 1 140px;
 }
 
+/* Program Builder mobile fit and persistent, visible controls */
+.coach-builder:has(.coach-builder__hero) .coach-builder__context { display: flex; }
+.coach-builder__athlete-select { display: flex; align-items: center; gap: 10px; margin-left: auto; color: #55206f; font: 650 9px/1 'IBM Plex Mono', monospace; letter-spacing: .07em; }
+.coach-builder__athlete-select select { width: min(320px, 62vw); min-width: 0; min-height: 40px; border: 1px solid #c8b9d4; background: #faf8fc; padding: 0 12px; color: #210b2d; font: 600 13px/1.2 'Space Grotesk', sans-serif; }
+.coach-builder .builder-toolbar { display: block; padding: 14px; }
+.coach-builder .builder-toolbar label { display: grid; gap: 6px; }
+.coach-builder .builder-toolbar select { width: 100%; min-width: 0; }
+.coach-builder .builder-load-adjust { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.coach-builder .builder-load-adjust > label { display: flex; align-items: center; gap: 9px; color: #55206f; font-size: 11px; font-weight: 650; }
+.coach-builder .builder-load-adjust > label input { width: 74px; min-width: 0; }
+.coach-builder .builder-load-adjust__preview { flex: 1 1 150px; min-width: 0; color: #665c6b; font-size: 12px; }
+.coach-builder__tabs { grid-template-columns: repeat(3,minmax(0,1fr)); }
+.coach-builder__tabs > button { min-width: 0; padding: 6px 4px; font-size: 9px; line-height: 1.25; white-space: normal; }
+.coach-builder__inspector .panel__body > label,
+.coach-builder__inspector .panel__body > label > input,
+.coach-builder__inspector .panel__body > label > select,
+.coach-builder__inspector .panel__body > label > textarea,
+.coach-builder__inspector .panel__body .input-shell,
+.coach-builder__inspector .panel__body .input-shell > input,
+.coach-builder__inspector .panel__body .builder-test-target,
+.coach-builder__inspector .panel__body .builder-test-target * { min-width: 0; max-width: 100%; box-sizing: border-box; }
+.coach-builder__inspector .panel__body > label > input,
+.coach-builder__inspector .panel__body > label > select,
+.coach-builder__inspector .panel__body > label > textarea { width: 100%; }
+.coach-builder__inspector .builder-test-target { width: 100%; }
+.builder-test-target__grid,
+.builder-test-target__sets,
+.builder-test-target__preview,
+.builder-test-target__snapshot,
+.builder-test-target__warning { min-width: 0; }
+.builder-test-target__grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+.builder-test-target__sets > label { grid-template-columns: 34px minmax(0,1fr); }
+.builder-test-target__preview li { grid-template-columns: minmax(0,1fr) auto auto; }
+.builder-test-target__preview li > * { min-width: 0; overflow-wrap: anywhere; }
+.builder-test-target__warning--newer { grid-template-columns: auto minmax(0,1fr) auto; }
+
+@media (max-width: 560px) {
+  .coach-builder__context { align-items: flex-start; }
+  .coach-builder__athlete-select { align-items: flex-start; flex-direction: column; gap: 5px; }
+  .coach-builder__athlete-select select { width: min(230px, 58vw); min-height: 38px; }
+  .coach-builder__tabs { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .coach-builder__tabs > button { min-height: 52px; font-size: 8px; letter-spacing: .02em; }
+  .coach-builder .builder-load-adjust { padding: 12px; }
+  .coach-builder .builder-load-adjust > button { flex: 1 1 140px; justify-content: center; }
+  .builder-test-target { padding: 10px; }
+  .builder-test-target__grid { grid-template-columns: minmax(0,1fr); }
+  .builder-test-target__warning--newer { grid-template-columns: auto minmax(0,1fr); }
+}
+
 @media (max-width: 760px) {
   .builder-test-target__grid {
     grid-template-columns: 1fr;

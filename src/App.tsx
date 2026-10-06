@@ -76,7 +76,7 @@ const viewMeta: Record<ViewId, { label: string; component: (props: ScreenProps) 
   session: { label: 'Sessione', component: ({ profile, selectedSessionId }) => <SessionScreen profile={profile} sessionId={selectedSessionId} /> },
   dashboard: { label: 'Dashboard coach', component: ({ profile, goTo }) => <DashboardScreen profile={profile} openPrograms={() => goTo('builder')} openFeedback={() => goTo('feedback')} openProgress={() => goTo('progress')} /> },
   athletes: { label: 'Atleti', component: ({ profile, goTo, selectedAthleteId, setSelectedAthleteId, goToAthlete }) => <AthleteManagementScreen profile={profile} selectedAthleteId={selectedAthleteId} setSelectedAthleteId={setSelectedAthleteId} openDashboard={() => goTo('dashboard')} openAthleteArea={goToAthlete} /> },
-  builder: { label: 'Programmi', component: ({ profile, selectedAthleteId }) => <BuilderScreen profile={profile} selectedAthleteId={selectedAthleteId} /> },
+  builder: { label: 'Programmi', component: ({ profile, selectedAthleteId, setSelectedAthleteId }) => <BuilderScreen profile={profile} selectedAthleteId={selectedAthleteId} setSelectedAthleteId={setSelectedAthleteId} /> },
   library: { label: 'Libreria esercizi', component: ({ profile }) => <LibraryScreen profile={profile} /> },
   test: { label: 'Test / retest', component: ({ profile, selectedAthleteId }) => <TestScreen profile={profile} selectedAthleteId={selectedAthleteId} /> },
   progress: { label: 'Progressi', component: ({ profile, selectedAthleteId }) => <TestScreen profile={profile} selectedAthleteId={selectedAthleteId} /> },

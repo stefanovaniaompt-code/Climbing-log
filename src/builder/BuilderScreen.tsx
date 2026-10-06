@@ -6,15 +6,23 @@ import { canPublishProgram, prescriptionSummary, readPrescriptionEditorValues, t
 import { addExercise, adjustLoads, createCalendarEvent, createProgram, createSession, createWeek, deleteCalendarEvent, deleteExercise, deleteSession, deleteWeek, duplicateWeek, loadProgramBuilder, publishProgram, updateExercise, updateSessionDetails, updateWeekDetails, type ExercisePatch } from './programBuilderRepository'
 import { ExerciseTestTargetPanel } from './ExerciseTestTargetPanel'
 
-export function BuilderScreen({ profile, selectedAthleteId }: { profile: AppProfile; selectedAthleteId: string }) {
-  const [showBuilder, setShowBuilder] = useState(Boolean(selectedAthleteId))
-  const [creatingProgram, setCreatingProgram] = useState(false)
+type BuilderViewState = { showBuilder: boolean; creatingProgram: boolean; athleteId: string; programId: string; weekId: string; sessionId: string; exerciseId: string; sessionTab: 'exercises' | 'notes' | 'details'; exerciseEditorOpen: boolean; exerciseAdderOpen: boolean; weekSettingsOpen: boolean; contextOpen: boolean; loadPercentage: number }
+
+function readBuilderView(key: string): Partial<BuilderViewState> | null {
+  try { return JSON.parse(window.localStorage.getItem(key) ?? 'null') as Partial<BuilderViewState> | null } catch { return null }
+}
+
+export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId }: { profile: AppProfile; selectedAthleteId: string; setSelectedAthleteId: (id: string) => void }) {
+  const builderViewKey = `cc-builder-view:${profile.userId}`
+  const [savedView] = useState(() => readBuilderView(builderViewKey))
+  const [showBuilder, setShowBuilder] = useState(savedView?.athleteId === selectedAthleteId ? savedView.showBuilder ?? Boolean(selectedAthleteId) : Boolean(selectedAthleteId))
+  const [creatingProgram, setCreatingProgram] = useState(savedView?.creatingProgram ?? false)
   const [data, setData] = useState<ProgramBuilderData | null>(null)
-  const [athleteId, setAthleteId] = useState(selectedAthleteId)
-  const [programId, setProgramId] = useState('')
-  const [weekId, setWeekId] = useState('')
-  const [sessionId, setSessionId] = useState('')
-  const [exerciseId, setExerciseId] = useState('')
+  const [athleteId, setAthleteId] = useState(selectedAthleteId || savedView?.athleteId || '')
+  const [programId, setProgramId] = useState(savedView?.programId ?? '')
+  const [weekId, setWeekId] = useState(savedView?.weekId ?? '')
+  const [sessionId, setSessionId] = useState(savedView?.sessionId ?? '')
+  const [exerciseId, setExerciseId] = useState(savedView?.exerciseId ?? '')
   const [state, setState] = useState<'loading' | 'idle' | 'saving'>('loading')
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
@@ -26,14 +34,15 @@ export function BuilderScreen({ profile, selectedAthleteId }: { profile: AppProf
   const [patch, setPatch] = useState<ExercisePatch>({ sets: 3, reps: 5, seconds: 0, loadKg: 0, rpe: 7, restSeconds: 120, instructions: '', steps: [] })
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved')
   const [deleteTarget, setDeleteTarget] = useState<{ kind: 'week' | 'session'; id: string; name: string } | null>(null)
-  const [loadPercentage, setLoadPercentage] = useState(5)
+  const [loadPercentage, setLoadPercentage] = useState(savedView?.loadPercentage ?? 5)
   const [calendarDraft, setCalendarDraft] = useState({ eventType: 'travel', startDate: '', endDate: '', note: '' })
-  const [sessionTab, setSessionTab] = useState<'exercises' | 'notes' | 'details'>('exercises')
-  const [weekSettingsOpen, setWeekSettingsOpen] = useState(false)
-  const [contextOpen, setContextOpen] = useState(false)
-  const [exerciseEditorOpen, setExerciseEditorOpen] = useState(false)
-  const [exerciseAdderOpen, setExerciseAdderOpen] = useState(false)
-  const initialAthleteApplied = useRef(false)
+  const [sessionTab, setSessionTab] = useState<'exercises' | 'notes' | 'details'>(savedView?.sessionTab ?? 'exercises')
+  const [weekSettingsOpen, setWeekSettingsOpen] = useState(savedView?.weekSettingsOpen ?? false)
+  const [contextOpen, setContextOpen] = useState(savedView?.contextOpen ?? false)
+  const [exerciseEditorOpen, setExerciseEditorOpen] = useState(savedView?.exerciseEditorOpen ?? false)
+  const [exerciseAdderOpen, setExerciseAdderOpen] = useState(savedView?.exerciseAdderOpen ?? false)
+  const previousSessionId = useRef(sessionId)
+  const initialAthleteApplied = useRef(Boolean(savedView?.athleteId && (!selectedAthleteId || savedView.athleteId === selectedAthleteId)))
   const hydratedWeek = useRef('')
   const hydratedSession = useRef('')
   const hydratedExercise = useRef('')
@@ -44,6 +53,11 @@ export function BuilderScreen({ profile, selectedAthleteId }: { profile: AppProf
   const hydratingSession = useRef(false)
   const hydratingExercise = useRef(false)
   const draftKey = `cc-builder-draft:${profile.userId}`
+
+  useEffect(() => {
+    const snapshot: BuilderViewState = { showBuilder, creatingProgram, athleteId, programId, weekId, sessionId, exerciseId, sessionTab, exerciseEditorOpen, exerciseAdderOpen, weekSettingsOpen, contextOpen, loadPercentage }
+    try { window.localStorage.setItem(builderViewKey, JSON.stringify(snapshot)) } catch { /* Storage può essere disabilitato. */ }
+  }, [builderViewKey, showBuilder, creatingProgram, athleteId, programId, weekId, sessionId, exerciseId, sessionTab, exerciseEditorOpen, exerciseAdderOpen, weekSettingsOpen, contextOpen, loadPercentage])
 
   const refresh = async () => {
     const next = await loadProgramBuilder(profile)
@@ -71,7 +85,11 @@ export function BuilderScreen({ profile, selectedAthleteId }: { profile: AppProf
   useEffect(() => { if (!weeks.some(week => week.id === weekId)) setWeekId(weeks[0]?.id ?? '') }, [programId, data, weekId])
   const sessions = data?.sessions.filter(session => session.weekId === weekId) ?? []
   useEffect(() => { if (!sessions.some(session => session.id === sessionId)) setSessionId(sessions[0]?.id ?? '') }, [weekId, data, sessionId])
-  useEffect(() => { setExerciseEditorOpen(false); setExerciseAdderOpen(false); setSessionTab('exercises') }, [sessionId])
+  useEffect(() => {
+    if (previousSessionId.current === sessionId) return
+    previousSessionId.current = sessionId
+    setExerciseEditorOpen(false); setExerciseAdderOpen(false); setSessionTab('exercises')
+  }, [sessionId])
   const exercises = data?.exercises.filter(exercise => exercise.sessionId === sessionId) ?? []
   useEffect(() => { if (!exercises.some(exercise => exercise.id === exerciseId)) setExerciseId(exercises[0]?.id ?? '') }, [sessionId, data, exerciseId])
   const program = athletePrograms.find(item => item.id === programId)
@@ -178,10 +196,9 @@ export function BuilderScreen({ profile, selectedAthleteId }: { profile: AppProf
   return <div className="screen coach-builder">
     <div className="coach-builder__context">
       <button type="button" className="coach-programs__back" onClick={() => setShowBuilder(false)}><ArrowLeft size={16} /> Programmi</button>
-      <button type="button" onClick={() => setContextOpen(value => !value)}><span>{data?.athletes.find(item => item.id === athleteId)?.name || 'Seleziona atleta'}</span><ChevronDown size={15} /></button>
+      <label className="coach-builder__athlete-select"><span>ATLETA</span><select aria-label="Seleziona atleta" value={athleteId} onChange={event => { setAthleteId(event.target.value); setSelectedAthleteId(event.target.value) }} disabled={state === 'saving'}>{data?.athletes.map(athlete => <option key={athlete.id} value={athlete.id}>{athlete.name}</option>)}</select></label>
     </div>
     {contextOpen && <div className="builder-toolbar">
-      <label><span>Atleta</span><select value={athleteId} onChange={event => setAthleteId(event.target.value)} disabled={state === 'saving'}>{data?.athletes.map(athlete => <option key={athlete.id} value={athlete.id}>{athlete.name}</option>)}</select></label>
       <label><span>Programma</span><select value={programId} onChange={event => { setProgramId(event.target.value); setCreatingProgram(!event.target.value) }} disabled={state === 'saving'}><option value="">Nuova bozza…</option>{athletePrograms.map(item => <option key={item.id} value={item.id}>{item.name} · {item.status}</option>)}</select></label>
     </div>}
     {!data?.athletes.length && <Panel title="Nessun atleta attivo" index="00"><div className="empty-state"><Users size={22} /><b>Collega o riattiva un atleta</b><span>Il builder mostra soltanto le relazioni coach-atleta attive.</span></div></Panel>}
@@ -207,7 +224,8 @@ export function BuilderScreen({ profile, selectedAthleteId }: { profile: AppProf
         {!weekId && <div className="empty-state"><Layers3 size={22} /><b>Aggiungi la prima settimana</b><span>Le sessioni appariranno dentro la settimana selezionata.</span></div>}
         {weekId && <>
           <section className={`coach-builder__week-head week-type--${weekDetails.loadType}`}><div><h3>Settimana {selectedWeek?.weekNumber} · {weekDetails.blockName || 'Blocco'} · <span>{weekDetails.loadType === 'deload' ? 'SCARICO' : 'CARICO'}</span></h3>{weekDetails.notes && <small>{weekDetails.notes}</small>}</div><button type="button" aria-label="Azioni settimana" onClick={() => setWeekSettingsOpen(value => !value)}><CircleEllipsis size={16} /></button></section>
-          {weekSettingsOpen && <div className="coach-builder__week-settings"><div className="builder-details builder-details--week"><label><span>Nome blocco</span><input value={weekDetails.blockName} onChange={event => setWeekDetails(value => ({ ...value, blockName: event.target.value }))} /></label><label><span>Fase</span><input value={weekDetails.phase} onChange={event => setWeekDetails(value => ({ ...value, phase: event.target.value }))} /></label><label><span>Tipo</span><select value={weekDetails.loadType} onChange={event => setWeekDetails(value => ({ ...value, loadType: event.target.value as 'load' | 'deload' }))}><option value="load">Carico</option><option value="deload">Scarico</option></select></label><label><span>Note / obiettivi</span><input value={weekDetails.notes} onChange={event => setWeekDetails(value => ({ ...value, notes: event.target.value }))} /></label></div><div className="builder-load-adjust"><input type="number" min="-100" max="500" value={loadPercentage} onChange={event => setLoadPercentage(Number(event.target.value))} /><span>% → 20 kg diventa {Math.round(20 * (1 + loadPercentage / 100) * 2) / 2} kg</span><button type="button" className="text-button" onClick={() => applyLoadAdjustment('week')}>Applica carichi</button><button type="button" className="text-button" disabled={state === 'saving'} onClick={duplicatePreviousWeek}><Copy size={14} /> Duplica settimana</button><button type="button" className="text-button danger" onClick={() => setDeleteTarget({ kind: 'week', id: weekId, name: weekDetails.blockName || 'settimana' })}><Trash2 size={14} /> Elimina</button></div></div>}
+          {weekSettingsOpen && <div className="coach-builder__week-settings"><div className="builder-details builder-details--week"><label><span>Nome blocco</span><input value={weekDetails.blockName} onChange={event => setWeekDetails(value => ({ ...value, blockName: event.target.value }))} /></label><label><span>Fase</span><input value={weekDetails.phase} onChange={event => setWeekDetails(value => ({ ...value, phase: event.target.value }))} /></label><label><span>Tipo</span><select value={weekDetails.loadType} onChange={event => setWeekDetails(value => ({ ...value, loadType: event.target.value as 'load' | 'deload' }))}><option value="load">Carico</option><option value="deload">Scarico</option></select></label><label><span>Note / obiettivi</span><input value={weekDetails.notes} onChange={event => setWeekDetails(value => ({ ...value, notes: event.target.value }))} /></label></div></div>}
+          <div className="builder-load-adjust"><label><span>Varia carichi</span><input aria-label="Percentuale variazione carichi" type="number" min="-100" max="500" value={loadPercentage} onChange={event => setLoadPercentage(Number(event.target.value))} /></label><span className="builder-load-adjust__preview">Anteprima: 20 kg → {Math.round(20 * (1 + loadPercentage / 100) * 2) / 2} kg</span><button type="button" className="text-button" disabled={state === 'saving'} onClick={() => applyLoadAdjustment('week')}>Applica % ai carichi</button><button type="button" className="text-button" disabled={state === 'saving'} onClick={duplicatePreviousWeek}><Copy size={14} /> Duplica settimana</button></div>
           <div className="coach-builder__session-list">{sessions.map(item => <button className={item.id === sessionId ? 'active' : ''} key={item.id} onClick={() => setSessionId(item.id)}><b>{String(item.order).padStart(2, '0')}</b><span><strong>{item.title}</strong><small>{item.objective || `${data?.exercises.filter(candidate => candidate.sessionId === item.id).length ?? 0} esercizi`}</small></span><ArrowRight size={16} /></button>)}</div>
           {!sessionId && <div className="empty-state empty-state--compact"><TimerReset size={20} /><b>Aggiungi la prima sessione</b></div>}
           <button className="coach-builder__add-session" disabled={state === 'saving'} onClick={addSession}><Plus size={15} /> AGGIUNGI SESSIONE</button>
