@@ -154,6 +154,7 @@ export async function updateExercise(profile: AppProfile, exerciseId: string, cu
 export async function deleteWeek(profile: AppProfile, weekId: string) { assertCoach(profile); if (isDemo(profile)) return; const result = await supabase!.from('training_weeks').delete().eq('id', weekId).select('id').single(); if (result.error) throw result.error }
 export async function deleteSession(profile: AppProfile, sessionId: string) { assertCoach(profile); if (isDemo(profile)) return; const result = await supabase!.from('sessions').delete().eq('id', sessionId).select('id').single(); if (result.error) throw result.error }
 export async function deleteExercise(profile: AppProfile, exerciseId: string) { assertCoach(profile); if (isDemo(profile)) return; const result = await supabase!.from('session_exercises').delete().eq('id', exerciseId).select('id').single(); if (result.error) throw result.error }
+export async function deleteProgram(profile: AppProfile, programId: string) { assertCoach(profile); if (isDemo(profile)) return; const result = await supabase!.from('programs').delete().eq('id', programId).select('id').single(); if (result.error) throw result.error }
 
 export async function adjustLoads(profile: AppProfile, scope: 'week' | 'session', targetId: string, percentage: number) {
   assertCoach(profile); if (isDemo(profile)) return

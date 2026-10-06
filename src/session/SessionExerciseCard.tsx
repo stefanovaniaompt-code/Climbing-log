@@ -1,7 +1,7 @@
 import { useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowLeft, Check, ChevronDown, Pause, Play, RotateCcw, Save, SkipForward } from 'lucide-react'
-import { advanceExerciseTimer, createExerciseTimerState, exerciseTimerPhaseLabel, exerciseTimerProgressLabel, getExerciseTimerConfig, getRestSeconds, getSetCount, getVariableSeries, timerPhaseDuration, type ExerciseTimerState, type SessionRunnerData } from './sessionRunner'
+import { advanceExerciseTimer, createExerciseTimerState, exerciseTimerPhaseLabel, exerciseTimerProgressLabel, getExerciseTimerConfig, getPrescriptionDose, getPrescriptionLoad, getRestSeconds, getSetCount, getVariableSeries, timerPhaseDuration, type ExerciseTimerState, type SessionRunnerData } from './sessionRunner'
 import type { ExerciseInputDraft } from './sessionLocalDraft'
 import type { ExerciseSaveState } from './useExerciseProgress'
 
@@ -56,8 +56,8 @@ export function SessionExerciseCard({ exercise, coachNotes, canEdit, isNext, tim
   const nextTimerState = activeTimer?.phase === 'complete' ? null : activeTimer ? advanceExerciseTimer(activeTimer) : null
   const nextTimerLabel = nextTimerState ? exerciseTimerPhaseLabel(nextTimerState) : 'Esercizio completato'
   const exerciseTimerProgress = activeTimer ? getExerciseTimerProgress(exercise, activeTimer) : 0
-  const dose = String(exercise.prescription.dose ?? 'Dose indicata dal coach')
-  const load = exercise.prescription.load_value == null ? 'Corpo libero' : String(exercise.prescription.load_value) + (exercise.prescription.unit ? ' ' + String(exercise.prescription.unit) : '')
+  const dose = getPrescriptionDose(exercise) ?? 'Dose indicata dal coach'
+  const load = getPrescriptionLoad(exercise) ?? 'Corpo libero'
   return <article
     id={`exercise-${exercise.id}`}
     className={

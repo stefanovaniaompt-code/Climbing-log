@@ -42,6 +42,11 @@ describe('session runner selectors', () => {
     expect(formatPrescription(item)).toBe('4 serie · 5 sec · 32.5 kg')
   })
 
+  it('mostra serie, ripetizioni e carico dal formato strutturato del builder', () => {
+    const item = exercise({ prescription: { sets: 5, reps: 8, loadKg: 24.5 }, restSeconds: 120 })
+    expect(formatPrescription(item)).toBe('5 serie · 8 ripetizioni · 24.5 kg')
+  })
+
   it('mantiene il formato actual storico della V1', () => {
     expect(buildActualFromPrescription(exercise().prescription)).toEqual({
       dose: '5 sec',
@@ -53,6 +58,11 @@ describe('session runner selectors', () => {
 
   it('espande solo le progressioni con serie differenti', () => {
     expect(getVariableSeries(exercise())).toEqual([])
+    expect(getVariableSeries(exercise({ prescription: { sets: 3, steps: [
+      { label: 'Set 1', loadKg: 32.5, reps: 10 },
+      { label: 'Set 2', loadKg: 35, reps: 8 },
+      { label: 'Set 3', loadKg: 37.5, reps: 6 },
+    ] } }))).toEqual(['32.5 kg × 10 rep', '35 kg × 8 rep', '37.5 kg × 6 rep'])
     expect(getVariableSeries(exercise({ prescription: { sets: 3, dose: '20 kg × 8 · 25 kg × 5 · 30 kg × 3' } }))).toEqual([
       '20 kg × 8',
       '25 kg × 5',

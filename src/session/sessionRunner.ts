@@ -466,16 +466,37 @@ export function getRestSeconds(exercise: RunnerExercise): number {
     ?? 90
 }
 
+export function getPrescriptionDose(exercise: RunnerExercise): string | null {
+  const legacyDose = textValue(exercise.prescription.dose)
+  if (legacyDose) return legacyDose
+
+  const reps = positiveInteger(exercise.prescription.reps)
+  const seconds = positiveInteger(exercise.prescription.seconds)
+  if (reps && seconds) return `${reps} ripetizioni · ${seconds} sec`
+  if (reps) return `${reps} ripetizioni`
+  if (seconds) return `${seconds} sec`
+  return null
+}
+
+export function getPrescriptionLoad(exercise: RunnerExercise): string | null {
+  const legacyLoad = textValue(exercise.prescription.load_value)
+  const unit = textValue(exercise.prescription.unit)
+  if (legacyLoad) return `${legacyLoad}${unit ? ` ${unit}` : ''}`
+
+  const loadKg = Number(exercise.prescription.loadKg)
+  if (Number.isFinite(loadKg) && loadKg > 0) return `${loadKg} ${unit || 'kg'}`
+
+  const loadType = textValue(exercise.prescription.load_type)
+  return loadType && loadType !== 'none' ? loadType : null
+}
+
 export function formatPrescription(exercise: RunnerExercise): string {
   const sets = getSetCount(exercise)
-  const dose = textValue(exercise.prescription.dose)
-  const load = textValue(exercise.prescription.load_value)
-  const unit = textValue(exercise.prescription.unit)
-  const loadType = textValue(exercise.prescription.load_type)
+  const dose = getPrescriptionDose(exercise)
+  const load = getPrescriptionLoad(exercise)
   const parts = [`${sets} serie`]
   if (dose) parts.push(dose)
-  if (load) parts.push(`${load}${unit ? ` ${unit}` : ''}`)
-  else if (loadType && loadType !== 'none') parts.push(loadType)
+  if (load) parts.push(load)
   return parts.join(' · ')
 }
 
