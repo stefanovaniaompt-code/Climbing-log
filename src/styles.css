@@ -1939,7 +1939,18 @@ textarea {
 .screen.coach-builder .inspector > label > textarea,
 .screen.coach-builder .inspector .builder-test-target select,
 .screen.coach-builder .inspector .builder-test-target input { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; }
-.screen.coach-builder .inspector .builder-test-target { width: 100%; grid-column: 1 / -1; overflow: hidden; }
+.screen.coach-builder .inspector .builder-test-target { display: grid; grid-template-columns: minmax(0,1fr); width: 100%; min-width: 0; max-width: 100%; grid-column: 1 / -1; overflow: clip; }
+.screen.coach-builder .inspector .builder-test-target > *,
+.screen.coach-builder .inspector .builder-test-target label,
+.screen.coach-builder .inspector .builder-test-target label > span,
+.screen.coach-builder .inspector .builder-test-target input,
+.screen.coach-builder .inspector .builder-test-target select,
+.screen.coach-builder .inspector .builder-test-target textarea { min-width: 0; max-width: 100%; box-sizing: border-box; }
+.screen.coach-builder .inspector .builder-test-target > label,
+.screen.coach-builder .inspector .builder-test-target input,
+.screen.coach-builder .inspector .builder-test-target select,
+.screen.coach-builder .inspector .builder-test-target textarea { width: 100%; }
+.screen.coach-builder .inspector .builder-test-target select { overflow: hidden; text-overflow: ellipsis; }
 .screen.coach-builder .inspector .builder-test-target__grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
 .screen.coach-builder .inspector .builder-test-target__sets > label { grid-template-columns: 34px minmax(0,1fr); }
 .structured-prescription__row { min-width: 0; }
