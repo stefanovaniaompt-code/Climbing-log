@@ -582,7 +582,6 @@ textarea { width: calc(100% - 36px); min-height: 76px; padding: 10px; resize: ve
 .coach-builder__dates { margin: 12px 0 0!important; color: #665c6b!important; font: 550 14px/1.4 'Space Grotesk',sans-serif!important; letter-spacing: 0!important; }
 .coach-builder__hero-actions { display: flex; align-items: flex-start; gap: 12px; }
 .coach-builder__hero-actions .button,.coach-builder__hero-actions > button { min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 0; padding: 0 20px; white-space: nowrap; text-transform: uppercase; font: 650 11px/1 'Space Grotesk',sans-serif; }
-.coach-builder__hero-actions > button:last-child { width: 44px; padding: 0; border: 1px solid #c8b9d4; background: rgba(250,248,252,.95); color: #55206f; }
 .coach-builder__goal { grid-column: 1/-1; width: min(1110px,100%); display: grid; grid-template-columns: 160px minmax(0,1fr); margin: 0; border: 1px solid #e3cf96; background: rgba(255,246,221,.95); }
 .coach-builder__goal > span { display: none; }
 .coach-builder__goal > b { display: flex; align-items: center; gap: 12px; border-right: 1px solid #e3cf96; background: #ffefc3; padding: 16px 20px; color: #684f0a; font: 650 10px/1 'IBM Plex Mono',monospace; letter-spacing: .07em; }
@@ -1922,6 +1921,47 @@ textarea {
   .builder-test-target__warning--newer {
     grid-template-columns: auto 1fr;
   }
+}
+
+/* Program Builder feedback: keep controls inside their panels and clarify row inputs. */
+.coach-builder__hero-content { min-width: 0; }
+.coach-builder__hero-athlete { display: flex; align-items: center; gap: 10px; width: min(100%, 420px); margin-top: 14px; color: #55206f; font: 650 9px/1 'IBM Plex Mono', monospace; letter-spacing: .08em; }
+.coach-builder__hero-athlete select { flex: 1; width: 100%; min-width: 0; min-height: 42px; border: 1px solid rgba(85,32,111,.32); background: rgba(250,248,252,.92); padding: 0 12px; color: #210b2d; font: 600 13px/1.2 'Space Grotesk',sans-serif; }
+.coach-builder .builder-week-actions { display: flex; justify-content: flex-end; padding: 10px 16px; border-bottom: 1px solid #d2c5da; background: #faf8fc; }
+.coach-builder .builder-week-actions .text-button { min-height: 40px; padding: 0 12px; border: 1px solid #bda9cb; background: #fff; }
+.coach-builder__weeks button { scroll-margin: 24px; }
+.coach-builder__inspector { min-width: 0; }
+.screen.coach-builder .inspector > label,
+.screen.coach-builder .inspector .builder-test-target,
+.screen.coach-builder .inspector .builder-test-target * { min-width: 0; max-width: 100%; box-sizing: border-box; }
+.screen.coach-builder .inspector > label > input,
+.screen.coach-builder .inspector > label > select,
+.screen.coach-builder .inspector > label > textarea,
+.screen.coach-builder .inspector .builder-test-target select,
+.screen.coach-builder .inspector .builder-test-target input { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; }
+.screen.coach-builder .inspector .builder-test-target { width: 100%; grid-column: 1 / -1; overflow: hidden; }
+.screen.coach-builder .inspector .builder-test-target__grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+.screen.coach-builder .inspector .builder-test-target__sets > label { grid-template-columns: 34px minmax(0,1fr); }
+.structured-prescription__row { min-width: 0; }
+.structured-prescription__row > label { display: grid; min-width: 0; gap: 4px; color: #665c6b; font: 600 8px/1.25 'IBM Plex Mono',monospace; }
+.structured-prescription__row > label input { width: 100%; min-width: 0; box-sizing: border-box; }
+.builder-exercise-load { display: grid; grid-column: 1 / -1; gap: 10px; min-width: 0; padding: 12px; border: 1px solid #d2c5da; background: #f1e9f5; }
+.builder-exercise-load__title { display: grid; gap: 4px; }
+.builder-exercise-load__title b { color: #210b2d; font-size: 12px; }
+.builder-exercise-load__title span { color: #665c6b; font-size: 11px; }
+.builder-exercise-load > label { display: flex; align-items: center; gap: 10px; color: #55206f; font-size: 11px; font-weight: 650; }
+.builder-exercise-load > label input { width: 86px; min-height: 38px; min-width: 0; box-sizing: border-box; }
+.builder-exercise-load__preview { overflow-wrap: anywhere; color: #493451; font-size: 12px; line-height: 1.5; }
+.builder-exercise-load > .text-button { justify-self: start; min-height: 40px; padding: 0 12px; border: 1px solid #bda9cb; background: #fff; }
+.builder-delete-exercise { grid-column: 1 / -1; justify-self: start; min-height: 40px; padding: 0 12px; border: 1px solid #d9b7bf; background: #fff; }
+.coach-builder__sr-status { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+@media (max-width: 700px) {
+  .coach-builder__hero-athlete { align-items: flex-start; flex-direction: column; gap: 6px; }
+  .coach-builder__hero-athlete select { min-height: 40px; }
+  .structured-prescription__row { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .structured-prescription__row > button { min-height: 36px; }
+  .screen.coach-builder .inspector .builder-test-target__grid { grid-template-columns: minmax(0,1fr); }
 }
 
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canPublishProgram, getPrescriptionSteps, latestWeek, mergePrescriptionForUpdate, nextSequence, prescriptionSummary, readPrescriptionEditorValues, type ProgramBuilderData } from './programBuilder'
+import { canPublishProgram, getPrescriptionSteps, latestWeek, mergePrescriptionForUpdate, nextSequence, prescriptionSummary, readPrescriptionEditorValues, scalePrescriptionLoads, type ProgramBuilderData } from './programBuilder'
 
 describe('program builder', () => {
   it('calcola il prossimo ordine senza sovrascrivere elementi esistenti', () => expect(nextSequence([1, 3, 2])).toBe(4))
@@ -42,6 +42,23 @@ describe('program builder', () => {
     const current = { sets: 4, dose: '5 sec', load_value: '30', unit: 'kg', timer: { work_seconds: 5, repetitions: 1 } }
     expect(mergePrescriptionForUpdate(current, { sets: 5, reps: 0, seconds: 7, loadKg: 32.5, steps: [] })).toMatchObject({ sets: 5, seconds: 7, loadKg: 32.5, dose: '7 sec', load_value: '32.5', unit: 'kg', timer: { work_seconds: 7, repetitions: 1 } })
   })
+  it('varia solo i carichi numerici, mantenendo ripetizioni, tempi e righe senza carico', () => {
+    const values = { sets: 3, reps: 8, seconds: 0, loadKg: 20, steps: [
+      { label: 'Set 1', loadKg: 20, reps: 8, seconds: 0 },
+      { label: 'Set 2', loadKg: 25, reps: 5, seconds: 0 },
+      { label: 'Tenuta', loadKg: null, reps: 0, seconds: 10 },
+    ] }
+    expect(scalePrescriptionLoads(values, 5)).toEqual({
+      ...values,
+      loadKg: 21,
+      steps: [
+        { label: 'Set 1', loadKg: 21, reps: 8, seconds: 0 },
+        { label: 'Set 2', loadKg: 26.5, reps: 5, seconds: 0 },
+        { label: 'Tenuta', loadKg: null, reps: 0, seconds: 10 },
+      ],
+    })
+  })
+  it('rifiuta variazioni sotto -100%', () => expect(() => scalePrescriptionLoads({ sets: 1, reps: 1, seconds: 0, loadKg: 10, steps: [] }, -101)).toThrow('-100%'))
   it('pubblica solo strutture complete', () => {
     const data: ProgramBuilderData = { source: 'demo', athletes: [], programs: [], library: [], weeks: [{ id: 'w', programId: 'p', weekNumber: 1, blockName: null, phase: null, status: 'planned', loadType: 'load', notes: null }], sessions: [{ id: 's', weekId: 'w', order: 1, title: 'S', objective: null, durationMinutes: null, scheduledDay: 1 }], exercises: [], calendarEvents: [] }
     expect(canPublishProgram('p', data)).toBe(false)

@@ -76,6 +76,16 @@ export function readPrescriptionEditorValues(prescription: Record<string, unknow
   }
 }
 
+export function scalePrescriptionLoads(values: PrescriptionEditorValues, percentage: number): PrescriptionEditorValues {
+  if (!Number.isFinite(percentage) || percentage < -100) throw new Error('La variazione del carico non può essere inferiore a -100%.')
+  const scale = (load: number) => Math.round(load * (1 + percentage / 100) * 2) / 2
+  return {
+    ...values,
+    loadKg: values.loadKg > 0 ? scale(values.loadKg) : values.loadKg,
+    steps: values.steps.map(step => ({ ...step, loadKg: step.loadKg !== null && step.loadKg > 0 ? scale(step.loadKg) : step.loadKg })),
+  }
+}
+
 function parseDoseSteps(dose: string): PrescriptionStep[] {
   const sequence = dose.match(/^\s*(\d+(?:\s*[-–→]\s*\d+){1,})(?:\s*(?:blocchi|rep(?:etizioni)?))?\s*$/i)
   if (sequence) {
