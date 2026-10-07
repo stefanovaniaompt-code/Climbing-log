@@ -2,11 +2,15 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { ArrowLeft, ArrowRight, CalendarDays, ChevronDown, CircleEllipsis, ClipboardList, Copy, GripVertical, Layers3, Minus, Plus, Save, Settings2, TimerReset, Trash2, TriangleAlert, Users } from 'lucide-react'
 import type { AppProfile } from '../onboarding/types'
 import { ConfirmDialog, Panel, ScreenHeader, Tag } from '../shared/ui'
-import { canPublishProgram, prescriptionSummary, readPrescriptionEditorValues, scalePrescriptionLoads, type ProgramBuilderData, type PrescriptionStep } from './programBuilder'
+import { canPublishProgram, prescriptionSummary, readPrescriptionEditorValues, saveBeforeSelectingExercise, scalePrescriptionLoads, type ProgramBuilderData, type PrescriptionStep } from './programBuilder'
 import { addExercise, createProgram, createSession, createWeek, deleteExercise, deleteProgram, deleteSession, deleteWeek, duplicateWeek, loadProgramBuilder, publishProgram, updateExercise, updateSessionDetails, updateWeekDetails, type ExercisePatch } from './programBuilderRepository'
 import { ExerciseTestTargetPanel } from './ExerciseTestTargetPanel'
+import './BuilderScreen.css'
 
 type BuilderViewState = { showBuilder: boolean; creatingProgram: boolean; athleteId: string; programId: string; weekId: string; sessionId: string; exerciseId: string; sessionTab: 'exercises' | 'notes' | 'details'; exerciseEditorOpen: boolean; exerciseAdderOpen: boolean; weekSettingsOpen: boolean }
+type BuilderDeleteTarget =
+  | { kind: 'program' | 'week' | 'session'; id: string; name: string }
+  | { kind: 'block'; name: string; weekIds: string[] }
 
 function readExerciseLoadAdjustments(key: string): Record<string, number> {
   try {
@@ -40,7 +44,7 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
   const [sessionDetails, setSessionDetails] = useState({ title: '', objective: '', durationMinutes: 0, scheduledDay: 1 })
   const [patch, setPatch] = useState<ExercisePatch>({ sets: 3, reps: 5, seconds: 0, loadKg: 0, rpe: 7, restSeconds: 120, instructions: '', steps: [] })
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved')
-  const [deleteTarget, setDeleteTarget] = useState<{ kind: 'program' | 'week' | 'session'; id: string; name: string } | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<BuilderDeleteTarget | null>(null)
   const exerciseLoadKey = `cc-builder-exercise-load-adjustments:${profile.userId}`
   const [exerciseLoadPercentages, setExerciseLoadPercentages] = useState<Record<string, number>>(() => readExerciseLoadAdjustments(exerciseLoadKey))
   const [sessionTab, setSessionTab] = useState<'exercises' | 'notes' | 'details'>(savedView?.sessionTab ?? 'exercises')
@@ -109,6 +113,8 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
   const exerciseLoadPercentage = exercise ? exerciseLoadPercentages[exercise.id] ?? 0 : 0
   const safeExerciseLoadPercentage = Number.isFinite(exerciseLoadPercentage) && exerciseLoadPercentage >= -100 ? exerciseLoadPercentage : 0
   const scaledExercisePatch = scalePrescriptionLoads(patch, safeExerciseLoadPercentage)
+  const exercisePatchSerialized = JSON.stringify(patch)
+  const exerciseHasUnsavedChanges = Boolean(exercise && hydratedExercise.current === exercise.id && exercisePatchSerialized !== hydratedExerciseValue.current)
   const blocks = useMemo(() => {
     const grouped = new Map<string, typeof weeks>()
     weeks.forEach(week => {
@@ -176,6 +182,33 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
     setState('saving'); setError(''); setMessage('')
     try { const result = await operation(); await refresh(); onSuccess?.(result); setMessage(success) } catch (reason) { setError(reason instanceof Error ? reason.message : 'Operazione non completata.') } finally { setState('idle') }
   }
+  const saveExerciseChanges = async () => {
+    if (!exercise || !exerciseHasUnsavedChanges) return true
+    if (exerciseSaveTimer.current !== null) { window.clearTimeout(exerciseSaveTimer.current); exerciseSaveTimer.current = null }
+    const snapshot = patch
+    const serialized = JSON.stringify(snapshot)
+    setState('saving'); setSaveStatus('saving'); setError(''); setMessage('')
+    try {
+      await updateExercise(profile, exercise.id, exercise.prescription, snapshot)
+      hydratedExercise.current = exercise.id
+      hydratedExerciseValue.current = serialized
+      let summaryRefreshed = true
+      try { await refresh() } catch { summaryRefreshed = false; setError('Modifiche salvate, ma non è stato possibile aggiornare il riepilogo. Ricarica i dati.') }
+      if (summaryRefreshed) setMessage('Modifiche esercizio salvate.')
+      return true
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Esercizio non salvato.')
+      return false
+    } finally {
+      setSaveStatus('saved'); setState('idle')
+    }
+  }
+  const chooseExercise = async (nextExerciseId: string) => {
+    await saveBeforeSelectingExercise(exerciseHasUnsavedChanges, saveExerciseChanges, () => {
+      setExerciseId(nextExerciseId)
+      setExerciseEditorOpen(current => nextExerciseId === exerciseId ? !current : true)
+    })
+  }
   const submitProgram = (event: FormEvent) => {
     event.preventDefault()
     if (!athleteId || !newProgram.name.trim()) return
@@ -227,7 +260,10 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
     void run(() => addExercise(profile, sessionId, exercises.map(item => item.order), newExercise, libraryExercise), 'Esercizio aggiunto alla sessione.', id => { setExerciseId(id); setNewExercise(''); setLibraryId('') })
   }
   const confirmDelete = () => deleteTarget && void run(async () => {
-    if (deleteTarget.kind === 'program') {
+    if (deleteTarget.kind === 'block') {
+      await Promise.all(deleteTarget.weekIds.map(id => deleteWeek(profile, id)))
+      if (deleteTarget.weekIds.includes(weekId)) setWeekId('')
+    } else if (deleteTarget.kind === 'program') {
       await deleteProgram(profile, deleteTarget.id)
       setProgramId(''); setWeekId(''); setSessionId(''); setExerciseId(''); setCreatingProgram(false); setShowBuilder(false)
     } else if (deleteTarget.kind === 'week') {
@@ -236,7 +272,7 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
       await deleteSession(profile, deleteTarget.id); setSessionId('')
     }
     setDeleteTarget(null)
-  }, `${deleteTarget.kind === 'program' ? 'Programma' : deleteTarget.kind === 'week' ? 'Settimana' : 'Sessione'} eliminat${deleteTarget.kind === 'program' ? 'o' : deleteTarget.kind === 'week' ? 'a' : 'e'}.`)
+  }, deleteTarget.kind === 'block' ? 'Blocco eliminato.' : `${deleteTarget.kind === 'program' ? 'Programma' : deleteTarget.kind === 'week' ? 'Settimana' : 'Sessione'} eliminat${deleteTarget.kind === 'program' ? 'o' : deleteTarget.kind === 'week' ? 'a' : 'e'}.`)
   const applyExerciseLoadAdjustment = () => {
     if (!exercise) return
     const percentage = exerciseLoadPercentages[exercise.id] ?? 0
@@ -287,14 +323,17 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
       <div className="coach-builder__layout">
       <aside className="coach-builder__structure">
         <header><div><h2>Struttura del programma</h2><p>Blocchi, settimane e sessioni.</p></div><button type="button" disabled={state === 'saving'} onClick={addWeek}><Plus size={14} /> BLOCCO</button></header>
-        {!!blocks.length && <div className="coach-builder__blocks">{blocks.map((block, index) => <button type="button" className={block.weeks.some(item => item.id === weekId) ? 'active' : index === blocks.length - 1 && block.weeks.every(item => item.loadType === 'deload') ? 'deload' : ''} key={`${block.name}-${index}`} onClick={() => setWeekId(block.weeks[0].id)}><b>{block.name}</b><span>Sett. {block.weeks[0].weekNumber}–{block.weeks.at(-1)?.weekNumber}</span></button>)}</div>}
+        {!!blocks.length && <div className="coach-builder__blocks">{blocks.map((block, index) => <div className="coach-builder__block-item" key={`${block.name}-${index}`}>
+          <button type="button" className={`coach-builder__block-select ${block.weeks.some(item => item.id === weekId) ? 'active' : index === blocks.length - 1 && block.weeks.every(item => item.loadType === 'deload') ? 'deload' : ''}`} onClick={() => { setWeekId(block.weeks[0].id); setWeekSettingsOpen(false) }}><b>{block.name}</b><span>Sett. {block.weeks[0].weekNumber}–{block.weeks.at(-1)?.weekNumber}</span></button>
+          <details className="coach-builder__action-menu"><summary aria-label={`Azioni ${block.name}`} title={`Azioni ${block.name}`}><CircleEllipsis size={17} /></summary><div role="menu"><button type="button" role="menuitem" disabled={state === 'saving'} onClick={() => setDeleteTarget({ kind: 'block', name: block.name, weekIds: block.weeks.map(item => item.id) })}><Trash2 size={14} /> Elimina blocco ({block.weeks.length} {block.weeks.length === 1 ? 'settimana' : 'settimane'})</button></div></details>
+        </div>)}</div>}
         <div className="coach-builder__weeks" aria-label="Settimane del programma">
-          {weeks.map(week => <button id={`builder-week-${week.id}`} className={`${week.id === weekId ? 'active' : ''} week-type--${week.loadType}`} key={week.id} onClick={() => setWeekId(week.id)}><b>{String(week.weekNumber).padStart(2, '0')}</b><span>{week.loadType === 'deload' ? 'SCA' : 'CAR'}</span></button>)}
+          {weeks.map(week => <button type="button" id={`builder-week-${week.id}`} className={`${week.id === weekId ? 'active' : ''} week-type--${week.loadType}`} key={week.id} onClick={() => { setWeekId(week.id); setWeekSettingsOpen(false) }}><b>{String(week.weekNumber).padStart(2, '0')}</b><span>{week.loadType === 'deload' ? 'SCA' : 'CAR'}</span></button>)}
         </div>
         {!weekId && <div className="empty-state"><Layers3 size={22} /><b>Aggiungi la prima settimana</b><span>Le sessioni appariranno dentro la settimana selezionata.</span></div>}
         {weekId && <>
           <section className={`coach-builder__week-head week-type--${weekDetails.loadType}`}><div><h3>Settimana {selectedWeek?.weekNumber} · {weekDetails.blockName || 'Blocco'} · <span>{weekDetails.loadType === 'deload' ? 'SCARICO' : 'CARICO'}</span></h3>{weekDetails.notes && <small>{weekDetails.notes}</small>}</div><button type="button" aria-label="Azioni settimana" onClick={() => setWeekSettingsOpen(value => !value)}><CircleEllipsis size={16} /></button></section>
-          {weekSettingsOpen && <div className="coach-builder__week-settings"><div className="builder-details builder-details--week"><label><span>Nome blocco</span><input value={weekDetails.blockName} onChange={event => setWeekDetails(value => ({ ...value, blockName: event.target.value }))} /></label><label><span>Fase</span><input value={weekDetails.phase} onChange={event => setWeekDetails(value => ({ ...value, phase: event.target.value }))} /></label><label><span>Tipo</span><select value={weekDetails.loadType} onChange={event => setWeekDetails(value => ({ ...value, loadType: event.target.value as 'load' | 'deload' }))}><option value="load">Carico</option><option value="deload">Scarico</option></select></label><label><span>Note / obiettivi</span><input value={weekDetails.notes} onChange={event => setWeekDetails(value => ({ ...value, notes: event.target.value }))} /></label></div></div>}
+          {weekSettingsOpen && <div className="coach-builder__week-settings"><div className="builder-details builder-details--week"><label><span>Nome blocco</span><input value={weekDetails.blockName} onChange={event => setWeekDetails(value => ({ ...value, blockName: event.target.value }))} /></label><label><span>Fase</span><input value={weekDetails.phase} onChange={event => setWeekDetails(value => ({ ...value, phase: event.target.value }))} /></label><label><span>Tipo</span><select value={weekDetails.loadType} onChange={event => setWeekDetails(value => ({ ...value, loadType: event.target.value as 'load' | 'deload' }))}><option value="load">Carico</option><option value="deload">Scarico</option></select></label><label><span>Note / obiettivi</span><input value={weekDetails.notes} onChange={event => setWeekDetails(value => ({ ...value, notes: event.target.value }))} /></label></div><div className="coach-builder__week-actions"><button type="button" className="text-button danger" disabled={state === 'saving'} onClick={() => setDeleteTarget({ kind: 'week', id: weekId, name: `Settimana ${selectedWeek?.weekNumber ?? ''}` })}><Trash2 size={14} /> Elimina settimana</button></div></div>}
           <div className="builder-week-actions"><button type="button" className="text-button" disabled={state === 'saving'} onClick={duplicateSelectedWeek}><Copy size={14} /> Duplica settimana</button></div>
           <div className="coach-builder__session-list">{sessions.map(item => <button className={item.id === sessionId ? 'active' : ''} key={item.id} onClick={() => setSessionId(item.id)}><b>{String(item.order).padStart(2, '0')}</b><span><strong>{item.title}</strong><small>{item.objective || `${data?.exercises.filter(candidate => candidate.sessionId === item.id).length ?? 0} esercizi`}</small></span><ArrowRight size={16} /></button>)}</div>
           {!sessionId && <div className="empty-state empty-state--compact"><TimerReset size={20} /><b>Aggiungi la prima sessione</b></div>}
@@ -308,10 +347,10 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
           {sessionId && <div className="coach-builder__tabs"><button type="button" className={sessionTab === 'exercises' ? 'active' : ''} onClick={() => setSessionTab('exercises')}>ESERCIZI ({exercises.length})</button><button type="button" className={sessionTab === 'notes' ? 'active' : ''} onClick={() => setSessionTab('notes')}>NOTE COACH</button><button type="button" className={sessionTab === 'details' ? 'active' : ''} onClick={() => setSessionTab('details')}>DETTAGLI SESSIONE</button></div>}
           {sessionId && sessionTab === 'details' && <div className="builder-details builder-details--session"><label><span>Titolo sessione</span><input value={sessionDetails.title} onChange={event => setSessionDetails(value => ({ ...value, title: event.target.value }))} /></label><label><span>Obiettivo</span><input value={sessionDetails.objective} onChange={event => setSessionDetails(value => ({ ...value, objective: event.target.value }))} /></label><label><span>Durata</span><input type="number" min="0" value={sessionDetails.durationMinutes} onChange={event => setSessionDetails(value => ({ ...value, durationMinutes: Number(event.target.value) }))} /></label><label><span>Giorno 1–7</span><input type="number" min="1" max="7" value={sessionDetails.scheduledDay} onChange={event => setSessionDetails(value => ({ ...value, scheduledDay: Number(event.target.value) }))} /></label><button type="button" className="text-button danger" onClick={() => setDeleteTarget({ kind: 'session', id: sessionId, name: sessionDetails.title })}><Trash2 size={14} /> Elimina sessione</button></div>}
           {sessionId && sessionTab === 'notes' && <div className="coach-builder__notes"><label><span>Nota / obiettivo sessione</span><textarea value={sessionDetails.objective} onChange={event => setSessionDetails(value => ({ ...value, objective: event.target.value }))} /></label></div>}
-          {sessionTab === 'exercises' && exercises.map(item => <button type="button" className={`exercise-block ${item.id === exerciseId && exerciseEditorOpen ? 'active' : ''}`} key={item.id} onClick={() => { setExerciseId(item.id); setExerciseEditorOpen(value => item.id === exerciseId ? !value : true) }}><GripVertical className="drag-handle" size={16} /><span className="exercise-number">{String(item.order).padStart(2, '0')}</span><div><b>{item.name}</b><small>{prescriptionSummary(item)}</small></div><ChevronDown size={17} /></button>)}
+          {sessionTab === 'exercises' && exercises.map(item => <button type="button" disabled={state === 'saving'} className={`exercise-block ${item.id === exerciseId && exerciseEditorOpen ? 'active' : ''}`} key={item.id} onClick={() => void chooseExercise(item.id)}><GripVertical className="drag-handle" size={16} /><span className="exercise-number">{String(item.order).padStart(2, '0')}</span><div><b>{item.name}</b><small>{prescriptionSummary(item)}</small></div><ChevronDown size={17} /></button>)}
           {sessionId && sessionTab === 'exercises' && !exerciseAdderOpen && <div className="coach-builder__add-exercise-actions"><button type="button" onClick={() => { setLibraryId(''); setExerciseAdderOpen(true) }}><Plus size={15} /> AGGIUNGI ESERCIZIO</button><button type="button" onClick={() => setExerciseAdderOpen(true)}><Layers3 size={15} /> AGGIUNGI DALLA LIBRERIA</button></div>}
           {sessionId && sessionTab === 'exercises' && exerciseAdderOpen && <form className="exercise-adder" onSubmit={submitExercise}><select value={libraryId} onChange={event => setLibraryId(event.target.value)}><option value="">Esercizio rapido…</option>{data?.library.map(item => <option value={item.id} key={item.id}>{item.name}{item.category ? ` · ${item.category}` : ''}</option>)}</select>{!libraryId && <input value={newExercise} onChange={event => setNewExercise(event.target.value)} placeholder="Nome esercizio" />}<button className="drop-zone" disabled={state === 'saving'}><Plus size={17} /> Aggiungi alla sessione</button><button type="button" className="text-button" onClick={() => setExerciseAdderOpen(false)}>Annulla</button></form>}
-        {sessionId && sessionTab === 'exercises' && exerciseEditorOpen && <Panel className="inspector coach-builder__inspector" title="Parametri esercizio" index="03">
+        {sessionId && sessionTab === 'exercises' && exerciseEditorOpen && <Panel className="inspector coach-builder__inspector" title="Parametri esercizio" index="03" action={exercise && <div className="builder-exercise-save"><span role="status">{saveStatus === 'saving' ? 'Modifiche da salvare' : 'Salvato'}</span><button type="button" className="button button--primary" disabled={state === 'saving' || !exerciseHasUnsavedChanges} onClick={() => void saveExerciseChanges()}><Save size={15} /> {exerciseHasUnsavedChanges ? 'Salva modifiche' : 'Salvato'}</button></div>}>
         {!exercise && <div className="empty-state empty-state--compact"><Settings2 size={20} /><b>Seleziona un esercizio</b><span>Qui modificherai volume, carico, RPE e recupero.</span></div>}
         {exercise && <>
           <label><span>Serie</span><div className="stepper"><button onClick={() => setPatch(value => ({ ...value, sets: Math.max(1, value.sets - 1) }))}>−</button><b>{patch.sets}</b><button onClick={() => setPatch(value => ({ ...value, sets: value.sets + 1 }))}>+</button></div></label>
@@ -339,7 +378,7 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
     </div></>}
     {error && <div className="completion-banner completion-banner--error"><TriangleAlert size={19} /><div><b>Operazione non completata</b><span>{error}</span></div></div>}
     <span className="coach-builder__sr-status" role="status" aria-live="polite">{message}</span>
-    {deleteTarget && <ConfirmDialog title={`Eliminare ${deleteTarget.name}?`} text={deleteTarget.kind === 'program' ? 'Saranno eliminati in modo permanente programma, settimane, sessioni, esercizi e storico di allenamento e feedback collegati. Questa operazione non si può annullare.' : deleteTarget.kind === 'week' ? 'Saranno eliminate anche tutte le sessioni e gli esercizi della settimana.' : 'Saranno eliminati anche tutti gli esercizi della sessione.'} confirmLabel="Elimina definitivamente" busy={state === 'saving'} onCancel={() => setDeleteTarget(null)} onConfirm={confirmDelete} />}
+    {deleteTarget && <ConfirmDialog title={`Eliminare ${deleteTarget.kind === 'block' ? `il blocco ${deleteTarget.name}` : deleteTarget.name}?`} text={deleteTarget.kind === 'program' ? 'Saranno eliminati in modo permanente programma, settimane, sessioni, esercizi e storico di allenamento e feedback collegati. Questa operazione non si può annullare.' : deleteTarget.kind === 'block' ? `Saranno eliminate tutte le ${deleteTarget.weekIds.length} settimane del blocco, con le rispettive sessioni ed esercizi.` : deleteTarget.kind === 'week' ? 'Saranno eliminate anche tutte le sessioni e gli esercizi della settimana.' : 'Saranno eliminati anche tutti gli esercizi della sessione.'} confirmLabel="Elimina definitivamente" busy={state === 'saving'} onCancel={() => setDeleteTarget(null)} onConfirm={confirmDelete} />}
   </div>
 }
 

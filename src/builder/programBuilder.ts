@@ -35,6 +35,12 @@ export type ProgramBuilderData = {
 
 export const nextSequence = (values: number[]) => Math.max(0, ...values) + 1
 
+export async function saveBeforeSelectingExercise(hasUnsavedChanges: boolean, save: () => Promise<boolean>, select: () => void) {
+  if (hasUnsavedChanges && !(await save())) return false
+  select()
+  return true
+}
+
 export function latestWeek(weeks: BuilderWeek[]) {
   return weeks.reduce<BuilderWeek | null>((latest, week) => !latest || week.weekNumber > latest.weekNumber ? week : latest, null)
 }

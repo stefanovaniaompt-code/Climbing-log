@@ -1,8 +1,18 @@
-import { describe, expect, it } from 'vitest'
-import { canPublishProgram, getPrescriptionSteps, latestWeek, mergePrescriptionForUpdate, nextSequence, prescriptionSummary, readPrescriptionEditorValues, scalePrescriptionLoads, type ProgramBuilderData } from './programBuilder'
+import { describe, expect, it, vi } from 'vitest'
+import { canPublishProgram, getPrescriptionSteps, latestWeek, mergePrescriptionForUpdate, nextSequence, prescriptionSummary, readPrescriptionEditorValues, saveBeforeSelectingExercise, scalePrescriptionLoads, type ProgramBuilderData } from './programBuilder'
 
 describe('program builder', () => {
   it('calcola il prossimo ordine senza sovrascrivere elementi esistenti', () => expect(nextSequence([1, 3, 2])).toBe(4))
+  it('salva le modifiche all’esercizio prima di selezionarne un altro', async () => {
+    const sequence: string[] = []
+    await expect(saveBeforeSelectingExercise(true, async () => { sequence.push('save'); return true }, () => sequence.push('select'))).resolves.toBe(true)
+    expect(sequence).toEqual(['save', 'select'])
+  })
+  it('non cambia esercizio se il salvataggio esplicito fallisce', async () => {
+    const select = vi.fn()
+    await expect(saveBeforeSelectingExercise(true, async () => false, select)).resolves.toBe(false)
+    expect(select).not.toHaveBeenCalled()
+  })
   it('individua la settimana più recente anche se non è ordinata', () => expect(latestWeek([
     { id: 'w3', programId: 'p', weekNumber: 3, blockName: null, phase: null, status: 'planned', loadType: 'load', notes: null },
     { id: 'w1', programId: 'p', weekNumber: 1, blockName: null, phase: null, status: 'planned', loadType: 'load', notes: null },
