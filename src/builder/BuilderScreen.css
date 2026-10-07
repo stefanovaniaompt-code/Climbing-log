@@ -22,10 +22,15 @@
 .screen.coach-builder .coach-builder__weeks { grid-template-columns: repeat(auto-fill,minmax(88px,1fr)); }
 .screen.coach-builder .coach-builder__session-list { grid-template-columns: repeat(auto-fit,minmax(min(100%,280px),1fr)); }
 .screen.coach-builder .coach-builder__add-session { width: calc(100% - 32px); margin: 0 16px 16px; }
-.screen.coach-builder .coach-builder__editor { overflow: hidden; }
+.screen.coach-builder .coach-builder__editor { overflow: visible; }
 .screen.coach-builder .coach-builder__session-head { min-height: 104px; }
+.screen.coach-builder .coach-builder__session-actions { display: flex; align-items: center; gap: 16px; }
+.screen.coach-builder .coach-builder__action-menu--session { position: relative; top: auto; right: auto; }
 .screen.coach-builder .coach-builder__tabs { position: sticky; top: 0; z-index: 3; background: #faf8fc; }
-.screen.coach-builder .exercise-block { min-width: 0; }
+.screen.coach-builder .exercise-block { position: relative; display: block; min-width: 0; padding: 0; cursor: default; }
+.screen.coach-builder .exercise-block__select { width: 100%; min-width: 0; min-height: 78px; display: grid; grid-template-columns: 16px 30px minmax(0,1fr) 20px; gap: 10px; align-items: center; border: 0; background: transparent; padding: 9px 48px 9px 10px; color: inherit; text-align: left; cursor: pointer; }
+.screen.coach-builder .exercise-block__select:focus-visible { outline: 2px solid #55206f; outline-offset: -3px; }
+.screen.coach-builder .exercise-block__select > div { min-width: 0; }
 .screen.coach-builder .exercise-block > div { min-width: 0; }
 .screen.coach-builder .exercise-block > div b,
 .screen.coach-builder .exercise-block > div small { overflow-wrap: anywhere; }
@@ -48,6 +53,12 @@
 .screen.coach-builder .inspector .builder-test-target__sets > label .input-shell > input { flex: 1 1 auto; width: 1%; min-width: 0; }
 .screen.coach-builder .inspector .builder-test-target select,
 .screen.coach-builder .inspector .builder-test-target input { min-height: 40px; padding-inline: 10px; font-size: 14px; }
+.builder-test-target__adjustment-preview { min-width: 0; padding: 12px; border: 1px solid #c8b9d4; background: #faf8fc; }
+.builder-test-target__adjustment-preview > b { display: block; margin-bottom: 8px; color: #55206f; font: 650 10px/1.4 'IBM Plex Mono',monospace; }
+.builder-test-target__adjustment-preview ol { display: grid; gap: 5px; margin: 0; padding: 0; list-style: none; }
+.builder-test-target__adjustment-preview li { display: grid; grid-template-columns: minmax(54px,.5fr) minmax(90px,.8fr) minmax(0,1.5fr); gap: 8px; align-items: center; color: #554b5a; font-size: 11px; }
+.builder-test-target__adjustment-preview li > * { min-width: 0; overflow-wrap: anywhere; }
+.builder-test-target__adjustment-preview li strong { color: #210b2d; }
 .screen.coach-builder .structured-prescription__row { grid-template-columns: minmax(130px,1.1fr) repeat(3,minmax(100px,.8fr)) 36px; gap: 10px; align-items: end; }
 .screen.coach-builder .structured-prescription__row > label span { min-height: 20px; }
 .screen.coach-builder .structured-prescription__row > label input { min-height: 42px; padding-inline: 10px; }
@@ -58,6 +69,7 @@
   .coach-builder__inspector .panel__head { align-items: flex-start; flex-direction: column; }
   .screen.coach-builder .coach-builder__inspector .panel__body { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .builder-exercise-save { width: 100%; justify-content: space-between; }
+  .builder-test-target__adjustment-preview li { grid-template-columns: minmax(44px,.45fr) minmax(70px,.65fr) minmax(0,1.2fr); gap: 5px; font-size: 10px; }
 }
 
 @media (max-width: 560px) {
@@ -66,6 +78,7 @@
   .screen.coach-builder .coach-builder__session-list { grid-template-columns: minmax(0,1fr); padding: 12px; }
   .screen.coach-builder .coach-builder__inspector { margin: 12px; }
   .screen.coach-builder .coach-builder__inspector .panel__body { grid-template-columns: minmax(0,1fr); }
+  .screen.coach-builder .exercise-block__select { grid-template-columns: 14px 24px minmax(0,1fr) 17px; gap: 8px; }
   .screen.coach-builder .structured-prescription__row { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .screen.coach-builder .structured-prescription__row > button { min-height: 42px; }
   .coach-builder .exercise-adder { grid-template-columns: minmax(0,1fr); margin: 12px; }

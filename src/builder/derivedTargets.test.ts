@@ -10,6 +10,7 @@ import {
   chooseTestReference,
   compatibleTestReference,
   hasNewerTest,
+  scaleTestTargetPercentages,
   type TestOutcomeReference,
 } from './derivedTargets'
 
@@ -82,6 +83,14 @@ const latest:
 describe(
   'derived exercise targets',
   () => {
+    it('scales each test-derived set percentage independently while preserving the five-row progression', () => {
+      expect(scaleTestTargetPercentages([80, 85, 90, 92.5, 95], 5)).toEqual([84, 89.25, 94.5, 97.13, 99.75])
+    })
+
+    it('rejects a load adjustment that would create a zero-percent set target', () => {
+      expect(() => scaleTestTargetPercentages([80], -100)).toThrow('maggiore di zero')
+    })
+
     it(
       'chooses latest, PB or a specific result',
       () => {

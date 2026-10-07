@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { ArrowLeft, ArrowRight, CalendarDays, ChevronDown, CircleEllipsis, ClipboardList, Copy, GripVertical, Layers3, Minus, Plus, Save, Settings2, TimerReset, Trash2, TriangleAlert, Users } from 'lucide-react'
 import type { AppProfile } from '../onboarding/types'
 import { ConfirmDialog, Panel, ScreenHeader, Tag } from '../shared/ui'
@@ -9,7 +9,7 @@ import './BuilderScreen.css'
 
 type BuilderViewState = { showBuilder: boolean; creatingProgram: boolean; athleteId: string; programId: string; weekId: string; sessionId: string; exerciseId: string; sessionTab: 'exercises' | 'notes' | 'details'; exerciseEditorOpen: boolean; exerciseAdderOpen: boolean; weekSettingsOpen: boolean }
 type BuilderDeleteTarget =
-  | { kind: 'program' | 'week' | 'session'; id: string; name: string }
+  | { kind: 'program' | 'week' | 'session' | 'exercise'; id: string; name: string }
   | { kind: 'block'; name: string; weekIds: string[] }
 
 function readExerciseLoadAdjustments(key: string): Record<string, number> {
@@ -47,6 +47,12 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
   const [deleteTarget, setDeleteTarget] = useState<BuilderDeleteTarget | null>(null)
   const exerciseLoadKey = `cc-builder-exercise-load-adjustments:${profile.userId}`
   const [exerciseLoadPercentages, setExerciseLoadPercentages] = useState<Record<string, number>>(() => readExerciseLoadAdjustments(exerciseLoadKey))
+  const testTargetLoadAdjustment = useRef<((percentage: number) => Promise<void>) | null>(null)
+  const [hasTestDerivedTarget, setHasTestDerivedTarget] = useState(false)
+  const registerTestTargetLoadAdjustment = useCallback((handler: ((percentage: number) => Promise<void>) | null) => {
+    testTargetLoadAdjustment.current = handler
+    setHasTestDerivedTarget(Boolean(handler))
+  }, [])
   const [sessionTab, setSessionTab] = useState<'exercises' | 'notes' | 'details'>(savedView?.sessionTab ?? 'exercises')
   const [weekSettingsOpen, setWeekSettingsOpen] = useState(savedView?.weekSettingsOpen ?? false)
   const [exerciseEditorOpen, setExerciseEditorOpen] = useState(savedView?.exerciseEditorOpen ?? false)
@@ -268,15 +274,26 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
       setProgramId(''); setWeekId(''); setSessionId(''); setExerciseId(''); setCreatingProgram(false); setShowBuilder(false)
     } else if (deleteTarget.kind === 'week') {
       await deleteWeek(profile, deleteTarget.id); setWeekId('')
+    } else if (deleteTarget.kind === 'exercise') {
+      await deleteExercise(profile, deleteTarget.id)
+      if (deleteTarget.id === exerciseId) { setExerciseId(''); setExerciseEditorOpen(false) }
     } else {
       await deleteSession(profile, deleteTarget.id); setSessionId('')
     }
     setDeleteTarget(null)
-  }, deleteTarget.kind === 'block' ? 'Blocco eliminato.' : `${deleteTarget.kind === 'program' ? 'Programma' : deleteTarget.kind === 'week' ? 'Settimana' : 'Sessione'} eliminat${deleteTarget.kind === 'program' ? 'o' : deleteTarget.kind === 'week' ? 'a' : 'e'}.`)
+  }, deleteTarget.kind === 'block' ? 'Blocco eliminato e numerazione aggiornata.' : deleteTarget.kind === 'week' ? 'Settimana eliminata e numerazione aggiornata.' : `${deleteTarget.kind === 'program' ? 'Programma' : deleteTarget.kind === 'exercise' ? 'Esercizio' : 'Sessione'} eliminat${deleteTarget.kind === 'program' || deleteTarget.kind === 'exercise' ? 'o' : 'a'}.`)
   const applyExerciseLoadAdjustment = () => {
     if (!exercise) return
-    const percentage = exerciseLoadPercentages[exercise.id] ?? 0
+    const percentage = safeExerciseLoadPercentage
     if (!Number.isFinite(percentage) || percentage < -100) { setError('La variazione del carico non può essere inferiore a -100%.'); return }
+    if (testTargetLoadAdjustment.current) {
+      setState('saving'); setError(''); setMessage('')
+      void testTargetLoadAdjustment.current(percentage).then(() => {
+        setExerciseLoadPercentages(value => ({ ...value, [exercise.id]: 0 }))
+        setMessage(`Variazione del ${Math.abs(percentage)}% applicata alle percentuali di tutte le serie.`)
+      }).catch(reason => setError(reason instanceof Error ? reason.message : 'Variazione del carico non salvata.')).finally(() => setState('idle'))
+      return
+    }
     const current = readPrescriptionEditorValues(exercise.prescription)
     if (!(current.loadKg > 0) && !current.steps.some(step => step.loadKg !== null && step.loadKg > 0)) { setError('Questo esercizio non ha carichi numerici da variare.'); return }
     setError('')
@@ -343,11 +360,11 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
       <main className="coach-builder__editor">
         {!weekId && <div className="empty-state"><Layers3 size={22} /><b>Aggiungi la prima settimana</b><span>Costruisci la struttura del programma dal pannello a sinistra.</span></div>}
         {weekId && <>
-          <header className="coach-builder__session-head"><div><small>SESSIONE {session?.order ?? '—'}</small><h2>{session?.title ?? 'Nessuna sessione selezionata'}</h2><p>{session?.objective || 'Seleziona o crea una sessione nella settimana.'}</p></div>{sessionId && <div><span><ClipboardList size={15} /> {exercises.length} esercizi</span></div>}</header>
+          <header className="coach-builder__session-head"><div><small>SESSIONE {session?.order ?? '—'}</small><h2>{session?.title ?? 'Nessuna sessione selezionata'}</h2><p>{session?.objective || 'Seleziona o crea una sessione nella settimana.'}</p></div>{sessionId && <div className="coach-builder__session-actions"><span><ClipboardList size={15} /> {exercises.length} esercizi</span><details className="coach-builder__action-menu coach-builder__action-menu--session"><summary aria-label="Azioni sessione" title="Azioni sessione"><CircleEllipsis size={17} /></summary><div role="menu"><button type="button" role="menuitem" disabled={state === 'saving'} onClick={event => { event.currentTarget.closest('details')?.removeAttribute('open'); setDeleteTarget({ kind: 'session', id: sessionId, name: sessionDetails.title || `Sessione ${session?.order ?? ''}` }) }}><Trash2 size={14} /> Elimina sessione</button></div></details></div>}</header>
           {sessionId && <div className="coach-builder__tabs"><button type="button" className={sessionTab === 'exercises' ? 'active' : ''} onClick={() => setSessionTab('exercises')}>ESERCIZI ({exercises.length})</button><button type="button" className={sessionTab === 'notes' ? 'active' : ''} onClick={() => setSessionTab('notes')}>NOTE COACH</button><button type="button" className={sessionTab === 'details' ? 'active' : ''} onClick={() => setSessionTab('details')}>DETTAGLI SESSIONE</button></div>}
-          {sessionId && sessionTab === 'details' && <div className="builder-details builder-details--session"><label><span>Titolo sessione</span><input value={sessionDetails.title} onChange={event => setSessionDetails(value => ({ ...value, title: event.target.value }))} /></label><label><span>Obiettivo</span><input value={sessionDetails.objective} onChange={event => setSessionDetails(value => ({ ...value, objective: event.target.value }))} /></label><label><span>Durata</span><input type="number" min="0" value={sessionDetails.durationMinutes} onChange={event => setSessionDetails(value => ({ ...value, durationMinutes: Number(event.target.value) }))} /></label><label><span>Giorno 1–7</span><input type="number" min="1" max="7" value={sessionDetails.scheduledDay} onChange={event => setSessionDetails(value => ({ ...value, scheduledDay: Number(event.target.value) }))} /></label><button type="button" className="text-button danger" onClick={() => setDeleteTarget({ kind: 'session', id: sessionId, name: sessionDetails.title })}><Trash2 size={14} /> Elimina sessione</button></div>}
+          {sessionId && sessionTab === 'details' && <div className="builder-details builder-details--session"><label><span>Titolo sessione</span><input value={sessionDetails.title} onChange={event => setSessionDetails(value => ({ ...value, title: event.target.value }))} /></label><label><span>Obiettivo</span><input value={sessionDetails.objective} onChange={event => setSessionDetails(value => ({ ...value, objective: event.target.value }))} /></label><label><span>Durata</span><input type="number" min="0" value={sessionDetails.durationMinutes} onChange={event => setSessionDetails(value => ({ ...value, durationMinutes: Number(event.target.value) }))} /></label><label><span>Giorno 1–7</span><input type="number" min="1" max="7" value={sessionDetails.scheduledDay} onChange={event => setSessionDetails(value => ({ ...value, scheduledDay: Number(event.target.value) }))} /></label></div>}
           {sessionId && sessionTab === 'notes' && <div className="coach-builder__notes"><label><span>Nota / obiettivo sessione</span><textarea value={sessionDetails.objective} onChange={event => setSessionDetails(value => ({ ...value, objective: event.target.value }))} /></label></div>}
-          {sessionTab === 'exercises' && exercises.map(item => <button type="button" disabled={state === 'saving'} className={`exercise-block ${item.id === exerciseId && exerciseEditorOpen ? 'active' : ''}`} key={item.id} onClick={() => void chooseExercise(item.id)}><GripVertical className="drag-handle" size={16} /><span className="exercise-number">{String(item.order).padStart(2, '0')}</span><div><b>{item.name}</b><small>{prescriptionSummary(item)}</small></div><ChevronDown size={17} /></button>)}
+          {sessionTab === 'exercises' && exercises.map(item => <div className={`exercise-block ${item.id === exerciseId && exerciseEditorOpen ? 'active' : ''}`} key={item.id}><button type="button" disabled={state === 'saving'} className="exercise-block__select" onClick={() => void chooseExercise(item.id)}><GripVertical className="drag-handle" size={16} /><span className="exercise-number">{String(item.order).padStart(2, '0')}</span><div><b>{item.name}</b><small>{prescriptionSummary(item)}</small></div><ChevronDown size={17} /></button><details className="coach-builder__action-menu coach-builder__action-menu--exercise"><summary aria-label={`Azioni ${item.name}`} title={`Azioni ${item.name}`}><CircleEllipsis size={17} /></summary><div role="menu"><button type="button" role="menuitem" disabled={state === 'saving'} onClick={event => { event.currentTarget.closest('details')?.removeAttribute('open'); setDeleteTarget({ kind: 'exercise', id: item.id, name: item.name }) }}><Trash2 size={14} /> Elimina esercizio</button></div></details></div>)}
           {sessionId && sessionTab === 'exercises' && !exerciseAdderOpen && <div className="coach-builder__add-exercise-actions"><button type="button" onClick={() => { setLibraryId(''); setExerciseAdderOpen(true) }}><Plus size={15} /> AGGIUNGI ESERCIZIO</button><button type="button" onClick={() => setExerciseAdderOpen(true)}><Layers3 size={15} /> AGGIUNGI DALLA LIBRERIA</button></div>}
           {sessionId && sessionTab === 'exercises' && exerciseAdderOpen && <form className="exercise-adder" onSubmit={submitExercise}><select value={libraryId} onChange={event => setLibraryId(event.target.value)}><option value="">Esercizio rapido…</option>{data?.library.map(item => <option value={item.id} key={item.id}>{item.name}{item.category ? ` · ${item.category}` : ''}</option>)}</select>{!libraryId && <input value={newExercise} onChange={event => setNewExercise(event.target.value)} placeholder="Nome esercizio" />}<button className="drop-zone" disabled={state === 'saving'}><Plus size={17} /> Aggiungi alla sessione</button><button type="button" className="text-button" onClick={() => setExerciseAdderOpen(false)}>Annulla</button></form>}
         {sessionId && sessionTab === 'exercises' && exerciseEditorOpen && <Panel className="inspector coach-builder__inspector" title="Parametri esercizio" index="03" action={exercise && <div className="builder-exercise-save"><span role="status">{saveStatus === 'saving' ? 'Modifiche da salvare' : 'Salvato'}</span><button type="button" className="button button--primary" disabled={state === 'saving' || !exerciseHasUnsavedChanges} onClick={() => void saveExerciseChanges()}><Save size={15} /> {exerciseHasUnsavedChanges ? 'Salva modifiche' : 'Salvato'}</button></div>}>
@@ -360,7 +377,7 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
           <label><span>Recupero</span><div className="input-shell"><input type="number" min="0" step="15" value={patch.restSeconds} onChange={event => setPatch(value => ({ ...value, restSeconds: Number(event.target.value) }))} /><em>sec</em></div></label>
           <label><span>RPE target</span><div className="rpe-scale">{[6, 7, 8, 9, 10].map(value => <button className={value === patch.rpe ? 'active' : ''} key={value} onClick={() => setPatch(current => ({ ...current, rpe: value }))}>{value}</button>)}</div></label>
           <label className="inspector-notes"><span>Indicazioni</span><textarea value={patch.instructions} onChange={event => setPatch(value => ({ ...value, instructions: event.target.value }))} /></label>
-          <section className="builder-exercise-load"><div className="builder-exercise-load__title"><b>Variazione carico esercizio</b><span>Solo kg; ripetizioni, durata e recupero non cambiano.</span></div><label><span>Variazione %</span><input aria-label="Variazione percentuale carico per questo esercizio" type="number" min="-100" max="500" value={exerciseLoadPercentages[exercise.id] ?? 0} onChange={event => setExerciseLoadPercentages(value => ({ ...value, [exercise.id]: Number(event.target.value) }))} /></label><div className="builder-exercise-load__preview">{(scaledExercisePatch.steps.some(step => step.loadKg !== null && step.loadKg > 0) ? scaledExercisePatch.steps.map((step, index) => step.loadKg !== null && step.loadKg > 0 ? `${step.label || `S${index + 1}`}: ${patch.steps[index]?.loadKg} → ${step.loadKg} kg` : null).filter(Boolean) : patch.loadKg > 0 ? [`${patch.loadKg} → ${scaledExercisePatch.loadKg} kg`] : []).join(' · ') || 'Nessun carico numerico in questa prescrizione.'}</div><button type="button" className="text-button" disabled={state === 'saving' || !((patch.loadKg > 0) || patch.steps.some(step => step.loadKg !== null && step.loadKg > 0))} onClick={applyExerciseLoadAdjustment}>Applica variazione a questo esercizio</button></section>
+          <section className="builder-exercise-load"><div className="builder-exercise-load__title"><b>Variazione carico esercizio</b><span>Ripetizioni, durata e recupero non cambiano.</span></div><label><span>Variazione %</span><input aria-label="Variazione percentuale carico per questo esercizio" type="number" min="-100" max="500" value={exerciseLoadPercentages[exercise.id] ?? 0} onChange={event => setExerciseLoadPercentages(value => ({ ...value, [exercise.id]: Number(event.target.value) }))} /></label><div className="builder-exercise-load__preview">{(scaledExercisePatch.steps.some(step => step.loadKg !== null && step.loadKg > 0) ? scaledExercisePatch.steps.map((step, index) => step.loadKg !== null && step.loadKg > 0 ? `${step.label || `S${index + 1}`}: ${patch.steps[index]?.loadKg} → ${step.loadKg} kg` : null).filter(Boolean) : patch.loadKg > 0 ? [`${patch.loadKg} → ${scaledExercisePatch.loadKg} kg`] : []).join(' · ') || (hasTestDerivedTarget ? 'Il carico viene calcolato dal test, mantenendo le ripetizioni di ogni serie.' : 'Nessun carico numerico in questa prescrizione.')}</div><button type="button" className="text-button" disabled={state === 'saving' || safeExerciseLoadPercentage === 0 || (!hasTestDerivedTarget && !((patch.loadKg > 0) || patch.steps.some(step => step.loadKg !== null && step.loadKg > 0)))} onClick={applyExerciseLoadAdjustment}>Applica variazione a questo esercizio</button></section>
 
           <div className="structured-prescription"><div className="structured-prescription__head"><span>Progressione a righe</span><button type="button" className="text-button" onClick={addStep}><Plus size={13} /> Riga</button></div>{patch.steps.map((step, index) => <div className="structured-prescription__row" key={index}><label><span>Set / nota</span><input aria-label="Etichetta" value={step.label} onChange={event => changeStep(index, { label: event.target.value })} /></label><label><span>Carico kg</span><input aria-label="Carico kg" type="number" step="0.5" value={step.loadKg ?? ''} onChange={event => changeStep(index, { loadKg: event.target.value === '' ? null : Number(event.target.value) })} /></label><label><span>Ripetizioni</span><input aria-label="Ripetizioni" type="number" min="0" value={step.reps} onChange={event => changeStep(index, { reps: Number(event.target.value), seconds: 0 })} /></label><label><span>Durata sec</span><input aria-label="Secondi" type="number" min="0" value={step.seconds} onChange={event => changeStep(index, { seconds: Number(event.target.value), reps: 0 })} /></label><button type="button" aria-label="Elimina riga" onClick={() => setPatch(value => ({ ...value, steps: value.steps.filter((_, row) => row !== index) }))}><Minus size={13} /></button></div>)}</div>
 
@@ -369,8 +386,9 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
             athleteId={athleteId}
             exerciseId={exercise.id}
             setCount={patch.sets}
+            loadAdjustmentPercentage={safeExerciseLoadPercentage}
+            onRegisterLoadAdjustment={registerTestTargetLoadAdjustment}
           />
-          <button type="button" className="text-button danger builder-delete-exercise" disabled={state === 'saving'} onClick={() => void run(() => deleteExercise(profile, exercise.id), 'Esercizio eliminato.')}><Trash2 size={14} /> Elimina esercizio</button>
         </>}
       </Panel>}
         </>}
@@ -378,7 +396,7 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
     </div></>}
     {error && <div className="completion-banner completion-banner--error"><TriangleAlert size={19} /><div><b>Operazione non completata</b><span>{error}</span></div></div>}
     <span className="coach-builder__sr-status" role="status" aria-live="polite">{message}</span>
-    {deleteTarget && <ConfirmDialog title={`Eliminare ${deleteTarget.kind === 'block' ? `il blocco ${deleteTarget.name}` : deleteTarget.name}?`} text={deleteTarget.kind === 'program' ? 'Saranno eliminati in modo permanente programma, settimane, sessioni, esercizi e storico di allenamento e feedback collegati. Questa operazione non si può annullare.' : deleteTarget.kind === 'block' ? `Saranno eliminate tutte le ${deleteTarget.weekIds.length} settimane del blocco, con le rispettive sessioni ed esercizi.` : deleteTarget.kind === 'week' ? 'Saranno eliminate anche tutte le sessioni e gli esercizi della settimana.' : 'Saranno eliminati anche tutti gli esercizi della sessione.'} confirmLabel="Elimina definitivamente" busy={state === 'saving'} onCancel={() => setDeleteTarget(null)} onConfirm={confirmDelete} />}
+    {deleteTarget && <ConfirmDialog title={`Eliminare ${deleteTarget.kind === 'block' ? `il blocco ${deleteTarget.name}` : deleteTarget.name}?`} text={deleteTarget.kind === 'program' ? 'Saranno eliminati in modo permanente programma, settimane, sessioni, esercizi e storico di allenamento e feedback collegati. Questa operazione non si può annullare.' : deleteTarget.kind === 'block' ? `Saranno eliminate tutte le ${deleteTarget.weekIds.length} settimane del blocco, con le rispettive sessioni ed esercizi.` : deleteTarget.kind === 'week' ? 'Saranno eliminate anche tutte le sessioni e gli esercizi della settimana; le successive saranno rinumerate.' : deleteTarget.kind === 'session' ? 'Saranno eliminati anche tutti gli esercizi della sessione.' : 'L’esercizio e la sua prescrizione saranno eliminati dalla sessione.'} confirmLabel="Elimina definitivamente" busy={state === 'saving'} onCancel={() => setDeleteTarget(null)} onConfirm={confirmDelete} />}
   </div>
 }
 

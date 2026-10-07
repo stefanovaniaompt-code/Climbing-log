@@ -131,13 +131,47 @@ describe(
             exercise,
           ),
         ).toEqual([
-          '50% = 24.1 kg',
-          '60% = 28.92 kg',
-          '70% = 33.74 kg',
-          '80% = 38.56 kg',
+          '50% = 24.1 kg · 1 rep',
+          '60% = 28.92 kg · 1 rep',
+          '70% = 33.74 kg · 1 rep',
+          '80% = 38.56 kg · 1 rep',
         ])
       },
     )
+
+    it('combines each test-derived load percentage with that set’s own repetitions', () => {
+      const fiveSetExercise: RunnerExercise = {
+        ...exercise,
+        prescription: {
+          sets: 5,
+          steps: [
+            { label: 'Set 1', loadKg: 85, reps: 10, seconds: 0 },
+            { label: 'Set 2', loadKg: 94, reps: 8, seconds: 0 },
+            { label: 'Set 3', loadKg: 101.5, reps: 6, seconds: 0 },
+            { label: 'Set 4', loadKg: 108.5, reps: 4, seconds: 0 },
+            { label: 'Set 5', loadKg: 122.5, reps: 3, seconds: 0 },
+          ],
+        },
+        calculationContext: {
+          test_target: {
+            set_targets: [50, 60, 70, 80, 90].map((percentage, index) => ({
+              setNumber: index + 1,
+              percentage,
+              calculatedTarget: percentage / 2,
+              targetUnit: 'kg',
+            })),
+          },
+        },
+      }
+
+      expect(getVariableSeries(fiveSetExercise)).toEqual([
+        '50% = 25 kg · 10 rep',
+        '60% = 30 kg · 8 rep',
+        '70% = 35 kg · 6 rep',
+        '80% = 40 kg · 4 rep',
+        '90% = 45 kg · 3 rep',
+      ])
+    })
 
     it(
       'reads every derived set',

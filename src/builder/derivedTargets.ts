@@ -639,6 +639,18 @@ export function calculateDerivedSetTargets(
   }
 }
 
+export function scaleTestTargetPercentages(percentages: number[], adjustmentPercentage: number) {
+  if (!Number.isFinite(adjustmentPercentage) || adjustmentPercentage < -100) {
+    throw new Error('La variazione del carico non può essere inferiore a -100%.')
+  }
+  const factor = 1 + adjustmentPercentage / 100
+  const adjusted = percentages.map(value => Math.round(value * factor * 100) / 100)
+  if (!adjusted.length || adjusted.some(value => !Number.isFinite(value) || value <= 0)) {
+    throw new Error('La variazione deve mantenere una percentuale di carico maggiore di zero per ogni serie.')
+  }
+  return adjusted
+}
+
 export function calculateDerivedTarget(
   source:
     TestOutcomeReference,

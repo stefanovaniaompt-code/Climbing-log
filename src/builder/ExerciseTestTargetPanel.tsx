@@ -1,6 +1,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react'
 
@@ -25,6 +26,7 @@ import {
   compatibleTestReference,
   formatDerivedTarget,
   hasNewerTest,
+  scaleTestTargetPercentages,
   type DerivedTarget,
   type TestOutcomeReference,
   type TestTargetReference,
@@ -139,11 +141,15 @@ export function ExerciseTestTargetPanel({
   athleteId,
   exerciseId,
   setCount,
+  loadAdjustmentPercentage,
+  onRegisterLoadAdjustment,
 }: {
   profile: AppProfile
   athleteId: string
   exerciseId: string
   setCount: number
+  loadAdjustmentPercentage: number
+  onRegisterLoadAdjustment: (handler: ((percentage: number) => Promise<void>) | null) => void
 }) {
   const [
     references,
@@ -158,6 +164,7 @@ export function ExerciseTestTargetPanel({
   ] = useState<
     DerivedTarget | null
   >(null)
+  const lockedTargetExerciseId = useRef('')
 
   const [
     selectedGroupId,
@@ -249,6 +256,8 @@ export function ExerciseTestTargetPanel({
     () => {
       let active = true
 
+      lockedTargetExerciseId.current = ''
+      setLockedTarget(null)
       setState('loading')
       setError('')
       setMessage('')
@@ -282,6 +291,7 @@ export function ExerciseTestTargetPanel({
             setLockedTarget(
               nextLocked,
             )
+            lockedTargetExerciseId.current = nextLocked ? exerciseId : ''
 
             const nextGroups =
               groupTestReferences(
@@ -581,6 +591,54 @@ export function ExerciseTestTargetPanel({
         targetUnit,
       ],
     )
+
+  const adjustedPreview = useMemo(() => {
+    if (!lockedTarget || lockedTargetExerciseId.current !== exerciseId || !loadAdjustmentPercentage) return null
+    try {
+      const percentages = scaleTestTargetPercentages(
+        lockedTarget.setTargets.map(item => item.percentage),
+        loadAdjustmentPercentage,
+      )
+      return calculateDerivedSetTargets(
+        derivedTargetAsReference(lockedTarget),
+        percentages,
+        { prescriptionUnit: lockedTarget.targetUnit, reference: lockedTarget.reference },
+      )
+    } catch {
+      return null
+    }
+  }, [lockedTarget, loadAdjustmentPercentage])
+
+  useEffect(() => {
+    if (!lockedTarget || lockedTargetExerciseId.current !== exerciseId) {
+      onRegisterLoadAdjustment(null)
+      return () => onRegisterLoadAdjustment(null)
+    }
+
+    const applyAdjustment = async (percentage: number) => {
+      const percentages = scaleTestTargetPercentages(
+        lockedTarget.setTargets.map(item => item.percentage),
+        percentage,
+      )
+      const next = calculateDerivedSetTargets(
+        derivedTargetAsReference(lockedTarget),
+        percentages,
+        {
+          prescriptionUnit: lockedTarget.targetUnit,
+          reference: lockedTarget.reference,
+          lockedAt: new Date().toISOString(),
+        },
+      )
+      await saveExerciseTestTarget(profile, exerciseId, next)
+      setLockedTarget(next)
+      setPercentages(next.setTargets.map(item => String(item.percentage)))
+      setError('')
+      setMessage(`Percentuali delle ${next.setTargets.length} serie aggiornate del ${percentage}%.`)
+    }
+
+    onRegisterLoadAdjustment(applyAdjustment)
+    return () => onRegisterLoadAdjustment(null)
+  }, [lockedTarget, profile, exerciseId, onRegisterLoadAdjustment])
 
   const newerAvailable =
     lockedTarget
@@ -1199,6 +1257,22 @@ export function ExerciseTestTargetPanel({
                       </li>
                     ),
                   )}
+              </ol>
+            </div>
+          )}
+
+          {adjustedPreview && lockedTarget && (
+            <div className="builder-test-target__adjustment-preview" aria-live="polite">
+              <b>ANTEPRIMA VARIAZIONE {loadAdjustmentPercentage > 0 ? '+' : ''}{loadAdjustmentPercentage}%</b>
+              <ol>
+                {adjustedPreview.setTargets.map((item, index) => {
+                  const current = lockedTarget.setTargets[index]
+                  return <li key={item.setNumber}>
+                    <span>Serie {item.setNumber}</span>
+                    <strong>{current.percentage}% → {item.percentage}%</strong>
+                    <span>{formatDerivedTarget(current.calculatedTarget)} {unitLabel(current.targetUnit)} → {formatDerivedTarget(item.calculatedTarget)} {unitLabel(item.targetUnit)}</span>
+                  </li>
+                })}
               </ol>
             </div>
           )}

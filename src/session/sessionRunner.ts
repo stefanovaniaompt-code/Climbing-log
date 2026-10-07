@@ -504,6 +504,28 @@ export function getVariableSeries(
   exercise: RunnerExercise,
 ): string[] {
   const steps = exercise.prescription.steps
+  const derived = getDerivedSetTargets(exercise)
+
+  if (derived.length) {
+    const prescriptionSteps = Array.isArray(steps) ? steps : []
+    const fallbackReps = positiveInteger(exercise.prescription.reps)
+    const fallbackSeconds = positiveInteger(exercise.prescription.seconds)
+    const seriesCount = Math.max(derived.length, prescriptionSteps.length)
+
+    return Array.from({ length: seriesCount }, (_, index) => {
+      const target = derived[index]
+      const value = prescriptionSteps[index]
+      const row = value && typeof value === 'object' && !Array.isArray(value) ? value as JsonRecord : {}
+      const reps = positiveInteger(row.reps) || fallbackReps
+      const seconds = positiveInteger(row.seconds) || fallbackSeconds
+      const dose = reps ? `${reps} rep` : seconds ? `${seconds} sec` : ''
+      const load = target
+        ? `${target.percentage}% = ${Number(target.calculatedTarget.toFixed(2))} ${target.targetUnit}`
+        : Number.isFinite(Number(row.loadKg)) && Number(row.loadKg) >= 0 ? `${Number(row.loadKg)} kg` : ''
+      return [load, dose].filter(Boolean).join(' · ') || textValue(row.label) || `Set ${index + 1}`
+    })
+  }
+
   if (Array.isArray(steps) && steps.length) {
     return steps.map((value, index) => {
       const row = value && typeof value === 'object' && !Array.isArray(value) ? value as JsonRecord : {}
@@ -515,30 +537,6 @@ export function getVariableSeries(
       return [Number.isFinite(load) && load >= 0 ? `${load} kg` : '', dose].filter(Boolean).join(' × ') || label
     })
   }
-  const derived =
-    getDerivedSetTargets(
-      exercise,
-    )
-
-  if (derived.length) {
-    return derived.map(
-      item =>
-        String(
-          item.percentage,
-        ) +
-        '% = ' +
-        String(
-          Number(
-            item
-              .calculatedTarget
-              .toFixed(2),
-          ),
-        ) +
-        ' ' +
-        item.targetUnit,
-    )
-  }
-
   const dose =
     textValue(
       exercise.prescription
