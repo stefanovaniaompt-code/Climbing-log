@@ -4,8 +4,12 @@ import {
   type FormEvent,
 } from 'react'
 import {
+  Activity,
+  ArrowLeft,
   ArrowRight,
+  Bluetooth,
   Plus,
+  Send,
   Save,
   TrendingUp,
   ShieldCheck,
@@ -298,6 +302,50 @@ function MetricGroupCard({
   )
 }
 
+function TestOverviewMetricCard({
+  group,
+}: {
+  group: MetricSideBundle
+}) {
+  const readings = [
+    { label: 'BILATERALE', value: group.bilateral },
+    { label: 'DX', value: group.right },
+    { label: 'SX', value: group.left },
+  ].filter(
+    (reading): reading is {
+      label: string
+      value: NonNullable<typeof reading.value>
+    } => reading.value !== null,
+  )
+  const latestPoint = group.points[group.points.length - 1]
+
+  return (
+    <article className="test-overview-card">
+      <TestTube2 size={25} aria-hidden="true" />
+      <div className="test-overview-card__content">
+        <p>{group.label}</p>
+        <div className="test-overview-card__readings">
+          {readings.map(reading => (
+            <div key={reading.label}>
+              <small>{reading.label}</small>
+              <strong>
+                {formattedValue(reading.value.latest)}
+                <span> {group.unit}</span>
+              </strong>
+              {comparisonDelta(reading.value) && (
+                <em>{comparisonDelta(reading.value)}</em>
+              )}
+            </div>
+          ))}
+        </div>
+        <span className="test-overview-card__date">
+          {latestPoint ? formatShortDate(latestPoint.date) : 'Data non disponibile'}
+        </span>
+      </div>
+    </article>
+  )
+}
+
 export function TestScreen({
   profile,
   selectedAthleteId,
@@ -322,6 +370,7 @@ export function TestScreen({
   const [athleteId, setAthleteId] =
     useState(initialAthleteId)
   const [formOpen, setFormOpen] = useState(false)
+  const [activeTestMode, setActiveTestMode] = useState<'live' | 'remote' | null>(null)
   const [retestSessionId, setRetestSessionId] =
     useState<string | null>(null)
   const [input, setInput] = useState<TestInput>(
@@ -343,6 +392,10 @@ export function TestScreen({
       detail: string
       testedAt: string
     } | null>(null)
+
+  useEffect(() => {
+    if (isProgress) setActiveTestMode(null)
+  }, [isProgress])
 
   const refresh = async () => {
     const next = await loadTests(profile)
@@ -610,22 +663,38 @@ export function TestScreen({
   }
 
   return (
-    <div className={`screen test-screen test-screen--${screen}`}>
+    <div className={`screen test-screen test-screen--${screen}${activeTestMode ? ' test-screen--mode' : ''}`}>
       <ScreenHeader
-        eyebrow={isProgress ? '// PROGRESSI ATLETI' : '01 / TEST & RETEST'}
-        title={isProgress ? 'PROGRESSI' : 'TEST'}
+        eyebrow={isProgress
+          ? '// PROGRESSI ATLETI'
+          : activeTestMode === 'live'
+            ? '04 / ACQUISIZIONE LIVE'
+            : activeTestMode === 'remote'
+              ? '04 / BATTERIE DA REMOTO'
+              : '01 / TEST & RETEST'}
+        title={isProgress ? 'PROGRESSI' : activeTestMode === 'live' ? 'LIVE' : activeTestMode === 'remote' ? 'A DISTANZA' : 'TEST'}
         text={isProgress
           ? `Andamento dei test, confronti e storico di ${athleteName}.`
-          : 'Registra una valutazione, avvia un test strumentale o assegna un protocollo all’atleta.'}
+          : activeTestMode === 'live'
+            ? 'Avvia una sessione in tempo reale e registra le misurazioni con Tindeq Progressor.'
+            : activeTestMode === 'remote'
+              ? 'Crea e gestisci le batterie di test da assegnare all’atleta.'
+              : 'Acquisizione, confronto e storico dei test strumentali dell’atleta.'}
         action={
           <div className="header-actions">
+            {!isProgress && activeTestMode && (
+              <button className="button button--secondary" onClick={() => setActiveTestMode(null)}>
+                <ArrowLeft size={16} /> Torna a Test
+              </button>
+            )}
+
             {isProgress && onOpenTests && (
               <button className="button button--secondary" onClick={retestSessionId ? closeForm : onOpenTests}>
                 {retestSessionId ? 'Chiudi retest' : 'Test / retest'}
               </button>
             )}
 
-            {!isProgress && manageable && (
+            {!isProgress && !activeTestMode && manageable && (
               <button
                 className="button button--signal"
                 disabled={!athleteId}
@@ -643,28 +712,24 @@ export function TestScreen({
         }
       />
 
-      <div className="test-toolbar">
-        <label>
-          <span>Atleta</span>
-          <select
-            value={athleteId}
-            onChange={event =>
-              setAthleteId(event.target.value)
-            }
-            disabled={false}
-          >
-            {data?.athletes.map(athlete => (
-              <option
-                value={athlete.id}
-                key={athlete.id}
-              >
-                {athlete.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-      </div>
+      {isProgress && (
+        <div className="test-toolbar">
+          <label>
+            <span>Atleta</span>
+            <select
+              value={athleteId}
+              onChange={event => setAthleteId(event.target.value)}
+              disabled={false}
+            >
+              {data?.athletes.map(athlete => (
+                <option value={athlete.id} key={athlete.id}>
+                  {athlete.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      )}
 
       {isProgress && (
         <section className="test-progress-athlete" aria-label={`Atleta ${athleteName}`}>
@@ -690,38 +755,166 @@ export function TestScreen({
         </section>
       )}
 
-      {!isProgress && (
-        <section className="test-hub-overview" aria-label="Riepilogo test atleta">
-          <div><small>ATLETA</small><strong>{athleteName}</strong></div>
-          <div><small>ULTIMO TEST</small><strong>{presentation?.latestTestedAt ? formatShortDate(presentation.latestTestedAt) : 'Da definire'}</strong></div>
-          <div><small>TEST REGISTRATI</small><strong>{String(presentation?.sessions.length ?? 0).padStart(2, '0')}</strong></div>
-          <button className="text-button" onClick={onOpenProgress} disabled={!onOpenProgress}>
-            <TrendingUp size={16} /> Apri progressi e storico <ArrowRight size={14} />
-          </button>
+      {!isProgress && activeTestMode && (
+        <section className="test-mode-context" aria-label={`Atleta selezionato: ${athleteName}`}>
+          <div className="test-mode-context__identity">
+            <span aria-hidden="true">
+              {athleteName.split(/\s+/).slice(0, 2).map(part => part[0] ?? '').join('').toLocaleUpperCase('it-IT')}
+            </span>
+            <div>
+              <small>ATLETA SELEZIONATO</small>
+              <strong>{athleteName}</strong>
+            </div>
+          </div>
+          <label>
+            <span>Cambia atleta</span>
+            <select value={athleteId} onChange={event => setAthleteId(event.target.value)}>
+              {data?.athletes.map(athlete => (
+                <option value={athlete.id} key={athlete.id}>{athlete.name}</option>
+              ))}
+            </select>
+          </label>
+        </section>
+      )}
+
+      {!isProgress && !activeTestMode && (
+        <section className="test-athlete-card" aria-label={`Atleta ${athleteName}`}>
+          <div className="test-section-marker">
+            <span>02</span> / ATLETA
+          </div>
+
+          <div className="test-athlete-card__identity">
+            <span aria-hidden="true">
+              {athleteName.split(/\s+/).slice(0, 2).map(part => part[0] ?? '').join('').toLocaleUpperCase('it-IT')}
+            </span>
+            <h2>{athleteName}</h2>
+          </div>
+
+          <div className="test-athlete-card__metrics">
+            <div>
+              <small>ULTIMO TEST</small>
+              <strong>{presentation?.latestTestedAt ? formatShortDate(presentation.latestTestedAt) : 'Nessun test'}</strong>
+            </div>
+            <div>
+              <small>PROTOCOLLI ESEGUITI</small>
+              <strong>{String(presentation?.sessions.length ?? 0).padStart(2, '0')}</strong>
+            </div>
+            <div>
+              <small>METRICHE DISPONIBILI</small>
+              <strong>{String(presentation?.groups.length ?? 0).padStart(2, '0')}</strong>
+            </div>
+          </div>
+
+          <label className="test-athlete-card__select">
+            <span>Cambia atleta</span>
+            <select
+              value={athleteId}
+              onChange={event => setAthleteId(event.target.value)}
+            >
+              {data?.athletes.map(athlete => (
+                <option value={athlete.id} key={athlete.id}>
+                  {athlete.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </section>
+      )}
+
+      {!isProgress && !activeTestMode && (
+        <section className="test-hub-overview" aria-label="Ultimi risultati">
+          <div className="test-section-heading">
+            <div className="test-section-marker">
+              <span>03</span> / OVERVIEW TEST
+            </div>
+            <button
+              className="text-button"
+              onClick={onOpenProgress}
+              disabled={!onOpenProgress}
+            >
+              <TrendingUp size={16} /> Storico test atleta <ArrowRight size={14} />
+            </button>
+          </div>
+
+          {presentation?.groups.length ? (
+            <div className="test-overview-grid">
+              {presentation.groups.map(group => (
+                <TestOverviewMetricCard group={group} key={group.key} />
+              ))}
+            </div>
+          ) : state !== 'loading' ? (
+            <div className="test-overview-empty">
+              <TestTube2 size={22} aria-hidden="true" />
+              <div>
+                <strong>Nessun test registrato</strong>
+                <span>I risultati compariranno qui dopo la prima valutazione.</span>
+              </div>
+            </div>
+          ) : null}
         </section>
       )}
 
       {!isProgress && manageable && (
-        <LiveTindeqPanel
-          profile={profile}
-          athleteId={athleteId}
-          onHistoryChanged={() => {
-            void refresh()
-          }}
-        />
+        <>
+          {!activeTestMode && (
+            <section className="test-new-test" aria-label="Nuovo test">
+              <div className="test-section-heading test-section-heading--new">
+                <div className="test-section-marker">
+                  <span>04</span> / NUOVO TEST
+                </div>
+                <p>Scegli la modalità di acquisizione o assegnazione.</p>
+              </div>
+
+              <div className="test-mode-grid">
+                <article className="test-mode-card test-mode-card--live">
+                  <div className="test-mode-card__ornament" aria-hidden="true"><span /><span /><span /></div>
+                  <div className="test-mode-card__copy">
+                    <small>01 / ACQUISIZIONE DIRETTA</small>
+                    <Activity size={22} aria-hidden="true" />
+                    <h3>Sessione live</h3>
+                    <p>Misura la forza in tempo reale collegando Tindeq Progressor.</p>
+                  </div>
+                  <button className="test-mode-card__action" onClick={() => setActiveTestMode('live')}>
+                    <Bluetooth size={17} aria-hidden="true" /> Avvia test live <ArrowRight size={16} aria-hidden="true" />
+                  </button>
+                </article>
+
+                <article className="test-mode-card test-mode-card--remote">
+                  <div className="test-mode-card__ornament" aria-hidden="true"><span /><span /><span /></div>
+                  <div className="test-mode-card__copy">
+                    <small>02 / ASSEGNAZIONE</small>
+                    <Send size={22} aria-hidden="true" />
+                    <h3>Batterie da remoto</h3>
+                    <p>Prepara una batteria di prove e condividila con l’atleta.</p>
+                  </div>
+                  <button className="test-mode-card__action" onClick={() => setActiveTestMode('remote')}>
+                    <Send size={16} aria-hidden="true" /> Gestisci batterie <ArrowRight size={16} aria-hidden="true" />
+                  </button>
+                </article>
+              </div>
+            </section>
+          )}
+
+          <section className="test-mode-detail-host" aria-label="Schermate di acquisizione test">
+            <div className="test-mode-detail-host__pane" hidden={activeTestMode !== 'live'}>
+              <LiveTindeqPanel
+                profile={profile}
+                athleteId={athleteId}
+                onHistoryChanged={() => { void refresh() }}
+              />
+            </div>
+            <div className="test-mode-detail-host__pane" hidden={activeTestMode !== 'remote'}>
+              <RemoteTestPanel
+                profile={profile}
+                athleteId={athleteId}
+                onHistoryChanged={() => { void refresh() }}
+              />
+            </div>
+          </section>
+        </>
       )}
 
-      {!isProgress && (
-        <RemoteTestPanel
-          profile={profile}
-          athleteId={athleteId}
-          onHistoryChanged={() => {
-            void refresh()
-          }}
-        />
-      )}
-
-      {manageable && formOpen && (!isProgress || retestSessionId !== null) && (
+      {manageable && formOpen && (!isProgress || retestSessionId !== null) && !activeTestMode && (
         <Panel
           className="test-entry-panel"
           title={
