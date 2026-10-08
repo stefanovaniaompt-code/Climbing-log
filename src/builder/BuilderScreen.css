@@ -47,10 +47,11 @@
 .builder-exercise-save { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px 12px; }
 .builder-exercise-save > span { color: #716878; font-size: 11px; }
 .builder-exercise-save .button { min-height: 38px; padding: 0 12px; font-size: 11px; }
-.screen.coach-builder .inspector .builder-test-target__sets { width: 100%; min-width: 0; }
-.screen.coach-builder .inspector .builder-test-target__sets > label { grid-template-columns: 38px minmax(0,1fr); }
+.screen.coach-builder .inspector .builder-test-target__sets { display: grid; grid-template-columns: minmax(0,1fr); width: 100%; min-width: 0; max-width: 100%; gap: 8px; padding: 12px; border: 1px solid #c8b9d4; background: #faf8fc; box-sizing: border-box; }
+.screen.coach-builder .inspector .builder-test-target__sets > label { width: 100%; min-width: 0; max-width: 100%; grid-template-columns: 38px minmax(0,1fr); gap: 8px; box-sizing: border-box; }
 .screen.coach-builder .inspector .builder-test-target__sets > label .input-shell { display: flex; width: 100%; min-width: 0; overflow: hidden; }
 .screen.coach-builder .inspector .builder-test-target__sets > label .input-shell > input { flex: 1 1 auto; width: 1%; min-width: 0; }
+.screen.coach-builder .inspector .builder-test-target__preview li { grid-template-columns: max-content max-content max-content; justify-content: start; gap: 8px; }
 .screen.coach-builder .inspector .builder-test-target select,
 .screen.coach-builder .inspector .builder-test-target input { min-height: 40px; padding-inline: 10px; font-size: 14px; }
 .builder-test-target__adjustment-preview { min-width: 0; padding: 12px; border: 1px solid #c8b9d4; background: #faf8fc; }

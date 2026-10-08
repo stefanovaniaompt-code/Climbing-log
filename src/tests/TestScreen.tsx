@@ -7,6 +7,7 @@ import {
   ArrowRight,
   Plus,
   Save,
+  TrendingUp,
   ShieldCheck,
   TestTube2,
   Trash2,
@@ -300,11 +301,18 @@ function MetricGroupCard({
 export function TestScreen({
   profile,
   selectedAthleteId,
+  screen = 'tests',
+  onOpenProgress,
+  onOpenTests,
 }: {
   profile: AppProfile
   selectedAthleteId: string
+  screen?: 'tests' | 'progress'
+  onOpenProgress?: () => void
+  onOpenTests?: () => void
 }) {
   const manageable = canManageTests(profile.role)
+  const isProgress = screen === 'progress'
   const initialAthleteId =
     profile.role === 'athlete'
       ? profile.athleteId ?? ''
@@ -602,30 +610,22 @@ export function TestScreen({
   }
 
   return (
-    <div className="screen">
+    <div className={`screen test-screen test-screen--${screen}`}>
       <ScreenHeader
-        eyebrow="TEST / RETEST / ANALYTICS"
-        title={
-          presentation?.sessions.length
-            ? `Progressi di ${athleteName}.`
-            : 'Costruisci la prima baseline.'
-        }
-        text="Registra test manuali, riusa lo stesso protocollo per il retest e confronta destra e sinistra nello stesso grafico."
+        eyebrow={isProgress ? '// PROGRESSI ATLETI' : '01 / TEST & RETEST'}
+        title={isProgress ? 'PROGRESSI' : 'TEST'}
+        text={isProgress
+          ? `Andamento dei test, confronti e storico di ${athleteName}.`
+          : 'Registra una valutazione, avvia un test strumentale o assegna un protocollo all’atleta.'}
         action={
           <div className="header-actions">
-            <Tag
-              tone={
-                data?.source === 'legacy-v1'
-                  ? 'success'
-                  : 'neutral'
-              }
-            >
-              {data?.source === 'legacy-v1'
-                ? 'DATI LIVE'
-                : 'DEMO'}
-            </Tag>
+            {isProgress && onOpenTests && (
+              <button className="button button--secondary" onClick={retestSessionId ? closeForm : onOpenTests}>
+                {retestSessionId ? 'Chiudi retest' : 'Test / retest'}
+              </button>
+            )}
 
-            {manageable && (
+            {!isProgress && manageable && (
               <button
                 className="button button--signal"
                 disabled={!athleteId}
@@ -636,9 +636,7 @@ export function TestScreen({
                 }
               >
                 <Plus size={16} />
-                {formOpen
-                  ? 'Chiudi'
-                  : 'Registra test'}
+                {formOpen ? 'Chiudi' : 'Registra test'}
               </button>
             )}
           </div>
@@ -666,37 +664,44 @@ export function TestScreen({
           </select>
         </label>
 
-        <div>
-          <small>TEST REGISTRATI</small>
-          <strong>
-            {String(
-              presentation?.sessions.length ?? 0,
-            ).padStart(2, '0')}
-          </strong>
-        </div>
-
-        <div>
-          <small>SERIE MISURATE</small>
-          <strong>
-            {String(
-              presentation?.groups.length ?? 0,
-            ).padStart(2, '0')}
-          </strong>
-        </div>
-
-        <div>
-          <small>ULTIMO TEST</small>
-          <strong className="test-toolbar__date">
-            {presentation?.latestTestedAt
-              ? formatShortDate(
-                  presentation.latestTestedAt,
-                )
-              : '-'}
-          </strong>
-        </div>
       </div>
 
-      {manageable && (
+      {isProgress && (
+        <section className="test-progress-athlete" aria-label={`Atleta ${athleteName}`}>
+          <div className="test-progress-athlete__identity">
+            <span aria-hidden="true">{athleteName.split(/\s+/).slice(0, 2).map(part => part[0] ?? '').join('').toLocaleUpperCase('it-IT')}</span>
+            <div>
+              <small>ATLETA</small>
+              <h2>{athleteName}</h2>
+            </div>
+          </div>
+          <div className="test-progress-athlete__metric">
+            <small>ULTIMA VALUTAZIONE</small>
+            <strong>{presentation?.latestTestedAt ? formatShortDate(presentation.latestTestedAt) : 'Nessun test'}</strong>
+          </div>
+          <div className="test-progress-athlete__metric">
+            <small>TEST REGISTRATI</small>
+            <strong>{String(presentation?.sessions.length ?? 0).padStart(2, '0')}</strong>
+          </div>
+          <div className="test-progress-athlete__metric">
+            <small>METRICHE CONFRONTABILI</small>
+            <strong>{String(presentation?.groups.length ?? 0).padStart(2, '0')}</strong>
+          </div>
+        </section>
+      )}
+
+      {!isProgress && (
+        <section className="test-hub-overview" aria-label="Riepilogo test atleta">
+          <div><small>ATLETA</small><strong>{athleteName}</strong></div>
+          <div><small>ULTIMO TEST</small><strong>{presentation?.latestTestedAt ? formatShortDate(presentation.latestTestedAt) : 'Da definire'}</strong></div>
+          <div><small>TEST REGISTRATI</small><strong>{String(presentation?.sessions.length ?? 0).padStart(2, '0')}</strong></div>
+          <button className="text-button" onClick={onOpenProgress} disabled={!onOpenProgress}>
+            <TrendingUp size={16} /> Apri progressi e storico <ArrowRight size={14} />
+          </button>
+        </section>
+      )}
+
+      {!isProgress && manageable && (
         <LiveTindeqPanel
           profile={profile}
           athleteId={athleteId}
@@ -706,15 +711,17 @@ export function TestScreen({
         />
       )}
 
-      <RemoteTestPanel
-        profile={profile}
-        athleteId={athleteId}
-        onHistoryChanged={() => {
-          void refresh()
-        }}
-      />
+      {!isProgress && (
+        <RemoteTestPanel
+          profile={profile}
+          athleteId={athleteId}
+          onHistoryChanged={() => {
+            void refresh()
+          }}
+        />
+      )}
 
-      {manageable && formOpen && (
+      {manageable && formOpen && (!isProgress || retestSessionId !== null) && (
         <Panel
           className="test-entry-panel"
           title={
@@ -1044,23 +1051,21 @@ export function TestScreen({
         </div>
       )}
 
-      {presentation &&
+      {isProgress && presentation &&
         presentation.sessions.length === 0 &&
         state !== 'loading' && (
-          <Panel title="Nessun test" index="01">
+          <Panel title="Progressi non ancora disponibili" index="01">
             <div className="empty-state">
               <TestTube2 size={22} />
-              <b>Nessuna baseline disponibile</b>
+              <b>Non ci sono ancora misurazioni</b>
               <span>
-                {manageable
-                  ? 'Registra il primo test per creare il riferimento.'
-                  : 'I risultati compariranno qui dopo la prima valutazione registrata dal coach.'}
+                I risultati compariranno qui dopo la prima valutazione registrata per questo atleta.
               </span>
             </div>
           </Panel>
         )}
 
-      {!!presentation?.groups.length && (
+      {isProgress && !!presentation?.groups.length && (
         <div className="test-paired-grid">
           {presentation.groups.map(group => {
             const asymmetry =
@@ -1081,7 +1086,7 @@ export function TestScreen({
         </div>
       )}
 
-      {!!presentation?.sessions.length && data && (
+      {isProgress && !!presentation?.sessions.length && data && (
         <Panel
           title="Storico test"
           index="H"
