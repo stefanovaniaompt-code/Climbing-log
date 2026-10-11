@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import App from './App'
 import { AuthScreen } from './auth/AuthScreen'
 import { PasswordRecoveryScreen } from './auth/PasswordRecoveryScreen'
@@ -25,6 +25,7 @@ function LoadingScreen() {
 function AuthenticatedFlow() {
   const { user, signOut } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
   const [profile, setProfile] = useState<AppProfile | null>(null)
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [profileError, setProfileError] = useState('')
@@ -43,14 +44,21 @@ function AuthenticatedFlow() {
     return () => { active = false }
   }, [user])
 
+  const capabilityRedirect = user && profile && !loadingProfile && !profileError && !profile.mustChangePassword
+    ? resolveCapabilityRoute(location.pathname, profile)
+    : null
+
+  useEffect(() => {
+    if (capabilityRedirect) navigate(capabilityRedirect, { replace: true })
+  }, [capabilityRedirect, navigate])
+
   if (!user) return <Navigate to="/auth" replace state={{ from: location.pathname }} />
   if (loadingProfile) return <LoadingScreen />
   if (profileError) return <main className="fatal-state"><b>Profilo non disponibile</b><p>{profileError}</p><button className="button button--secondary" onClick={() => void signOut()}>Torna all’accesso</button></main>
   if (!profile) return <OnboardingScreen user={user} onComplete={setProfile} onSignOut={signOut} />
   if (profile.mustChangePassword) return <TemporaryPasswordScreen onComplete={() => setProfile({ ...profile, mustChangePassword: false })} />
-  const redirect = resolveCapabilityRoute(location.pathname, profile)
-  if (redirect) return <Navigate to={redirect} replace />
-  return <App profile={profile} onSignOut={signOut} initialMode={location.pathname.startsWith('/app/athlete') ? 'athlete' : 'coach'} />
+  const appPathname = capabilityRedirect ?? location.pathname
+  return <App profile={profile} onSignOut={signOut} initialMode={appPathname.startsWith('/app/athlete') ? 'athlete' : 'coach'} />
 }
 
 export default function AppRoot() {

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import { ArrowLeft, ArrowRight, CalendarDays, ChevronDown, CircleEllipsis, ClipboardList, Copy, GripVertical, Layers3, Minus, Plus, Save, Settings2, TimerReset, Trash2, TriangleAlert, Users } from 'lucide-react'
 import type { AppProfile } from '../onboarding/types'
 import { ConfirmDialog, Panel, ScreenHeader, Tag } from '../shared/ui'
-import { canPublishProgram, prescriptionSummary, readPrescriptionEditorValues, saveBeforeSelectingExercise, scalePrescriptionLoads, type ProgramBuilderData, type PrescriptionStep } from './programBuilder'
+import { canPublishProgram, mergePrescriptionForUpdate, prescriptionSummary, readPrescriptionEditorValues, scalePrescriptionLoads, type ProgramBuilderData, type PrescriptionStep } from './programBuilder'
 import { addExercise, createProgram, createSession, createWeek, deleteExercise, deleteProgram, deleteSession, deleteWeek, duplicateWeek, loadProgramBuilder, publishProgram, updateExercise, updateSessionDetails, updateWeekDetails, type ExercisePatch } from './programBuilderRepository'
 import { ExerciseTestTargetPanel } from './ExerciseTestTargetPanel'
 import './BuilderScreen.css'
@@ -11,6 +11,11 @@ type BuilderViewState = { showBuilder: boolean; creatingProgram: boolean; athlet
 type BuilderDeleteTarget =
   | { kind: 'program' | 'week' | 'session' | 'exercise'; id: string; name: string }
   | { kind: 'block'; name: string; weekIds: string[] }
+type WeekDetails = { blockName: string; phase: string; loadType: 'load' | 'deload'; notes: string }
+type SessionDetails = { title: string; objective: string; durationMinutes: number; scheduledDay: number }
+type PendingSave = { serialized: string; promise: Promise<boolean> }
+type SaveSlot = { current: PendingSave | null }
+export type BuilderNavigationGuard = () => Promise<boolean>
 
 function readExerciseLoadAdjustments(key: string): Record<string, number> {
   try {
@@ -23,7 +28,7 @@ function readBuilderView(key: string): Partial<BuilderViewState> | null {
   try { return JSON.parse(window.localStorage.getItem(key) ?? 'null') as Partial<BuilderViewState> | null } catch { return null }
 }
 
-export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId }: { profile: AppProfile; selectedAthleteId: string; setSelectedAthleteId: (id: string) => void }) {
+export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId, registerNavigationGuard }: { profile: AppProfile; selectedAthleteId: string; setSelectedAthleteId: (id: string) => void; registerNavigationGuard?: (guard: BuilderNavigationGuard | null) => void }) {
   const builderViewKey = `cc-builder-view:${profile.userId}`
   const [savedView] = useState(() => readBuilderView(builderViewKey))
   const [showBuilder, setShowBuilder] = useState(savedView?.athleteId === selectedAthleteId ? savedView.showBuilder ?? Boolean(selectedAthleteId) : Boolean(selectedAthleteId))
@@ -40,10 +45,10 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
   const [newProgram, setNewProgram] = useState<{ name: string; goal: string; programType: 'athlete' | 'patient' }>({ name: '', goal: '', programType: 'athlete' })
   const [newExercise, setNewExercise] = useState('')
   const [libraryId, setLibraryId] = useState('')
-  const [weekDetails, setWeekDetails] = useState({ blockName: '', phase: '', loadType: 'load' as 'load' | 'deload', notes: '' })
-  const [sessionDetails, setSessionDetails] = useState({ title: '', objective: '', durationMinutes: 0, scheduledDay: 1 })
+  const [weekDetails, setWeekDetails] = useState<WeekDetails>({ blockName: '', phase: '', loadType: 'load', notes: '' })
+  const [sessionDetails, setSessionDetails] = useState<SessionDetails>({ title: '', objective: '', durationMinutes: 0, scheduledDay: 1 })
   const [patch, setPatch] = useState<ExercisePatch>({ sets: 3, reps: 5, seconds: 0, loadKg: 0, rpe: 7, restSeconds: 120, instructions: '', steps: [] })
-  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved')
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved')
   const [deleteTarget, setDeleteTarget] = useState<BuilderDeleteTarget | null>(null)
   const exerciseLoadKey = `cc-builder-exercise-load-adjustments:${profile.userId}`
   const [exerciseLoadPercentages, setExerciseLoadPercentages] = useState<Record<string, number>>(() => readExerciseLoadAdjustments(exerciseLoadKey))
@@ -68,9 +73,19 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
   const weekSaveTimer = useRef<number | null>(null)
   const sessionSaveTimer = useRef<number | null>(null)
   const exerciseSaveTimer = useRef<number | null>(null)
+  const weekSaveInFlight = useRef<PendingSave | null>(null)
+  const sessionSaveInFlight = useRef<PendingSave | null>(null)
+  const exerciseSaveInFlight = useRef<PendingSave | null>(null)
+  const navigationSaveInProgress = useRef(false)
   const hydratingWeek = useRef(false)
   const hydratingSession = useRef(false)
   const hydratingExercise = useRef(false)
+  const weekDetailsRef = useRef(weekDetails)
+  const sessionDetailsRef = useRef(sessionDetails)
+  const patchRef = useRef(patch)
+  weekDetailsRef.current = weekDetails
+  sessionDetailsRef.current = sessionDetails
+  patchRef.current = patch
   const draftKey = `cc-builder-draft:${profile.userId}`
 
   useEffect(() => {
@@ -133,7 +148,166 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
     ? `${new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(program.startDate))} → ${program.endDate ? new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(program.endDate)) : '—'} · ${weeks.length} settimane`
     : `${weeks.length} ${weeks.length === 1 ? 'settimana' : 'settimane'}`
 
+  const currentSelectionRef = useRef({ week: selectedWeek, session, exercise })
+  currentSelectionRef.current = { week: selectedWeek, session, exercise }
+
+  const hasUnsavedWeek = useCallback(() => {
+    const current = currentSelectionRef.current.week
+    return Boolean(current && hydratedWeek.current === current.id && JSON.stringify(weekDetailsRef.current) !== hydratedWeekValue.current)
+  }, [])
+  const hasUnsavedSession = useCallback(() => {
+    const current = currentSelectionRef.current.session
+    return Boolean(current && hydratedSession.current === current.id && JSON.stringify(sessionDetailsRef.current) !== hydratedSessionValue.current)
+  }, [])
+  const hasUnsavedExercise = useCallback(() => {
+    const current = currentSelectionRef.current.exercise
+    return Boolean(current && hydratedExercise.current === current.id && JSON.stringify(patchRef.current) !== hydratedExerciseValue.current)
+  }, [])
+  const hasPendingCurrentChanges = useCallback(() => (
+    hasUnsavedWeek() || hasUnsavedSession() || hasUnsavedExercise()
+    || weekSaveTimer.current !== null || sessionSaveTimer.current !== null || exerciseSaveTimer.current !== null
+    || weekSaveInFlight.current !== null || sessionSaveInFlight.current !== null || exerciseSaveInFlight.current !== null
+  ), [hasUnsavedExercise, hasUnsavedSession, hasUnsavedWeek])
+  const clearSaveTimers = useCallback(() => {
+    for (const timer of [weekSaveTimer, sessionSaveTimer, exerciseSaveTimer]) {
+      if (timer.current !== null) { window.clearTimeout(timer.current); timer.current = null }
+    }
+  }, [])
+  const markSaveStatusIfSettled = useCallback(() => {
+    if (!hasPendingCurrentChanges()) setSaveStatus('saved')
+  }, [hasPendingCurrentChanges])
+  const runQueuedSave = useCallback(async (slot: SaveSlot, serialized: string, isAlreadySaved: () => boolean, operation: () => Promise<void>, onSaved: () => void, fallbackError: string) => {
+    while (slot.current) {
+      if (!(await slot.current.promise)) return false
+    }
+    if (isAlreadySaved()) return true
+
+    setSaveStatus('saving')
+    const operationPromise = (async () => {
+      try {
+        await operation()
+        onSaved()
+        return true
+      } catch (reason) {
+        setError(reason instanceof Error ? reason.message : fallbackError)
+        setSaveStatus('error')
+        return false
+      }
+    })()
+    const trackedPromise = operationPromise.finally(() => {
+      if (slot.current?.promise === trackedPromise) slot.current = null
+    })
+    slot.current = { serialized, promise: trackedPromise }
+    return trackedPromise
+  }, [])
+  const persistWeekSnapshot = useCallback((week: ProgramBuilderData['weeks'][number], snapshot: WeekDetails) => {
+    const serialized = JSON.stringify(snapshot)
+    return runQueuedSave(
+      weekSaveInFlight,
+      serialized,
+      () => hydratedWeek.current === week.id && hydratedWeekValue.current === serialized,
+      () => updateWeekDetails(profile, week.id, snapshot.blockName, snapshot.phase, snapshot.loadType, snapshot.notes),
+      () => {
+        if (hydratedWeek.current === week.id) hydratedWeekValue.current = serialized
+        setData(current => current ? { ...current, weeks: current.weeks.map(item => item.id === week.id ? { ...item, blockName: snapshot.blockName, phase: snapshot.phase, loadType: snapshot.loadType, notes: snapshot.notes } : item) } : current)
+      },
+      'Settimana non salvata.',
+    )
+  }, [profile, runQueuedSave])
+  const persistSessionSnapshot = useCallback((currentSession: ProgramBuilderData['sessions'][number], snapshot: SessionDetails) => {
+    const serialized = JSON.stringify(snapshot)
+    if (!snapshot.title.trim()) {
+      setError('Inserisci un titolo per la sessione.')
+      setSaveStatus('error')
+      return Promise.resolve(false)
+    }
+    return runQueuedSave(
+      sessionSaveInFlight,
+      serialized,
+      () => hydratedSession.current === currentSession.id && hydratedSessionValue.current === serialized,
+      () => updateSessionDetails(profile, currentSession.id, snapshot.title, snapshot.objective, snapshot.durationMinutes, snapshot.scheduledDay),
+      () => {
+        if (hydratedSession.current === currentSession.id) hydratedSessionValue.current = serialized
+        setData(current => current ? { ...current, sessions: current.sessions.map(item => item.id === currentSession.id ? { ...item, title: snapshot.title, objective: snapshot.objective, durationMinutes: snapshot.durationMinutes, scheduledDay: snapshot.scheduledDay } : item) } : current)
+      },
+      'Sessione non salvata.',
+    )
+  }, [profile, runQueuedSave])
+  const persistExerciseSnapshot = useCallback((currentExercise: ProgramBuilderData['exercises'][number], snapshot: ExercisePatch) => {
+    const serialized = JSON.stringify(snapshot)
+    return runQueuedSave(
+      exerciseSaveInFlight,
+      serialized,
+      () => hydratedExercise.current === currentExercise.id && hydratedExerciseValue.current === serialized,
+      () => updateExercise(profile, currentExercise.id, currentExercise.prescription, snapshot),
+      () => {
+        if (hydratedExercise.current === currentExercise.id) hydratedExerciseValue.current = serialized
+        setData(current => current ? { ...current, exercises: current.exercises.map(item => item.id === currentExercise.id ? {
+          ...item,
+          prescription: mergePrescriptionForUpdate(currentExercise.prescription, snapshot),
+          targetRpeMin: Math.max(0, snapshot.rpe - 1),
+          targetRpeMax: snapshot.rpe,
+          restSeconds: snapshot.restSeconds,
+          instructions: snapshot.instructions,
+        } : item) } : current)
+      },
+      'Esercizio non salvato.',
+    )
+  }, [profile, runQueuedSave])
+  const flushPendingChanges = useCallback(async () => {
+    while (true) {
+      clearSaveTimers()
+      const currentWeek = currentSelectionRef.current.week
+      if (currentWeek && (weekSaveInFlight.current || hasUnsavedWeek())) {
+        if (!(await persistWeekSnapshot(currentWeek, { ...weekDetailsRef.current }))) return false
+      }
+
+      const currentSession = currentSelectionRef.current.session
+      if (currentSession && (sessionSaveInFlight.current || hasUnsavedSession())) {
+        if (!(await persistSessionSnapshot(currentSession, { ...sessionDetailsRef.current }))) return false
+      }
+
+      const currentExercise = currentSelectionRef.current.exercise
+      if (currentExercise && (exerciseSaveInFlight.current || hasUnsavedExercise())) {
+        const currentPatch = patchRef.current
+        if (!(await persistExerciseSnapshot(currentExercise, { ...currentPatch, steps: currentPatch.steps.map(step => ({ ...step })) }))) return false
+      }
+
+      if (!hasPendingCurrentChanges()) return true
+    }
+  }, [clearSaveTimers, hasPendingCurrentChanges, hasUnsavedExercise, hasUnsavedSession, hasUnsavedWeek, persistExerciseSnapshot, persistSessionSnapshot, persistWeekSnapshot])
+  const runAfterSaving = useCallback(async (action: () => void | Promise<void>, options: { busy?: boolean; fallbackError?: string } = {}) => {
+    if (navigationSaveInProgress.current) return false
+    navigationSaveInProgress.current = true
+    const hasPendingChanges = hasPendingCurrentChanges()
+    if (hasPendingChanges || options.busy) setState('saving')
+    if (hasPendingChanges) setSaveStatus('saving')
+    setError(''); setMessage('')
+    try {
+      if (hasPendingChanges) {
+        if (!(await flushPendingChanges())) return false
+        setSaveStatus('saved')
+      }
+      await action()
+      return true
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : options.fallbackError ?? 'Operazione non completata.')
+      return false
+    } finally {
+      navigationSaveInProgress.current = false
+      if (hasPendingChanges || options.busy) setState('idle')
+    }
+  }, [flushPendingChanges, hasPendingCurrentChanges])
+
+  const flushBeforeExternalNavigation = useCallback(() => runAfterSaving(() => undefined), [runAfterSaving])
   useEffect(() => {
+    if (!registerNavigationGuard) return
+    registerNavigationGuard(flushBeforeExternalNavigation)
+    return () => registerNavigationGuard(null)
+  }, [flushBeforeExternalNavigation, registerNavigationGuard])
+
+  useEffect(() => {
+    if (hydratedWeek.current === weekId && JSON.stringify(weekDetailsRef.current) !== hydratedWeekValue.current) return
     const week = weeks.find(item => item.id === weekId)
     const next = { blockName: week?.blockName ?? '', phase: week?.phase ?? '', loadType: week?.loadType ?? 'load' as 'load' | 'deload', notes: week?.notes ?? '' }
     hydratingWeek.current = true
@@ -142,6 +316,7 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
     setWeekDetails(next)
   }, [weekId, selectedWeek?.blockName, selectedWeek?.phase, selectedWeek?.loadType, selectedWeek?.notes])
   useEffect(() => {
+    if (hydratedSession.current === sessionId && JSON.stringify(sessionDetailsRef.current) !== hydratedSessionValue.current) return
     const next = { title: session?.title ?? '', objective: session?.objective ?? '', durationMinutes: session?.durationMinutes ?? 0, scheduledDay: session?.scheduledDay ?? 1 }
     hydratingSession.current = true
     hydratedSession.current = sessionId
@@ -151,6 +326,7 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
 
   useEffect(() => {
     if (!exercise) return
+    if (hydratedExercise.current === exercise.id && JSON.stringify(patchRef.current) !== hydratedExerciseValue.current) return
     const values = readPrescriptionEditorValues(exercise.prescription)
     const next = { sets: values.sets, reps: values.reps, seconds: values.seconds, loadKg: values.loadKg, rpe: exercise.targetRpeMax ?? 7, restSeconds: exercise.restSeconds ?? 120, instructions: exercise.instructions ?? '', steps: values.steps }
     hydratingExercise.current = true
@@ -163,54 +339,68 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
     const serialized = JSON.stringify(weekDetails)
     if (hydratingWeek.current) { hydratingWeek.current = false; return }
     if (!weekId || hydratedWeek.current !== weekId || serialized === hydratedWeekValue.current) return
-    setSaveStatus('saving'); const timer = window.setTimeout(() => { updateWeekDetails(profile, weekId, weekDetails.blockName, weekDetails.phase, weekDetails.loadType, weekDetails.notes).then(() => { hydratedWeekValue.current = serialized }).catch(reason => setError(reason instanceof Error ? reason.message : 'Settimana non salvata.')).finally(() => { weekSaveTimer.current = null; setSaveStatus('saved') }) }, 700)
+    const currentWeek = selectedWeek
+    if (!currentWeek) return
+    setSaveStatus('saving'); setError('')
+    const snapshot = { ...weekDetails }
+    const timer = window.setTimeout(() => {
+      if (weekSaveTimer.current === timer) weekSaveTimer.current = null
+      void persistWeekSnapshot(currentWeek, snapshot).then(success => { if (success) markSaveStatusIfSettled() })
+    }, 700)
     weekSaveTimer.current = timer
     return () => { window.clearTimeout(timer); if (weekSaveTimer.current === timer) weekSaveTimer.current = null }
-  }, [profile, weekId, weekDetails])
+  }, [markSaveStatusIfSettled, persistWeekSnapshot, selectedWeek, weekDetails, weekId])
   useEffect(() => {
     const serialized = JSON.stringify(sessionDetails)
     if (hydratingSession.current) { hydratingSession.current = false; return }
     if (!sessionId || hydratedSession.current !== sessionId || serialized === hydratedSessionValue.current || !sessionDetails.title.trim()) return
-    setSaveStatus('saving'); const timer = window.setTimeout(() => { updateSessionDetails(profile, sessionId, sessionDetails.title, sessionDetails.objective, sessionDetails.durationMinutes, sessionDetails.scheduledDay).then(() => { hydratedSessionValue.current = serialized }).catch(reason => setError(reason instanceof Error ? reason.message : 'Sessione non salvata.')).finally(() => { sessionSaveTimer.current = null; setSaveStatus('saved') }) }, 700)
+    const currentSession = session
+    if (!currentSession) return
+    setSaveStatus('saving'); setError('')
+    const snapshot = { ...sessionDetails }
+    const timer = window.setTimeout(() => {
+      if (sessionSaveTimer.current === timer) sessionSaveTimer.current = null
+      void persistSessionSnapshot(currentSession, snapshot).then(success => { if (success) markSaveStatusIfSettled() })
+    }, 700)
     sessionSaveTimer.current = timer
     return () => { window.clearTimeout(timer); if (sessionSaveTimer.current === timer) sessionSaveTimer.current = null }
-  }, [profile, sessionId, sessionDetails])
+  }, [markSaveStatusIfSettled, persistSessionSnapshot, session, sessionDetails, sessionId])
   useEffect(() => {
     const serialized = JSON.stringify(patch)
     if (hydratingExercise.current) { hydratingExercise.current = false; return }
     if (!exercise || hydratedExercise.current !== exercise.id || serialized === hydratedExerciseValue.current) return
-    setSaveStatus('saving'); const timer = window.setTimeout(() => { updateExercise(profile, exercise.id, exercise.prescription, patch).then(() => { hydratedExerciseValue.current = serialized }).catch(reason => setError(reason instanceof Error ? reason.message : 'Esercizio non salvato.')).finally(() => { exerciseSaveTimer.current = null; setSaveStatus('saved') }) }, 700)
+    setSaveStatus('saving'); setError('')
+    const snapshot = { ...patch, steps: patch.steps.map(step => ({ ...step })) }
+    const timer = window.setTimeout(() => {
+      if (exerciseSaveTimer.current === timer) exerciseSaveTimer.current = null
+      void persistExerciseSnapshot(exercise, snapshot).then(success => { if (success) markSaveStatusIfSettled() })
+    }, 700)
     exerciseSaveTimer.current = timer
     return () => { window.clearTimeout(timer); if (exerciseSaveTimer.current === timer) exerciseSaveTimer.current = null }
-  }, [profile, exercise, patch])
+  }, [exercise, markSaveStatusIfSettled, patch, persistExerciseSnapshot])
 
   const run = async <T,>(operation: () => Promise<T>, success: string, onSuccess?: (result: T) => void) => {
     setState('saving'); setError(''); setMessage('')
     try { const result = await operation(); await refresh(); onSuccess?.(result); setMessage(success) } catch (reason) { setError(reason instanceof Error ? reason.message : 'Operazione non completata.') } finally { setState('idle') }
   }
   const saveExerciseChanges = async () => {
-    if (!exercise || !exerciseHasUnsavedChanges) return true
+    if (!exercise || (!exerciseHasUnsavedChanges && !exerciseSaveInFlight.current)) return true
     if (exerciseSaveTimer.current !== null) { window.clearTimeout(exerciseSaveTimer.current); exerciseSaveTimer.current = null }
-    const snapshot = patch
-    const serialized = JSON.stringify(snapshot)
+    const snapshot = { ...patch, steps: patch.steps.map(step => ({ ...step })) }
     setState('saving'); setSaveStatus('saving'); setError(''); setMessage('')
     try {
-      await updateExercise(profile, exercise.id, exercise.prescription, snapshot)
-      hydratedExercise.current = exercise.id
-      hydratedExerciseValue.current = serialized
-      let summaryRefreshed = true
-      try { await refresh() } catch { summaryRefreshed = false; setError('Modifiche salvate, ma non è stato possibile aggiornare il riepilogo. Ricarica i dati.') }
-      if (summaryRefreshed) setMessage('Modifiche esercizio salvate.')
-      return true
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Esercizio non salvato.')
-      return false
+      const saved = await persistExerciseSnapshot(exercise, snapshot)
+      if (saved) {
+        markSaveStatusIfSettled()
+        setMessage('Modifiche esercizio salvate.')
+      }
+      return saved
     } finally {
-      setSaveStatus('saved'); setState('idle')
+      setState('idle')
     }
   }
   const chooseExercise = async (nextExerciseId: string) => {
-    await saveBeforeSelectingExercise(exerciseHasUnsavedChanges, saveExerciseChanges, () => {
+    await runAfterSaving(() => {
       setExerciseId(nextExerciseId)
       setExerciseEditorOpen(current => nextExerciseId === exerciseId ? !current : true)
     })
@@ -222,48 +412,108 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
   }
   const saveDraft = () => {
     if (!program || program.status !== 'draft') return
-    setSaveStatus('saving')
-    for (const timer of [weekSaveTimer, sessionSaveTimer, exerciseSaveTimer]) {
-      if (timer.current !== null) { window.clearTimeout(timer.current); timer.current = null }
-    }
-    const weekSnapshot = weekDetails
-    const sessionSnapshot = sessionDetails
-    const exerciseSnapshot = patch
-    const weekSnapshotJson = JSON.stringify(weekSnapshot)
-    const sessionSnapshotJson = JSON.stringify(sessionSnapshot)
-    const exerciseSnapshotJson = JSON.stringify(exerciseSnapshot)
-    void run(async () => {
-      const writes: Promise<unknown>[] = []
-      if (selectedWeek) writes.push(updateWeekDetails(profile, selectedWeek.id, weekSnapshot.blockName, weekSnapshot.phase, weekSnapshot.loadType, weekSnapshot.notes))
-      if (session && sessionSnapshot.title.trim()) writes.push(updateSessionDetails(profile, session.id, sessionSnapshot.title, sessionSnapshot.objective, sessionSnapshot.durationMinutes, sessionSnapshot.scheduledDay))
-      if (exercise) writes.push(updateExercise(profile, exercise.id, exercise.prescription, exerciseSnapshot))
-      await Promise.all(writes)
-      if (selectedWeek) hydratedWeekValue.current = weekSnapshotJson
-      if (session) hydratedSessionValue.current = sessionSnapshotJson
-      if (exercise) hydratedExerciseValue.current = exerciseSnapshotJson
-      setSaveStatus('saved')
-    }, 'Bozza salvata.')
+    void runAfterSaving(() => setMessage('Bozza salvata.'))
   }
-  const addWeek = () => void run(() => createWeek(profile, programId, weeks.map(week => week.weekNumber)), 'Settimana aggiunta senza modificare le precedenti.', setWeekId)
+  const chooseWeek = async (nextWeekId: string) => {
+    if (nextWeekId === weekId) { setWeekSettingsOpen(false); return }
+    await runAfterSaving(() => { setWeekId(nextWeekId); setWeekSettingsOpen(false) })
+  }
+  const chooseSession = async (nextSessionId: string) => {
+    if (nextSessionId === sessionId) return
+    await runAfterSaving(() => setSessionId(nextSessionId))
+  }
+  const refreshAfterConfirmedCreation = async <T,>(
+    operation: () => Promise<T>,
+    isPresent: (next: ProgramBuilderData, result: T) => boolean,
+    onSuccess: (result: T) => void,
+    successMessage: string,
+    refreshErrorMessage: string,
+  ) => {
+    const result = await operation()
+    let next: ProgramBuilderData
+    try {
+      next = await refresh()
+    } catch (reason) {
+      const detail = reason instanceof Error ? ` ${reason.message}` : ''
+      setError(`${refreshErrorMessage} L'operazione è già stata confermata: aggiorna i dati prima di riprovare.${detail}`)
+      return
+    }
+    if (!isPresent(next, result)) {
+      setError(`${refreshErrorMessage} L'operazione è già stata confermata: aggiorna i dati prima di riprovare.`)
+      return
+    }
+    if (!(await flushPendingChanges())) {
+      setError(current => `${current || 'Modifiche non salvate.'} L'operazione è già stata confermata: aggiorna i dati prima di riprovare.`)
+      return
+    }
+    setSaveStatus('saved')
+    onSuccess(result)
+    setMessage(successMessage)
+  }
+  const addWeek = () => void runAfterSaving(
+    () => refreshAfterConfirmedCreation(
+      () => createWeek(profile, programId, weeks.map(week => week.weekNumber)),
+      (next, id) => next.weeks.some(item => item.id === id),
+      id => setWeekId(id),
+      'Settimana aggiunta senza modificare le precedenti.',
+      'La settimana è stata creata, ma il programma aggiornato non è disponibile.',
+    ),
+    { busy: true, fallbackError: 'Settimana non creata.' },
+  )
   const duplicateSelectedWeek = () => {
     const sourceWeek = weeks.find(item => item.id === weekId)
     if (!sourceWeek) return
-    setState('saving'); setError(''); setMessage('')
-    void duplicateWeek(profile, sourceWeek.id).then(async id => {
-      const next = await refresh()
-      if (!next.weeks.some(item => item.id === id)) throw new Error('La copia non compare nel programma aggiornato. Ricarica i dati e riprova.')
-      setWeekId(id)
-      setWeekSettingsOpen(false)
-      setMessage(`Copia della settimana ${sourceWeek.weekNumber} pronta.`)
-      window.requestAnimationFrame(() => document.getElementById(`builder-week-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' }))
-    }).catch(reason => setError(reason instanceof Error ? reason.message : 'Duplicazione non completata.')).finally(() => setState('idle'))
+    void runAfterSaving(
+      () => refreshAfterConfirmedCreation(
+        () => duplicateWeek(profile, sourceWeek.id),
+        (next, id) => next.weeks.some(item => item.id === id),
+        id => {
+          setWeekId(id)
+          setWeekSettingsOpen(false)
+          window.requestAnimationFrame(() => document.getElementById(`builder-week-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' }))
+        },
+        `Copia della settimana ${sourceWeek.weekNumber} pronta.`,
+        'La copia è stata creata, ma il programma aggiornato non è disponibile.',
+      ),
+      { busy: true, fallbackError: 'Duplicazione non completata.' },
+    )
   }
-  const addSession = () => void run(() => createSession(profile, weekId, sessions.map(item => item.order)), 'Sessione aggiunta.', setSessionId)
+  const addSession = () => void runAfterSaving(
+    () => refreshAfterConfirmedCreation(
+      () => createSession(profile, weekId, sessions.map(item => item.order)),
+      (next, id) => next.sessions.some(item => item.id === id),
+      id => setSessionId(id),
+      'Sessione aggiunta.',
+      'La sessione è stata creata, ma il programma aggiornato non è disponibile.',
+    ),
+    { busy: true, fallbackError: 'Sessione non creata.' },
+  )
+  const openPrograms = () => void runAfterSaving(() => setShowBuilder(false))
+  const openProgram = (nextProgramId: string, nextAthleteId: string) => void runAfterSaving(() => {
+    setAthleteId(nextAthleteId)
+    setSelectedAthleteId(nextAthleteId)
+    setProgramId(nextProgramId)
+    setCreatingProgram(false)
+    setShowBuilder(true)
+  })
+  const chooseAthlete = (nextAthleteId: string) => void runAfterSaving(() => {
+    setAthleteId(nextAthleteId)
+    setSelectedAthleteId(nextAthleteId)
+  })
   const submitExercise = (event: FormEvent) => {
     event.preventDefault()
     const libraryExercise = data?.library.find(item => item.id === libraryId)
     if (!sessionId || (!libraryExercise && !newExercise.trim())) return
-    void run(() => addExercise(profile, sessionId, exercises.map(item => item.order), newExercise, libraryExercise), 'Esercizio aggiunto alla sessione.', id => { setExerciseId(id); setNewExercise(''); setLibraryId('') })
+    void runAfterSaving(
+      () => refreshAfterConfirmedCreation(
+        () => addExercise(profile, sessionId, exercises.map(item => item.order), newExercise, libraryExercise),
+        (next, id) => next.exercises.some(item => item.id === id),
+        id => { setExerciseId(id); setNewExercise(''); setLibraryId('') },
+        'Esercizio aggiunto alla sessione.',
+        "L'esercizio è stato aggiunto, ma il programma aggiornato non è disponibile.",
+      ),
+      { busy: true, fallbackError: 'Esercizio non aggiunto.' },
+    )
   }
   const confirmDelete = () => deleteTarget && void run(async () => {
     if (deleteTarget.kind === 'block') {
@@ -299,13 +549,14 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
     setError('')
     const nextPatch = { ...patch, ...scalePrescriptionLoads(patch, percentage) }
     if (exerciseSaveTimer.current !== null) { window.clearTimeout(exerciseSaveTimer.current); exerciseSaveTimer.current = null }
-    setSaveStatus('saving')
-    void run(() => updateExercise(profile, exercise.id, exercise.prescription, nextPatch), `Variazione del ${Math.abs(percentage)}% salvata.`, () => {
-      hydratedExercise.current = exercise.id
-      hydratedExerciseValue.current = JSON.stringify(nextPatch)
+    setState('saving'); setSaveStatus('saving'); setMessage('')
+    void persistExerciseSnapshot(exercise, nextPatch).then(saved => {
+      if (!saved) return
       setPatch(nextPatch)
-      setSaveStatus('saved')
-    }).finally(() => setSaveStatus('saved'))
+      setExerciseLoadPercentages(value => ({ ...value, [exercise.id]: 0 }))
+      setMessage(`Variazione del ${Math.abs(percentage)}% salvata.`)
+      markSaveStatusIfSettled()
+    }).finally(() => setState('idle'))
   }
   const addStep = () => setPatch(value => ({ ...value, steps: [...value.steps, { label: `Set ${value.steps.length + 1}`, reps: value.reps || 1, seconds: 0, loadKg: value.loadKg || null }] }))
   const changeStep = (index: number, next: Partial<PrescriptionStep>) => setPatch(value => ({ ...value, steps: value.steps.map((step, row) => row === index ? { ...step, ...next } : step) }))
@@ -316,12 +567,12 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
 
   if (state === 'loading' && !data) return <div className="screen"><ScreenHeader eyebrow="PROGRAMMA" title="Caricamento programma" text="Aggiornamento dati in corso." /><div className="skeleton-stack"><span /><span /><span /></div></div>
 
-  if (!showBuilder) return <ProgramsOverview data={data} onOpen={(nextProgramId, nextAthleteId) => { setAthleteId(nextAthleteId); setProgramId(nextProgramId); setCreatingProgram(false); setShowBuilder(true) }} onCreate={() => { setProgramId(''); setCreatingProgram(true); setShowBuilder(true) }} />
+  if (!showBuilder) return <ProgramsOverview data={data} onOpen={openProgram} onCreate={() => { setProgramId(''); setCreatingProgram(true); setShowBuilder(true) }} />
 
   return <div className="screen coach-builder">
     <div className="coach-builder__context">
-      <button type="button" className="coach-programs__back" onClick={() => setShowBuilder(false)}><ArrowLeft size={16} /> Programmi</button>
-      {!program && <label className="coach-builder__athlete-select"><span>ATLETA</span><select aria-label="Seleziona atleta" value={athleteId} onChange={event => { setAthleteId(event.target.value); setSelectedAthleteId(event.target.value) }} disabled={state === 'saving'}>{data?.athletes.map(athlete => <option key={athlete.id} value={athlete.id}>{athlete.name}</option>)}</select></label>}
+      <button type="button" className="coach-programs__back" disabled={state === 'saving'} onClick={openPrograms}><ArrowLeft size={16} /> Programmi</button>
+      {!program && <label className="coach-builder__athlete-select"><span>ATLETA</span><select aria-label="Seleziona atleta" value={athleteId} onChange={event => chooseAthlete(event.target.value)} disabled={state === 'saving'}>{data?.athletes.map(athlete => <option key={athlete.id} value={athlete.id}>{athlete.name}</option>)}</select></label>}
     </div>
     {!data?.athletes.length && <Panel title="Nessun atleta attivo" index="00"><div className="empty-state"><Users size={22} /><b>Collega o riattiva un atleta</b><span>Il builder mostra soltanto le relazioni coach-atleta attive.</span></div></Panel>}
     {!!athleteId && !program && <Panel title="Crea una bozza" index="00"><form className="builder-create-form" onSubmit={submitProgram}><label><span>Nome programma</span><input className="standalone-input" value={newProgram.name} onChange={event => setNewProgram(current => ({ ...current, name: event.target.value }))} placeholder="Es. Forza dita · Autunno" required /></label><label><span>Tipo programma</span><select value={newProgram.programType} onChange={event => setNewProgram(current => ({ ...current, programType: event.target.value as 'athlete' | 'patient' }))}><option value="athlete">Programma atleta</option><option value="patient">Programma paziente</option></select></label><label><span>Obiettivo</span><input className="standalone-input" value={newProgram.goal} onChange={event => setNewProgram(current => ({ ...current, goal: event.target.value }))} placeholder="Obiettivo del blocco" /></label><button className="button button--signal" disabled={state === 'saving'}><Plus size={16} /> Crea bozza</button></form></Panel>}
@@ -332,7 +583,7 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
           <p>PROGRAMMA</p>
           <div className="coach-builder__hero-title"><h1>{program.name}</h1>{program.status !== 'active' && <Tag tone={program.status === 'draft' ? 'signal' : 'neutral'}>{program.status}</Tag>}</div>
           <p className="coach-builder__dates">{programDates}</p>
-          <label className="coach-builder__hero-athlete"><span>ATLETA</span><select aria-label="Seleziona atleta" value={athleteId} onChange={event => { setAthleteId(event.target.value); setSelectedAthleteId(event.target.value) }} disabled={state === 'saving'}>{data?.athletes.map(athlete => <option key={athlete.id} value={athlete.id}>{athlete.name}</option>)}</select></label>
+          <label className="coach-builder__hero-athlete"><span>ATLETA</span><select aria-label="Seleziona atleta" value={athleteId} onChange={event => chooseAthlete(event.target.value)} disabled={state === 'saving'}>{data?.athletes.map(athlete => <option key={athlete.id} value={athlete.id}>{athlete.name}</option>)}</select></label>
         </div>
         <div className="coach-builder__hero-actions">{program.status === 'draft' && <button type="button" className="button button--secondary" disabled={state === 'saving'} onClick={saveDraft}><Save size={16} /> {saveStatus === 'saving' ? 'Salvataggio…' : 'Salva bozza'}</button>}<button type="button" className="button button--primary" disabled={state === 'saving' || program.status === 'active'} onClick={publish}><Save size={16} /> {program.status === 'active' ? 'Pubblicato' : 'Pubblica programma'}</button><button type="button" className="button button--danger builder-delete-program" disabled={state === 'saving' || saveStatus === 'saving'} onClick={() => setDeleteTarget({ kind: 'program', id: program.id, name: program.name })}><Trash2 size={16} /> Elimina programma</button></div>
         <div className="coach-builder__goal"><span>◎</span><b>OBIETTIVO</b><p>{program.goal || 'Obiettivo da definire'}</p></div>
@@ -341,18 +592,18 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
       <aside className="coach-builder__structure">
         <header><div><h2>Struttura del programma</h2><p>Blocchi, settimane e sessioni.</p></div><button type="button" disabled={state === 'saving'} onClick={addWeek}><Plus size={14} /> BLOCCO</button></header>
         {!!blocks.length && <div className="coach-builder__blocks">{blocks.map((block, index) => <div className="coach-builder__block-item" key={`${block.name}-${index}`}>
-          <button type="button" className={`coach-builder__block-select ${block.weeks.some(item => item.id === weekId) ? 'active' : index === blocks.length - 1 && block.weeks.every(item => item.loadType === 'deload') ? 'deload' : ''}`} onClick={() => { setWeekId(block.weeks[0].id); setWeekSettingsOpen(false) }}><b>{block.name}</b><span>Sett. {block.weeks[0].weekNumber}–{block.weeks.at(-1)?.weekNumber}</span></button>
+          <button type="button" disabled={state === 'saving'} className={`coach-builder__block-select ${block.weeks.some(item => item.id === weekId) ? 'active' : index === blocks.length - 1 && block.weeks.every(item => item.loadType === 'deload') ? 'deload' : ''}`} onClick={() => void chooseWeek(block.weeks[0].id)}><b>{block.name}</b><span>Sett. {block.weeks[0].weekNumber}–{block.weeks.at(-1)?.weekNumber}</span></button>
           <details className="coach-builder__action-menu"><summary aria-label={`Azioni ${block.name}`} title={`Azioni ${block.name}`}><CircleEllipsis size={17} /></summary><div role="menu"><button type="button" role="menuitem" disabled={state === 'saving'} onClick={() => setDeleteTarget({ kind: 'block', name: block.name, weekIds: block.weeks.map(item => item.id) })}><Trash2 size={14} /> Elimina blocco ({block.weeks.length} {block.weeks.length === 1 ? 'settimana' : 'settimane'})</button></div></details>
         </div>)}</div>}
         <div className="coach-builder__weeks" aria-label="Settimane del programma">
-          {weeks.map(week => <button type="button" id={`builder-week-${week.id}`} className={`${week.id === weekId ? 'active' : ''} week-type--${week.loadType}`} key={week.id} onClick={() => { setWeekId(week.id); setWeekSettingsOpen(false) }}><b>{String(week.weekNumber).padStart(2, '0')}</b><span>{week.loadType === 'deload' ? 'SCA' : 'CAR'}</span></button>)}
+          {weeks.map(week => <button type="button" disabled={state === 'saving'} id={`builder-week-${week.id}`} className={`${week.id === weekId ? 'active' : ''} week-type--${week.loadType}`} key={week.id} onClick={() => void chooseWeek(week.id)}><b>{String(week.weekNumber).padStart(2, '0')}</b><span>{week.loadType === 'deload' ? 'SCA' : 'CAR'}</span></button>)}
         </div>
         {!weekId && <div className="empty-state"><Layers3 size={22} /><b>Aggiungi la prima settimana</b><span>Le sessioni appariranno dentro la settimana selezionata.</span></div>}
         {weekId && <>
           <section className={`coach-builder__week-head week-type--${weekDetails.loadType}`}><div><h3>Settimana {selectedWeek?.weekNumber} · {weekDetails.blockName || 'Blocco'} · <span>{weekDetails.loadType === 'deload' ? 'SCARICO' : 'CARICO'}</span></h3>{weekDetails.notes && <small>{weekDetails.notes}</small>}</div><button type="button" aria-label="Azioni settimana" onClick={() => setWeekSettingsOpen(value => !value)}><CircleEllipsis size={16} /></button></section>
           {weekSettingsOpen && <div className="coach-builder__week-settings"><div className="builder-details builder-details--week"><label><span>Nome blocco</span><input value={weekDetails.blockName} onChange={event => setWeekDetails(value => ({ ...value, blockName: event.target.value }))} /></label><label><span>Fase</span><input value={weekDetails.phase} onChange={event => setWeekDetails(value => ({ ...value, phase: event.target.value }))} /></label><label><span>Tipo</span><select value={weekDetails.loadType} onChange={event => setWeekDetails(value => ({ ...value, loadType: event.target.value as 'load' | 'deload' }))}><option value="load">Carico</option><option value="deload">Scarico</option></select></label><label><span>Note / obiettivi</span><input value={weekDetails.notes} onChange={event => setWeekDetails(value => ({ ...value, notes: event.target.value }))} /></label></div><div className="coach-builder__week-actions"><button type="button" className="text-button danger" disabled={state === 'saving'} onClick={() => setDeleteTarget({ kind: 'week', id: weekId, name: `Settimana ${selectedWeek?.weekNumber ?? ''}` })}><Trash2 size={14} /> Elimina settimana</button></div></div>}
           <div className="builder-week-actions"><button type="button" className="text-button" disabled={state === 'saving'} onClick={duplicateSelectedWeek}><Copy size={14} /> Duplica settimana</button></div>
-          <div className="coach-builder__session-list">{sessions.map(item => <button className={item.id === sessionId ? 'active' : ''} key={item.id} onClick={() => setSessionId(item.id)}><b>{String(item.order).padStart(2, '0')}</b><span><strong>{item.title}</strong><small>{item.objective || `${data?.exercises.filter(candidate => candidate.sessionId === item.id).length ?? 0} esercizi`}</small></span><ArrowRight size={16} /></button>)}</div>
+          <div className="coach-builder__session-list">{sessions.map(item => <button disabled={state === 'saving'} className={item.id === sessionId ? 'active' : ''} key={item.id} onClick={() => void chooseSession(item.id)}><b>{String(item.order).padStart(2, '0')}</b><span><strong>{item.title}</strong><small>{item.objective || `${data?.exercises.filter(candidate => candidate.sessionId === item.id).length ?? 0} esercizi`}</small></span><ArrowRight size={16} /></button>)}</div>
           {!sessionId && <div className="empty-state empty-state--compact"><TimerReset size={20} /><b>Aggiungi la prima sessione</b></div>}
           <button className="coach-builder__add-session" disabled={state === 'saving'} onClick={addSession}><Plus size={15} /> AGGIUNGI SESSIONE</button>
         </>}
@@ -367,7 +618,7 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
           {sessionTab === 'exercises' && exercises.map(item => <div className={`exercise-block ${item.id === exerciseId && exerciseEditorOpen ? 'active' : ''}`} key={item.id}><button type="button" disabled={state === 'saving'} className="exercise-block__select" onClick={() => void chooseExercise(item.id)}><GripVertical className="drag-handle" size={16} /><span className="exercise-number">{String(item.order).padStart(2, '0')}</span><div><b>{item.name}</b><small>{prescriptionSummary(item)}</small></div><ChevronDown size={17} /></button><details className="coach-builder__action-menu coach-builder__action-menu--exercise"><summary aria-label={`Azioni ${item.name}`} title={`Azioni ${item.name}`}><CircleEllipsis size={17} /></summary><div role="menu"><button type="button" role="menuitem" disabled={state === 'saving'} onClick={event => { event.currentTarget.closest('details')?.removeAttribute('open'); setDeleteTarget({ kind: 'exercise', id: item.id, name: item.name }) }}><Trash2 size={14} /> Elimina esercizio</button></div></details></div>)}
           {sessionId && sessionTab === 'exercises' && !exerciseAdderOpen && <div className="coach-builder__add-exercise-actions"><button type="button" onClick={() => { setLibraryId(''); setExerciseAdderOpen(true) }}><Plus size={15} /> AGGIUNGI ESERCIZIO</button><button type="button" onClick={() => setExerciseAdderOpen(true)}><Layers3 size={15} /> AGGIUNGI DALLA LIBRERIA</button></div>}
           {sessionId && sessionTab === 'exercises' && exerciseAdderOpen && <form className="exercise-adder" onSubmit={submitExercise}><select value={libraryId} onChange={event => setLibraryId(event.target.value)}><option value="">Esercizio rapido…</option>{data?.library.map(item => <option value={item.id} key={item.id}>{item.name}{item.category ? ` · ${item.category}` : ''}</option>)}</select>{!libraryId && <input value={newExercise} onChange={event => setNewExercise(event.target.value)} placeholder="Nome esercizio" />}<button className="drop-zone" disabled={state === 'saving'}><Plus size={17} /> Aggiungi alla sessione</button><button type="button" className="text-button" onClick={() => setExerciseAdderOpen(false)}>Annulla</button></form>}
-        {sessionId && sessionTab === 'exercises' && exerciseEditorOpen && <Panel className="inspector coach-builder__inspector" title="Parametri esercizio" index="03" action={exercise && <div className="builder-exercise-save"><span role="status">{saveStatus === 'saving' ? 'Modifiche da salvare' : 'Salvato'}</span><button type="button" className="button button--primary" disabled={state === 'saving' || !exerciseHasUnsavedChanges} onClick={() => void saveExerciseChanges()}><Save size={15} /> {exerciseHasUnsavedChanges ? 'Salva modifiche' : 'Salvato'}</button></div>}>
+          {sessionId && sessionTab === 'exercises' && exerciseEditorOpen && <Panel className="inspector coach-builder__inspector" title="Parametri esercizio" index="03" action={exercise && <div className="builder-exercise-save"><span role="status">{saveStatus === 'saving' ? 'Modifiche da salvare' : saveStatus === 'error' ? 'Salvataggio non riuscito' : 'Salvato'}</span><button type="button" className="button button--primary" disabled={state === 'saving' || !exerciseHasUnsavedChanges} onClick={() => void saveExerciseChanges()}><Save size={15} /> {exerciseHasUnsavedChanges ? 'Salva modifiche' : 'Salvato'}</button></div>}>
         {!exercise && <div className="empty-state empty-state--compact"><Settings2 size={20} /><b>Seleziona un esercizio</b><span>Qui modificherai volume, carico, RPE e recupero.</span></div>}
         {exercise && <>
           <label><span>Serie</span><div className="stepper"><button onClick={() => setPatch(value => ({ ...value, sets: Math.max(1, value.sets - 1) }))}>−</button><b>{patch.sets}</b><button onClick={() => setPatch(value => ({ ...value, sets: value.sets + 1 }))}>+</button></div></label>

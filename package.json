@@ -42,6 +42,7 @@
     "@types/react-dom": "19.2.2",
     "@vitejs/plugin-react": "5.0.4",
     "eslint": "10.10.0",
+    "happy-dom": "20.14.5",
     "supabase": "2.116.0",
     "typescript": "5.9.3",
     "typescript-eslint": "8.69.0",
