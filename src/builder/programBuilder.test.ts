@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
+import { formatPrescription, getRestSeconds, getVariableSeries, type RunnerExercise } from '../session/sessionRunner'
 import { canPublishProgram, getPrescriptionSteps, latestWeek, mergePrescriptionForUpdate, nextSequence, prescriptionSummary, readPrescriptionEditorValues, saveBeforeSelectingExercise, scalePrescriptionLoads, type ProgramBuilderData } from './programBuilder'
+
+function runnerExercise(prescription: Record<string, unknown>, restSeconds: number): RunnerExercise {
+  return { id: 'e', order: 1, name: 'Hang', prescription, calculationContext: {}, targetRpeMin: 7, targetRpeMax: 8, restSeconds, instructions: null, progress: null }
+}
 
 describe('program builder', () => {
   it('calcola il prossimo ordine senza sovrascrivere elementi esistenti', () => expect(nextSequence([1, 3, 2])).toBe(4))
@@ -51,6 +56,27 @@ describe('program builder', () => {
   it('sincronizza i campi builder e atleta quando il coach modifica la prescrizione', () => {
     const current = { sets: 4, dose: '5 sec', load_value: '30', unit: 'kg', timer: { work_seconds: 5, repetitions: 1 } }
     expect(mergePrescriptionForUpdate(current, { sets: 5, reps: 0, seconds: 7, loadKg: 32.5, steps: [] })).toMatchObject({ sets: 5, seconds: 7, loadKg: 32.5, dose: '7 sec', load_value: '32.5', unit: 'kg', timer: { work_seconds: 7, repetitions: 1 } })
+  })
+  it('mostra nell’area atleta i valori moderni persistiti dal builder', () => {
+    const saved = mergePrescriptionForUpdate({ sets: 3, reps: 5 }, { sets: 4, reps: 8, seconds: 0, loadKg: 25, steps: [] })
+    const exercise = runnerExercise(saved, 150)
+    expect(formatPrescription(exercise)).toBe('4 serie · 8 ripetizioni · 25 kg')
+    expect(getRestSeconds(exercise)).toBe(150)
+  })
+  it('mostra nell’area atleta le righe strutturate senza normalizzare la prescrizione legacy', () => {
+    const current = { sets: 5, dose: '3 rep', load_value: '27.5', unit: 'kg', custom_legacy_field: 'preserva' }
+    const saved = mergePrescriptionForUpdate(current, {
+      sets: 2,
+      reps: 10,
+      seconds: 0,
+      loadKg: 32.5,
+      steps: [
+        { label: 'Set 1', loadKg: 32.5, reps: 10, seconds: 0 },
+        { label: 'Set 2', loadKg: 35, reps: 8, seconds: 0 },
+      ],
+    })
+    expect((saved as Record<string, unknown>).custom_legacy_field).toBe('preserva')
+    expect(getVariableSeries(runnerExercise(saved, 180))).toEqual(['32.5 kg × 10 rep', '35 kg × 8 rep'])
   })
   it('varia solo i carichi numerici, mantenendo ripetizioni, tempi e righe senza carico', () => {
     const values = { sets: 3, reps: 8, seconds: 0, loadKg: 20, steps: [
