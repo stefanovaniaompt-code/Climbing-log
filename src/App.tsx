@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   BarChart3,
@@ -21,7 +21,7 @@ import { syncQueuedExercise } from './session/sessionRunnerRepository'
 import { SessionScreen } from './session/SessionScreen'
 import { DashboardScreen } from './coach/DashboardScreen'
 import { AthleteManagementScreen } from './coach/AthleteManagementScreen'
-import { BuilderScreen } from './builder/BuilderScreen'
+import { BuilderScreen, type BuilderNavigationGuard } from './builder/BuilderScreen'
 import { LibraryScreen } from './library/LibraryScreen'
 import { TestScreen } from './tests/TestScreen'
 import { useUpdateBlocker } from './pwa/useUpdateBlocker'
@@ -68,6 +68,7 @@ type ScreenProps = {
   selectedAthleteId: string
   setSelectedAthleteId: (athleteId: string) => void
   selectedSessionId: string
+  registerBuilderNavigationGuard: (guard: BuilderNavigationGuard | null) => void
 }
 
 const viewMeta: Record<ViewId, { label: string; component: (props: ScreenProps) => ReactNode }> = {
@@ -76,7 +77,7 @@ const viewMeta: Record<ViewId, { label: string; component: (props: ScreenProps) 
   session: { label: 'Sessione', component: ({ profile, selectedSessionId }) => <SessionScreen profile={profile} sessionId={selectedSessionId} /> },
   dashboard: { label: 'Dashboard coach', component: ({ profile, goTo }) => <DashboardScreen profile={profile} openPrograms={() => goTo('builder')} openFeedback={() => goTo('feedback')} openProgress={() => goTo('progress')} /> },
   athletes: { label: 'Atleti', component: ({ profile, goTo, selectedAthleteId, setSelectedAthleteId, goToAthlete }) => <AthleteManagementScreen profile={profile} selectedAthleteId={selectedAthleteId} setSelectedAthleteId={setSelectedAthleteId} openDashboard={() => goTo('dashboard')} openAthleteArea={goToAthlete} /> },
-  builder: { label: 'Programmi', component: ({ profile, selectedAthleteId, setSelectedAthleteId }) => <BuilderScreen profile={profile} selectedAthleteId={selectedAthleteId} setSelectedAthleteId={setSelectedAthleteId} /> },
+  builder: { label: 'Programmi', component: ({ profile, selectedAthleteId, setSelectedAthleteId, registerBuilderNavigationGuard }) => <BuilderScreen profile={profile} selectedAthleteId={selectedAthleteId} setSelectedAthleteId={setSelectedAthleteId} registerNavigationGuard={registerBuilderNavigationGuard} /> },
   library: { label: 'Libreria esercizi', component: ({ profile }) => <LibraryScreen profile={profile} /> },
   test: { label: 'Test / retest', component: ({ profile, selectedAthleteId, goTo }) => <TestScreen profile={profile} selectedAthleteId={selectedAthleteId} screen="tests" onOpenProgress={() => goTo('progress')} /> },
   progress: { label: 'Progressi', component: ({ profile, selectedAthleteId, goTo }) => <TestScreen profile={profile} selectedAthleteId={selectedAthleteId} screen="progress" onOpenTests={() => goTo('test')} /> },
@@ -114,8 +115,35 @@ export default function App({ profile, onSignOut, initialMode }: { profile: AppP
   const [menuOpen, setMenuOpen] = useState(false)
   const [pendingCount, setPendingCount] = useState(0)
   const [syncing, setSyncing] = useState(false)
+  const [navigationError, setNavigationError] = useState('')
   const syncLock = useRef(false)
+  const builderNavigationGuard = useRef<BuilderNavigationGuard | null>(null)
+  const navigationInProgress = useRef(false)
+  const pendingModeNavigation = useRef<AppRole | null>(null)
+  const currentView = useRef(view)
+  currentView.current = view
   const Screen = viewMeta[view].component
+
+  const registerBuilderNavigationGuard = useCallback((guard: BuilderNavigationGuard | null) => {
+    builderNavigationGuard.current = guard
+  }, [])
+
+  const runAfterBuilderSave = useCallback(async (action: () => void | Promise<void>) => {
+    if (navigationInProgress.current) return false
+    navigationInProgress.current = true
+    setNavigationError('')
+    try {
+      const guard = builderNavigationGuard.current
+      if (guard && !(await guard())) return false
+      await action()
+      return true
+    } catch (reason) {
+      setNavigationError(reason instanceof Error ? reason.message : 'Operazione non completata.')
+      return false
+    } finally {
+      navigationInProgress.current = false
+    }
+  }, [])
 
   const updateUnsafeView =
     view !== 'home' &&
@@ -128,16 +156,31 @@ export default function App({ profile, onSignOut, initialMode }: { profile: AppP
 
   const changeMode = (next: AppRole) => {
     if (!modes.includes(next)) return
-    setMode(next); setView(next === 'coach' ? 'dashboard' : 'home'); setMenuOpen(false)
-    routeNavigate(`/app/${next}`)
-    try { window.localStorage.setItem(`cc-mode:${profile.userId}`, next) } catch { /* Storage può essere disabilitato. */ }
+    void runAfterBuilderSave(() => {
+      pendingModeNavigation.current = next
+      setMode(next); setView(next === 'coach' ? 'dashboard' : 'home'); setMenuOpen(false)
+      routeNavigate(`/app/${next}`)
+      try { window.localStorage.setItem(`cc-mode:${profile.userId}`, next) } catch { /* Storage può essere disabilitato. */ }
+    })
   }
 
   useEffect(() => {
+    if (pendingModeNavigation.current) {
+      if (initialMode === pendingModeNavigation.current) pendingModeNavigation.current = null
+      else if (mode === pendingModeNavigation.current) return
+    }
     if (!modes.includes(initialMode) || initialMode === mode) return
-    setMode(initialMode)
-    setView(initialMode === 'coach' ? 'dashboard' : 'home')
-  }, [initialMode, mode, modes])
+    const requestedMode = initialMode
+    routeNavigate(`/app/${mode}`, { replace: true })
+    void runAfterBuilderSave(() => {
+      pendingModeNavigation.current = requestedMode
+      setMode(requestedMode)
+      setView(requestedMode === 'coach' ? 'dashboard' : 'home')
+      setMenuOpen(false)
+      routeNavigate(`/app/${requestedMode}`, { replace: true })
+      try { window.localStorage.setItem(`cc-mode:${profile.userId}`, requestedMode) } catch { /* Storage può essere disabilitato. */ }
+    })
+  }, [initialMode, mode, modes, profile.userId, routeNavigate, runAfterBuilderSave])
 
   useEffect(() => {
     try { window.localStorage.setItem(viewStorageKey, view) } catch { /* Storage può essere disabilitato dal browser. */ }
@@ -202,51 +245,61 @@ export default function App({ profile, onSignOut, initialMode }: { profile: AppP
       description: 'Apre il runner della sessione assegnata e lo rende visibile nell’app.',
       inputSchema: { type: 'object', properties: {}, additionalProperties: false },
       annotations: { readOnlyHint: false, untrustedContentHint: false },
-      execute(input) {
+      async execute(input) {
         if (!input || typeof input !== 'object' || Object.keys(input).length > 0) {
           throw new Error('Questo comando non accetta parametri.')
         }
-        setView('session')
-        setMenuOpen(false)
-        window.scrollTo({ top: 0, behavior: 'smooth' })
-        return { view: 'session', status: 'ready' }
+        const navigated = await runAfterBuilderSave(() => {
+          setView('session')
+          setMenuOpen(false)
+          window.scrollTo({ top: 0, behavior: 'smooth' })
+        })
+        return { view: navigated ? 'session' : currentView.current, status: navigated ? 'ready' : 'blocked' }
       },
     }, { signal: lifecycle.signal })
     void Promise.resolve(registration).catch(() => undefined)
     return () => lifecycle.abort()
-  }, [])
+  }, [runAfterBuilderSave])
 
   const navigate = (next: ViewId) => {
     if (!navItems.some(item => item.id === next && item.roles.includes(mode))) return
-    if (next === 'athletes') setSelectedAthleteId('')
-    if (next === 'session' && mode === 'athlete') setSelectedSessionId('')
-    setView(next)
-    setMenuOpen(false)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    void runAfterBuilderSave(() => {
+      if (next === 'athletes') setSelectedAthleteId('')
+      if (next === 'session' && mode === 'athlete') setSelectedSessionId('')
+      setView(next)
+      setMenuOpen(false)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    })
   }
 
   const openSession = (sessionId: string) => {
-    setSelectedSessionId(sessionId)
-    setView('session')
-    setMenuOpen(false)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    void runAfterBuilderSave(() => {
+      setSelectedSessionId(sessionId)
+      setView('session')
+      setMenuOpen(false)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    })
   }
 
   const openAthlete = (athleteId: string) => {
-    setSelectedAthleteId(athleteId)
-    setView('athletes')
-    setMenuOpen(false)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    void runAfterBuilderSave(() => {
+      setSelectedAthleteId(athleteId)
+      setView('athletes')
+      setMenuOpen(false)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    })
   }
 
   const goToAthlete = (next: 'builder' | 'test', athleteId: string) => {
-    setSelectedAthleteId(athleteId)
-    setView(next)
-    setMenuOpen(false)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    void runAfterBuilderSave(() => {
+      setSelectedAthleteId(athleteId)
+      setView(next)
+      setMenuOpen(false)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    })
   }
 
-  const screen = <Screen goTo={navigate} goToAthlete={goToAthlete} openAthlete={openAthlete} openSession={openSession} profile={activeProfile} selectedAthleteId={selectedAthleteId} setSelectedAthleteId={setSelectedAthleteId} selectedSessionId={selectedSessionId} />
+  const screen = <Screen goTo={navigate} goToAthlete={goToAthlete} openAthlete={openAthlete} openSession={openSession} profile={activeProfile} selectedAthleteId={selectedAthleteId} setSelectedAthleteId={setSelectedAthleteId} selectedSessionId={selectedSessionId} registerBuilderNavigationGuard={registerBuilderNavigationGuard} />
 
   if (mode === 'athlete') {
     return <>
@@ -259,13 +312,14 @@ export default function App({ profile, onSignOut, initialMode }: { profile: AppP
         canSwitchToCoach={modes.includes('coach')}
         onNavigate={next => navigate(next as AthleteView)}
         onAccount={() => navigate('account')}
-        onSignOut={onSignOut}
+        onSignOut={async () => { await runAfterBuilderSave(onSignOut) }}
         onSync={() => void synchronizePending()}
         onSwitchToCoach={() => changeMode('coach')}
       >
         {screen}
       </AthleteShell>
       {messageToast && <div className="message-toast" role="status">{messageToast}</div>}
+      {navigationError && <div className="message-toast" role="alert">{navigationError}</div>}
     </>
   }
 
@@ -282,11 +336,12 @@ export default function App({ profile, onSignOut, initialMode }: { profile: AppP
       onNavigate={next => navigate(next as ViewId)}
       onAccount={() => navigate('account')}
       onFeedback={() => navigate('feedback')}
-      onSignOut={() => void onSignOut()}
+      onSignOut={() => void runAfterBuilderSave(onSignOut)}
       onSwitchToAthlete={() => changeMode('athlete')}
     >
       {screen}
     </CoachShell>
     {messageToast && <div className="message-toast" role="status">{messageToast}</div>}
+    {navigationError && <div className="message-toast" role="alert">{navigationError}</div>}
   </>
 }
