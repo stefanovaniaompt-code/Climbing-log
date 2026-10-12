@@ -138,6 +138,7 @@ export async function addExercise(profile: AppProfile, sessionId: string, existi
 }
 
 export type ExercisePatch = { sets: number; reps: number; seconds: number; loadKg: number; rpe: number; restSeconds: number; instructions: string; steps: PrescriptionStep[] }
+export type LoadAdjustmentResult = { updatedRows: number; unscalableRows: number; unchangedRows: number; partialRows: number }
 
 export async function updateExercise(profile: AppProfile, exerciseId: string, currentPrescription: Record<string, unknown>, patch: ExercisePatch) {
   assertCoach(profile); if (isDemo(profile)) return
@@ -157,9 +158,18 @@ export async function deleteExercise(profile: AppProfile, exerciseId: string) { 
 export async function deleteProgram(profile: AppProfile, programId: string) { assertCoach(profile); if (isDemo(profile)) return; const result = await supabase!.from('programs').delete().eq('id', programId).select('id').single(); if (result.error) throw result.error }
 
 export async function adjustLoads(profile: AppProfile, scope: 'week' | 'session', targetId: string, percentage: number) {
-  assertCoach(profile); if (isDemo(profile)) return
-  const result = await supabase!.rpc('adjust_prescription_loads', { target_scope: scope, target_id: targetId, percentage })
+  assertCoach(profile); if (isDemo(profile)) return { updatedRows: 0, unscalableRows: 0, unchangedRows: 0, partialRows: 0 }
+  const result = await supabase!.rpc('adjust_prescription_loads_reported', { target_scope: scope, target_id: targetId, percentage })
   if (result.error) throw result.error
+  const report = result.data && typeof result.data === 'object' && !Array.isArray(result.data)
+    ? result.data as Record<string, unknown>
+    : {}
+  return {
+    updatedRows: Number(report.updatedRows) || 0,
+    unscalableRows: Number(report.unscalableRows) || 0,
+    unchangedRows: Number(report.unchangedRows) || 0,
+    partialRows: Number(report.partialRows) || 0,
+  } satisfies LoadAdjustmentResult
 }
 
 export async function createCalendarEvent(profile: AppProfile, programId: string, eventType: string, startDate: string, endDate: string, note: string) {

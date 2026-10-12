@@ -1,6 +1,7 @@
 import { useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowLeft, Check, ChevronDown, Pause, Play, RotateCcw, Save, SkipForward } from 'lucide-react'
+import { legacyDoseDescription } from '../prescriptions/prescriptionConsistency'
 import { advanceExerciseTimer, createExerciseTimerState, exerciseTimerPhaseLabel, exerciseTimerProgressLabel, getExerciseTimerConfig, getPrescriptionDose, getPrescriptionLoad, getRestSeconds, getSetCount, getVariableSeries, timerPhaseDuration, type ExerciseTimerState, type SessionRunnerData } from './sessionRunner'
 import type { ExerciseInputDraft } from './sessionLocalDraft'
 import type { ExerciseSaveState } from './useExerciseProgress'
@@ -57,6 +58,8 @@ export function SessionExerciseCard({ exercise, coachNotes, canEdit, isNext, tim
   const nextTimerLabel = nextTimerState ? exerciseTimerPhaseLabel(nextTimerState) : 'Esercizio completato'
   const exerciseTimerProgress = activeTimer ? getExerciseTimerProgress(exercise, activeTimer) : 0
   const dose = getPrescriptionDose(exercise) ?? 'Dose indicata dal coach'
+  const doseDescription = legacyDoseDescription(exercise.prescription)
+  const doseNote = doseDescription ? `Nota: ${doseDescription}` : null
   const load = getPrescriptionLoad(exercise) ?? 'Corpo libero'
   return <article
     id={`exercise-${exercise.id}`}
@@ -81,6 +84,7 @@ export function SessionExerciseCard({ exercise, coachNotes, canEdit, isNext, tim
             <div className="athlete-prescription-head"><span>SERIE</span><span>PRESCRIZIONE</span></div>
             {variableSeries.map((series, index) => <div className="athlete-prescription-row" key={series + index}><span className="athlete-prescription-index">{String(index + 1).padStart(2, '0')}</span><span className="athlete-prescription-value">{series}</span></div>)}
           </div>
+          {doseNote && <p className="athlete-prescription-note">{doseNote}</p>}
           <div className="athlete-prescription-meta"><div><span className="athlete-prescription-meta-label">SERIE</span><strong>{getSetCount(exercise)}</strong></div><div><span className="athlete-prescription-meta-label">CARICO</span><strong>{load}</strong></div><div><span className="athlete-prescription-meta-label">RECUPERO</span><strong>{getRestSeconds(exercise)} sec</strong></div></div>
         </div> : <div className="athlete-prescription"><p className="athlete-prescription-dose">{dose}</p><div className="athlete-prescription-meta"><div><span className="athlete-prescription-meta-label">SERIE</span><strong>{getSetCount(exercise)}</strong></div><div><span className="athlete-prescription-meta-label">CARICO</span><strong>{load}</strong></div><div><span className="athlete-prescription-meta-label">RECUPERO</span><strong>{getRestSeconds(exercise)} sec</strong></div></div></div>}
 
@@ -101,7 +105,7 @@ export function SessionExerciseCard({ exercise, coachNotes, canEdit, isNext, tim
         </div>
         <div className="athlete-timer-focus__exercise-panel">
           <div><small>ESERCIZIO</small><h2>{exercise.name}</h2></div>
-          {variableSeries.length > 0 ? <div className="athlete-prescription"><div className="athlete-prescription-table"><div className="athlete-prescription-head"><span>SERIE</span><span>PRESCRIZIONE</span></div>{variableSeries.map((series, index) => <div className="athlete-prescription-row" key={series + index}><span className="athlete-prescription-index">{String(index + 1).padStart(2, '0')}</span><span className="athlete-prescription-value">{series}</span></div>)}</div><div className="athlete-prescription-meta"><div><span className="athlete-prescription-meta-label">SERIE</span><strong>{getSetCount(exercise)}</strong></div><div><span className="athlete-prescription-meta-label">CARICO</span><strong>{load}</strong></div><div><span className="athlete-prescription-meta-label">RECUPERO</span><strong>{getRestSeconds(exercise)} sec</strong></div></div></div> : <div className="athlete-prescription"><p className="athlete-prescription-dose">{dose}</p><div className="athlete-prescription-meta"><div><span className="athlete-prescription-meta-label">SERIE</span><strong>{getSetCount(exercise)}</strong></div><div><span className="athlete-prescription-meta-label">CARICO</span><strong>{load}</strong></div><div><span className="athlete-prescription-meta-label">RECUPERO</span><strong>{getRestSeconds(exercise)} sec</strong></div></div></div>}
+          {variableSeries.length > 0 ? <div className="athlete-prescription"><div className="athlete-prescription-table"><div className="athlete-prescription-head"><span>SERIE</span><span>PRESCRIZIONE</span></div>{variableSeries.map((series, index) => <div className="athlete-prescription-row" key={series + index}><span className="athlete-prescription-index">{String(index + 1).padStart(2, '0')}</span><span className="athlete-prescription-value">{series}</span></div>)}</div>{doseNote && <p className="athlete-prescription-note">{doseNote}</p>}<div className="athlete-prescription-meta"><div><span className="athlete-prescription-meta-label">SERIE</span><strong>{getSetCount(exercise)}</strong></div><div><span className="athlete-prescription-meta-label">CARICO</span><strong>{load}</strong></div><div><span className="athlete-prescription-meta-label">RECUPERO</span><strong>{getRestSeconds(exercise)} sec</strong></div></div></div> : <div className="athlete-prescription"><p className="athlete-prescription-dose">{dose}</p><div className="athlete-prescription-meta"><div><span className="athlete-prescription-meta-label">SERIE</span><strong>{getSetCount(exercise)}</strong></div><div><span className="athlete-prescription-meta-label">CARICO</span><strong>{load}</strong></div><div><span className="athlete-prescription-meta-label">RECUPERO</span><strong>{getRestSeconds(exercise)} sec</strong></div></div></div>}
           {(exercise.instructions || coachNotes) && <p className="athlete-timer-focus__guidance">{exercise.instructions || coachNotes}</p>}
           <button className="athlete-timer-focus__mini" onClick={() => setTimerView('timer')}><span><small>{exerciseTimerPhaseLabel(activeTimer)}</small><strong>{timerLabel}</strong></span><span><small>AVANZAMENTO</small><strong>{exerciseTimerProgress}%</strong></span><i><b style={{ width: `${exerciseTimerProgress}%` }} /></i></button>
         </div>

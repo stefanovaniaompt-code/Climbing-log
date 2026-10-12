@@ -2032,3 +2032,39 @@ describe('BuilderScreen scenari integrati RC1', () => {
     expect(inputWithLabel(screen, 'Note / obiettivi').value).toBe('Solo sulla copia')
   })
 })
+
+describe('BuilderScreen comunica le variazioni parziali dei carichi', () => {
+  it('non comunica un successo completo quando il testo storico non è scalabile', async () => {
+    repository.loadProgramBuilder.mockResolvedValueOnce({
+      ...builderData,
+      exercises: builderData.exercises.map(item => ({
+        ...item,
+        prescription: {
+          sets: 3,
+          reps: 6,
+          seconds: 0,
+          loadKg: 20,
+          dose: '6 ripetizioni · 20 kg nella prima serie, poi aumentare progressivamente',
+          unit: 'kg',
+        },
+      })),
+    })
+    const screen = await renderBuilder()
+    await act(async () => { buttonWithText(screen, 'Hang board').click() })
+    await act(async () => { changeInput(inputWithLabel(screen, 'Variazione %'), '10') })
+    await act(async () => {
+      buttonWithText(screen, 'Applica variazione a questo esercizio').click()
+      await Promise.resolve()
+    })
+    await flushPromises()
+
+    expect(repository.updateExercise).toHaveBeenCalledWith(
+      profile,
+      'exercise-1',
+      expect.objectContaining({ dose: expect.stringContaining('aumentare progressivamente') }),
+      expect.objectContaining({ loadKg: 22 }),
+    )
+    expect(screen.textContent).toContain('carichi numerici')
+    expect(screen.textContent).toContain('testo storico')
+  })
+})

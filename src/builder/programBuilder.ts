@@ -1,4 +1,5 @@
 import type { ProgramType } from '../programs/programType'
+import { hasPrescriptionField, legacyDoseDescription, optionalNonNegativeNumber, usesKilogramLoads } from '../prescriptions/prescriptionConsistency'
 
 export type BuilderAthlete = { id: string; name: string }
 export type BuilderProgram = { id: string; athleteId: string; name: string; goal: string | null; programType: ProgramType; status: 'draft' | 'active' | 'completed' | 'archived'; startDate: string | null; endDate: string | null }
@@ -47,13 +48,16 @@ export function latestWeek(weeks: BuilderWeek[]) {
 
 export function prescriptionSummary(exercise: BuilderSessionExercise) {
   const steps = getPrescriptionSteps(exercise.prescription)
-  if (steps.length) return steps.map(formatPrescriptionStep).join(' · ')
+  const description = legacyDoseDescription(exercise.prescription)
+  const note = description ? `Nota: ${description}` : null
+  if (steps.length) return [steps.map(formatPrescriptionStep).join(' · '), note].filter(Boolean).join(' · ')
   const { sets, reps, seconds, loadKg: load } = readPrescriptionEditorValues(exercise.prescription)
   const effort = exercise.targetRpeMax ? `RPE ${exercise.targetRpeMax}` : null
   return [
     `${sets} serie`,
     reps > 0 ? `${reps} rep` : seconds > 0 ? `${seconds} sec` : null,
     load > 0 ? `${load} kg` : null,
+    note,
     effort,
   ].filter(Boolean).join(' · ')
 }
@@ -67,19 +71,48 @@ export function readPrescriptionEditorValues(prescription: Record<string, unknow
   const steps = structuredSteps.length ? structuredSteps : parseDoseSteps(dose)
   const repsFromDose = dose.match(/(\d+(?:[.,]\d+)?)\s*(?:rep|ripetizion)/i)
   const secondsFromDose = dose.match(/(\d+(?:[.,]\d+)?)\s*(?:s|sec|second)/i)
-  const legacyLoad = Number(String(prescription.load_value ?? '').replace(',', '.'))
-  const modernLoad = Number(prescription.loadKg)
+  const legacyLoad = optionalNonNegativeNumber(prescription.load_value)
+  const modernLoad = optionalNonNegativeNumber(prescription.loadKg)
   const firstStep = steps[0]
   const timer = prescription.timer && typeof prescription.timer === 'object' && !Array.isArray(prescription.timer)
     ? prescription.timer as Record<string, unknown>
     : {}
   return {
-    sets: steps.length || Math.max(1, Number(prescription.sets) || 1),
-    reps: Math.max(0, Number(prescription.reps) || firstStep?.reps || Number(repsFromDose?.[1]?.replace(',', '.')) || Number(timer.repetitions) || 0),
-    seconds: Math.max(0, Number(prescription.seconds) || firstStep?.seconds || Number(secondsFromDose?.[1]?.replace(',', '.')) || 0),
-    loadKg: Number.isFinite(modernLoad) && modernLoad > 0 ? modernLoad : firstStep?.loadKg ?? (Number.isFinite(legacyLoad) && legacyLoad > 0 ? legacyLoad : 0),
+    sets: Math.max(1, optionalNonNegativeNumber(prescription.sets) ?? (steps.length || 1)),
+    reps: Math.max(0, hasPrescriptionField(prescription, 'reps')
+      ? modernValue(prescription.reps)
+      : (firstStep?.reps ?? (Number(repsFromDose?.[1]?.replace(',', '.')) || Number(timer.repetitions) || 0))),
+    seconds: Math.max(0, hasPrescriptionField(prescription, 'seconds')
+      ? modernValue(prescription.seconds)
+      : (firstStep?.seconds ?? (Number(secondsFromDose?.[1]?.replace(',', '.')) || 0))),
+    loadKg: usesKilogramLoads(prescription)
+      ? hasPrescriptionField(prescription, 'loadKg')
+        ? modernLoad ?? 0
+        : firstStep?.loadKg ?? (legacyLoad !== null && legacyLoad > 0 ? legacyLoad : 0)
+      : 0,
     steps,
   }
+}
+
+function modernValue(value: unknown) {
+  return optionalNonNegativeNumber(value) ?? 0
+}
+
+export function resizePrescriptionSteps(steps: PrescriptionStep[], setCount: number, fallback: Pick<PrescriptionEditorValues, 'reps' | 'seconds' | 'loadKg'>): PrescriptionStep[] {
+  if (!steps.length) return []
+  const targetCount = Math.max(1, Math.trunc(setCount) || 1)
+  if (targetCount <= steps.length) return steps.slice(0, targetCount).map(step => ({ ...step }))
+  const result = steps.map(step => ({ ...step }))
+  while (result.length < targetCount) {
+    const previous = result.at(-1)
+    result.push({
+      label: `Set ${result.length + 1}`,
+      reps: previous?.reps ?? fallback.reps,
+      seconds: previous?.seconds ?? fallback.seconds,
+      loadKg: previous?.loadKg ?? (fallback.loadKg > 0 ? fallback.loadKg : null),
+    })
+  }
+  return result
 }
 
 export function scalePrescriptionLoads(values: PrescriptionEditorValues, percentage: number): PrescriptionEditorValues {
@@ -90,6 +123,31 @@ export function scalePrescriptionLoads(values: PrescriptionEditorValues, percent
     loadKg: values.loadKg > 0 ? scale(values.loadKg) : values.loadKg,
     steps: values.steps.map(step => ({ ...step, loadKg: step.loadKg !== null && step.loadKg > 0 ? scale(step.loadKg) : step.loadKg })),
   }
+}
+
+export function describePrescriptionLoadAdjustment(prescription: Record<string, unknown>) {
+  if (!usesKilogramLoads(prescription)) return { scalableValues: 0, unscalableValues: 0 }
+
+  let scalableValues = 0
+  let unscalableValues = 0
+  const countLoad = (value: unknown) => {
+    const numeric = optionalNonNegativeNumber(value)
+    if (numeric !== null && numeric > 0) scalableValues += 1
+    else if (value !== null && value !== undefined && String(value).trim()) unscalableValues += 1
+  }
+
+  for (const key of ['loadKg', 'load_kg', 'load_value']) {
+    if (hasPrescriptionField(prescription, key)) countLoad(prescription[key])
+  }
+
+  const structuredSteps = getPrescriptionSteps(prescription)
+  const legacySteps = structuredSteps.length ? [] : parseDoseSteps(typeof prescription.dose === 'string' ? prescription.dose : '')
+  for (const step of structuredSteps.length ? structuredSteps : legacySteps) countLoad(step.loadKg)
+
+  const dose = typeof prescription.dose === 'string' ? prescription.dose.trim() : ''
+  if (dose && /(?:^|\s)kg(?:s)?(?:\s|$|[×x,.;])/i.test(dose) && !legacySteps.length) unscalableValues += 1
+
+  return { scalableValues, unscalableValues }
 }
 
 function parseDoseSteps(dose: string): PrescriptionStep[] {
@@ -129,17 +187,25 @@ export function mergePrescriptionForUpdate(current: Record<string, unknown>, nex
   const timer = current.timer && typeof current.timer === 'object' && !Array.isArray(current.timer)
     ? { ...(current.timer as Record<string, unknown>) }
     : null
-  if (timer && previous.seconds !== next.seconds && next.seconds > 0) timer.work_seconds = next.seconds
-  if (timer && previous.reps !== next.reps && next.reps > 0) timer.repetitions = next.reps
+  if (timer && previous.seconds !== next.seconds) timer.work_seconds = next.seconds
+  if (timer && previous.reps !== next.reps) timer.repetitions = next.reps
   const dose = [next.reps > 0 ? `${next.reps} ripetizioni` : '', next.seconds > 0 ? `${next.seconds} sec` : ''].filter(Boolean).join(' · ')
+  const steps = resizePrescriptionSteps(next.steps, next.sets, next)
+  const legacyDoseSteps = Array.isArray(current.steps) ? [] : parseDoseSteps(String(current.dose ?? ''))
+  const legacyStepsChanged = steps.length > 0
+    && legacyDoseSteps.some(step => step.loadKg !== null)
+    && JSON.stringify(legacyDoseSteps) !== JSON.stringify(steps)
+  const persistedDose = legacyStepsChanged
+    ? steps.map(formatPrescriptionStep).join(' · ')
+    : doseChanged ? dose || null : current.dose
   return {
     ...current,
-    sets: next.steps.length || next.sets,
+    sets: Math.max(1, Math.trunc(next.sets) || 1),
     reps: next.reps,
     seconds: next.seconds,
     loadKg: next.loadKg,
-    steps: next.steps.length ? next.steps : undefined,
-    dose: doseChanged ? dose || null : current.dose,
+    steps: steps.length ? steps : undefined,
+    dose: persistedDose,
     load_value: loadChanged ? next.loadKg > 0 ? String(next.loadKg) : null : current.load_value,
     unit: loadChanged ? next.loadKg > 0 ? 'kg' : null : current.unit,
     timer: timer ?? current.timer,
@@ -150,8 +216,8 @@ export function getPrescriptionSteps(prescription: Record<string, unknown>): Pre
   if (!Array.isArray(prescription.steps)) return []
   return prescription.steps.map((value, index) => {
     const row = value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
-    const load = Number(row.loadKg)
-    return { label: String(row.label ?? `Set ${index + 1}`), reps: Math.max(0, Number(row.reps) || 0), seconds: Math.max(0, Number(row.seconds) || 0), loadKg: Number.isFinite(load) && load >= 0 ? load : null }
+    const load = optionalNonNegativeNumber(row.loadKg)
+    return { label: String(row.label ?? `Set ${index + 1}`), reps: Math.max(0, Number(row.reps) || 0), seconds: Math.max(0, Number(row.seconds) || 0), loadKg: load }
   })
 }
 
