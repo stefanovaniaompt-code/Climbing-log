@@ -1,5 +1,6 @@
 export type JsonRecord = Record<string, unknown>
 import type { ProgramType } from '../programs/programType'
+import { hasPrescriptionField, legacyDoseDescription, optionalNonNegativeNumber, usesKilogramLoads } from '../prescriptions/prescriptionConsistency'
 import type { CompletionOutcome } from './sessionFeedback'
 
 export type ExerciseProgress = {
@@ -434,6 +435,12 @@ export function getSetCount(exercise: RunnerExercise): number {
     return derived.length
   }
 
+  const explicitSets = positiveInteger(exercise.prescription.sets)
+  if (explicitSets) return explicitSets
+
+  const steps = exercise.prescription.steps
+  if (Array.isArray(steps) && steps.length) return steps.length
+
   const timer =
     exercise.prescription.timer
 
@@ -467,26 +474,35 @@ export function getRestSeconds(exercise: RunnerExercise): number {
 }
 
 export function getPrescriptionDose(exercise: RunnerExercise): string | null {
-  const legacyDose = textValue(exercise.prescription.dose)
-  if (legacyDose) return legacyDose
-
+  const description = legacyDoseDescription(exercise.prescription)
+  const note = description ? `Nota: ${description}` : null
+  if (Array.isArray(exercise.prescription.steps) && exercise.prescription.steps.length) return note
+  const hasModernDose = hasPrescriptionField(exercise.prescription, 'reps') || hasPrescriptionField(exercise.prescription, 'seconds')
   const reps = positiveInteger(exercise.prescription.reps)
   const seconds = positiveInteger(exercise.prescription.seconds)
-  if (reps && seconds) return `${reps} ripetizioni · ${seconds} sec`
-  if (reps) return `${reps} ripetizioni`
-  if (seconds) return `${seconds} sec`
+  const modernDose = [reps ? `${reps} ripetizioni` : null, seconds ? `${seconds} sec` : null].filter(Boolean).join(' · ')
+  if (modernDose) return [modernDose, note].filter(Boolean).join(' · ')
+  if (hasModernDose) return note
+  const legacyDose = textValue(exercise.prescription.dose)
+  if (legacyDose) return legacyDose
   return null
 }
 
 export function getPrescriptionLoad(exercise: RunnerExercise): string | null {
+  if (Array.isArray(exercise.prescription.steps) && exercise.prescription.steps.length) return null
   const legacyLoad = textValue(exercise.prescription.load_value)
   const unit = textValue(exercise.prescription.unit)
-  if (legacyLoad) return `${legacyLoad}${unit ? ` ${unit}` : ''}`
-
-  const loadKg = Number(exercise.prescription.loadKg)
-  if (Number.isFinite(loadKg) && loadKg > 0) return `${loadKg} ${unit || 'kg'}`
-
   const loadType = textValue(exercise.prescription.load_type)
+  if (!usesKilogramLoads(exercise.prescription)) {
+    if (loadType?.toLowerCase().replace(/[\s-]+/g, '_').includes('grade') && legacyLoad) return `${legacyLoad}${unit ? ` ${unit}` : ''}`
+    return loadType && loadType !== 'none' ? loadType : legacyLoad ? `${legacyLoad}${unit ? ` ${unit}` : ''}` : null
+  }
+
+  if (hasPrescriptionField(exercise.prescription, 'loadKg')) {
+    const loadKg = optionalNonNegativeNumber(exercise.prescription.loadKg)
+    return loadKg !== null && loadKg > 0 ? `${loadKg} kg` : null
+  }
+  if (legacyLoad) return `${legacyLoad}${unit ? ` ${unit}` : ''}`
   return loadType && loadType !== 'none' ? loadType : null
 }
 
@@ -510,7 +526,7 @@ export function getVariableSeries(
     const prescriptionSteps = Array.isArray(steps) ? steps : []
     const fallbackReps = positiveInteger(exercise.prescription.reps)
     const fallbackSeconds = positiveInteger(exercise.prescription.seconds)
-    const seriesCount = Math.max(derived.length, prescriptionSteps.length)
+    const seriesCount = Math.max(getSetCount(exercise), derived.length, prescriptionSteps.length)
 
     return Array.from({ length: seriesCount }, (_, index) => {
       const target = derived[index]
@@ -521,7 +537,7 @@ export function getVariableSeries(
       const dose = reps ? `${reps} rep` : seconds ? `${seconds} sec` : ''
       const load = target
         ? `${target.percentage}% = ${Number(target.calculatedTarget.toFixed(2))} ${target.targetUnit}`
-        : Number.isFinite(Number(row.loadKg)) && Number(row.loadKg) >= 0 ? `${Number(row.loadKg)} kg` : ''
+        : usesKilogramLoads(exercise.prescription) && optionalNonNegativeNumber(row.loadKg) !== null ? `${optionalNonNegativeNumber(row.loadKg)} kg` : ''
       return [load, dose].filter(Boolean).join(' · ') || textValue(row.label) || `Set ${index + 1}`
     })
   }
@@ -529,12 +545,12 @@ export function getVariableSeries(
   if (Array.isArray(steps) && steps.length) {
     return steps.map((value, index) => {
       const row = value && typeof value === 'object' && !Array.isArray(value) ? value as JsonRecord : {}
-      const load = Number(row.loadKg)
+      const load = optionalNonNegativeNumber(row.loadKg)
       const reps = positiveInteger(row.reps)
       const seconds = positiveInteger(row.seconds)
       const label = textValue(row.label) || `Set ${index + 1}`
       const dose = reps ? `${reps} rep` : seconds ? `${seconds} sec` : ''
-      return [Number.isFinite(load) && load >= 0 ? `${load} kg` : '', dose].filter(Boolean).join(' × ') || label
+      return [usesKilogramLoads(exercise.prescription) && load !== null ? `${load} kg` : '', dose].filter(Boolean).join(' × ') || label
     })
   }
   const dose =

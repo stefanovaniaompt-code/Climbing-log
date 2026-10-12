@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { formatPrescription, getRestSeconds, getVariableSeries, type RunnerExercise } from '../session/sessionRunner'
-import { canPublishProgram, getPrescriptionSteps, latestWeek, mergePrescriptionForUpdate, nextSequence, prescriptionSummary, readPrescriptionEditorValues, saveBeforeSelectingExercise, scalePrescriptionLoads, type ProgramBuilderData } from './programBuilder'
+import { canPublishProgram, describePrescriptionLoadAdjustment, getPrescriptionSteps, latestWeek, mergePrescriptionForUpdate, nextSequence, prescriptionSummary, readPrescriptionEditorValues, saveBeforeSelectingExercise, scalePrescriptionLoads, type ProgramBuilderData } from './programBuilder'
 
 function runnerExercise(prescription: Record<string, unknown>, restSeconds: number): RunnerExercise {
   return { id: 'e', order: 1, name: 'Hang', prescription, calculationContext: {}, targetRpeMin: 7, targetRpeMax: 8, restSeconds, instructions: null, progress: null }
@@ -23,6 +23,7 @@ describe('program builder', () => {
     { id: 'w1', programId: 'p', weekNumber: 1, blockName: null, phase: null, status: 'planned', loadType: 'load', notes: null },
   ])?.id).toBe('w3'))
   it('riassume una prescrizione', () => expect(prescriptionSummary({ id: 'e', sessionId: 's', exerciseId: null, order: 1, name: 'Hang', prescription: { sets: 4, seconds: 5, loadKg: 20 }, targetRpeMin: 7, targetRpeMax: 8, restSeconds: 120, instructions: null })).toBe('4 serie · 5 sec · 20 kg · RPE 8'))
+  it('mantiene nel riepilogo coach le indicazioni legacy ancora descrittive', () => expect(prescriptionSummary({ id: 'e', sessionId: 's', exerciseId: null, order: 1, name: 'Hang', prescription: { sets: 3, reps: 6, seconds: 0, loadKg: 20, dose: '6 ripetizioni · tenuta 5 s a 90°' }, targetRpeMin: 7, targetRpeMax: 8, restSeconds: 120, instructions: null })).toBe('3 serie · 6 rep · 20 kg · Nota: tenuta 5 s a 90° · RPE 8'))
   it('legge prescrizioni strutturate senza dipendere dal nome esercizio', () => expect(getPrescriptionSteps({ steps: [{ label: 'Salita', loadKg: 32.5, reps: 10 }, { label: 'Picco', loadKg: 45, reps: 3 }] })).toEqual([{ label: 'Salita', loadKg: 32.5, reps: 10, seconds: 0 }, { label: 'Picco', loadKg: 45, reps: 3, seconds: 0 }]))
   it('legge carichi, serie e ripetizioni delle programmazioni storiche', () => expect(readPrescriptionEditorValues({ sets: 5, dose: '3 rep', load_value: '27.5', unit: 'kg' })).toEqual({ sets: 5, reps: 3, seconds: 0, loadKg: 27.5, steps: [] }))
   it('recupera progressioni variabili dalle prescrizioni storiche salvate in dose', () => {
@@ -55,7 +56,55 @@ describe('program builder', () => {
   })
   it('sincronizza i campi builder e atleta quando il coach modifica la prescrizione', () => {
     const current = { sets: 4, dose: '5 sec', load_value: '30', unit: 'kg', timer: { work_seconds: 5, repetitions: 1 } }
-    expect(mergePrescriptionForUpdate(current, { sets: 5, reps: 0, seconds: 7, loadKg: 32.5, steps: [] })).toMatchObject({ sets: 5, seconds: 7, loadKg: 32.5, dose: '7 sec', load_value: '32.5', unit: 'kg', timer: { work_seconds: 7, repetitions: 1 } })
+    expect(mergePrescriptionForUpdate(current, { sets: 5, reps: 0, seconds: 7, loadKg: 32.5, steps: [] })).toMatchObject({ sets: 5, seconds: 7, loadKg: 32.5, dose: '7 sec', load_value: '32.5', unit: 'kg', timer: { work_seconds: 7, repetitions: 0 } })
+  })
+  it('considera i campi moderni espliciti prima dei fallback legacy, inclusi gli zeri', () => {
+    expect(readPrescriptionEditorValues({
+      sets: 4,
+      reps: 8,
+      seconds: 0,
+      loadKg: 25,
+      dose: '5 sec',
+      load_value: '40',
+      unit: 'kg',
+      timer: { work_seconds: 5, repetitions: 3 },
+    })).toMatchObject({ sets: 4, reps: 8, seconds: 0, loadKg: 25 })
+  })
+  it('propaga al timer anche la rimozione esplicita di durata e ripetizioni', () => {
+    const saved = mergePrescriptionForUpdate(
+      { sets: 4, reps: 6, seconds: 5, dose: '6 ripetizioni · 5 sec', timer: { work_seconds: 5, repetitions: 6 } },
+      { sets: 4, reps: 0, seconds: 0, loadKg: 0, steps: [] },
+    )
+    expect(saved).toMatchObject({ reps: 0, seconds: 0, dose: null, timer: { work_seconds: 0, repetitions: 0 } })
+  })
+  it('mantiene coerenti il contatore serie e le righe strutturate', () => {
+    const saved = mergePrescriptionForUpdate(
+      { sets: 3, steps: [
+        { label: 'Set 1', loadKg: 20, reps: 8 },
+        { label: 'Set 2', loadKg: 22, reps: 6 },
+        { label: 'Set 3', loadKg: 24, reps: 4 },
+      ] },
+      { sets: 2, reps: 8, seconds: 0, loadKg: 20, steps: [
+        { label: 'Set 1', loadKg: 20, reps: 8, seconds: 0 },
+        { label: 'Set 2', loadKg: 22, reps: 6, seconds: 0 },
+        { label: 'Set 3', loadKg: 24, reps: 4, seconds: 0 },
+      ] },
+    )
+    expect(saved.sets).toBe(2)
+    expect(saved.steps).toHaveLength(2)
+  })
+  it('non converte carichi assenti, corpo libero o gradi in chilogrammi', () => {
+    expect(getPrescriptionSteps({ steps: [{ label: 'Corpo libero', loadKg: null, reps: 5 }] })[0].loadKg).toBeNull()
+    expect(readPrescriptionEditorValues({ sets: 3, load_type: 'bodyweight', load_value: '70', unit: 'kg' }).loadKg).toBe(0)
+    expect(readPrescriptionEditorValues({ sets: 3, load_type: 'climbing_grade', load_value: '7a', unit: 'french' }).loadKg).toBe(0)
+    expect(readPrescriptionEditorValues({ sets: 3, load_type: 'added_weight', load_value: '20', unit: 'kg' }).loadKg).toBe(20)
+  })
+  it('conserva la stessa prescrizione tra editor coach, persistenza e vista atleta', () => {
+    const original = { sets: 3, reps: 5, seconds: 0, loadKg: 20, dose: '9 ripetizioni', load_value: '35', unit: 'kg' }
+    const editor = readPrescriptionEditorValues(original)
+    const saved = mergePrescriptionForUpdate(original, { ...editor, sets: 2, reps: 0, seconds: 12, loadKg: 22.5 })
+    expect(readPrescriptionEditorValues(saved)).toMatchObject({ sets: 2, reps: 0, seconds: 12, loadKg: 22.5 })
+    expect(formatPrescription(runnerExercise(saved, 120))).toBe('2 serie · 12 sec · 22.5 kg')
   })
   it('mostra nell’area atleta i valori moderni persistiti dal builder', () => {
     const saved = mergePrescriptionForUpdate({ sets: 3, reps: 5 }, { sets: 4, reps: 8, seconds: 0, loadKg: 25, steps: [] })
@@ -93,6 +142,28 @@ describe('program builder', () => {
         { label: 'Tenuta', loadKg: null, reps: 0, seconds: 10 },
       ],
     })
+  })
+  it('mantiene coerenti carico principale, stringa legacy e righe scalabili', () => {
+    const current = { sets: 2, dose: '20 kg × 8 · 25 kg × 5', load_value: '20', unit: 'kg' }
+    const scaled = scalePrescriptionLoads(readPrescriptionEditorValues(current), 10)
+    const saved = mergePrescriptionForUpdate(current, scaled)
+    expect(saved).toMatchObject({
+      loadKg: 22,
+      load_value: '22',
+      dose: '22 kg × 8 rep · 27.5 kg × 5 rep',
+      steps: [
+        { loadKg: 22, reps: 8 },
+        { loadKg: 27.5, reps: 5 },
+      ],
+    })
+  })
+  it('distingue carichi scalabili, testi legacy e unità che non rappresentano kg', () => {
+    expect(describePrescriptionLoadAdjustment({ loadKg: 20, unit: 'kg' })).toEqual({ scalableValues: 1, unscalableValues: 0 })
+    expect(describePrescriptionLoadAdjustment({ load_value: '32.5', unit: 'kg' })).toEqual({ scalableValues: 1, unscalableValues: 0 })
+    expect(describePrescriptionLoadAdjustment({ loadKg: 20, dose: '20 kg nella prima serie, poi aumentare progressivamente', unit: 'kg' })).toEqual({ scalableValues: 1, unscalableValues: 1 })
+    expect(describePrescriptionLoadAdjustment({ load_type: 'test_percentage', load_value: '85', unit: '%' })).toEqual({ scalableValues: 0, unscalableValues: 0 })
+    expect(describePrescriptionLoadAdjustment({ load_type: 'bodyweight', load_value: '70', unit: 'kg' })).toEqual({ scalableValues: 0, unscalableValues: 0 })
+    expect(describePrescriptionLoadAdjustment({ load_type: 'climbing_grade', load_value: '7a', unit: 'french' })).toEqual({ scalableValues: 0, unscalableValues: 0 })
   })
   it('rifiuta variazioni sotto -100%', () => expect(() => scalePrescriptionLoads({ sets: 1, reps: 1, seconds: 0, loadKg: 10, steps: [] }, -101)).toThrow('-100%'))
   it('pubblica solo strutture complete', () => {

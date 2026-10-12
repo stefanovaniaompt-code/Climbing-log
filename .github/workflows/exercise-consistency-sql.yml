@@ -1,0 +1,37 @@
+name: exercise-consistency-sql-temporary
+
+on:
+  push:
+    branches:
+      - fix/exercise-consistency
+
+permissions:
+  contents: read
+
+jobs:
+  pgtap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPABASE_WORKDIR: migration/ci-baseline
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.116.0
+      - name: Stage canonical migrations and isolated pgTAP tests
+        shell: bash
+        run: |
+          node scripts/stage-ci-migrations.mjs
+          mkdir -p migration/ci-baseline/supabase/tests
+          cp supabase/tests/002_prescription_load_scaling.sql migration/ci-baseline/supabase/tests/
+          cp supabase/tests/003_prescription_load_adjustment_integration.sql migration/ci-baseline/supabase/tests/
+      - name: Start isolated Supabase stack
+        run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
+      - name: Rebuild isolated PostgreSQL database
+        run: supabase db reset --local --no-seed
+      - name: Run pgTAP
+        run: supabase test db --local
+      - name: Stop isolated Supabase stack
+        if: always()
+        run: supabase stop --no-backup

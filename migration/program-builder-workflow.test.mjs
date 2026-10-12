@@ -5,6 +5,7 @@ import { test } from 'node:test'
 const cloneSql = readFileSync(new URL('../supabase/migrations/20260930120000_clone_training_week.sql', import.meta.url), 'utf8')
 const workflowSql = readFileSync(new URL('../supabase/migrations/20261002120000_program_builder_workflow.sql', import.meta.url), 'utf8')
 const renumberSql = readFileSync(new URL('../supabase/migrations/20261007120000_renumber_weeks_after_deletion.sql', import.meta.url), 'utf8')
+const loadSemanticsSql = readFileSync(new URL('../supabase/migrations/20261011190248_preserve_prescription_load_semantics.sql', import.meta.url), 'utf8')
 
 test('clone week is atomic and copies sessions plus exercises', () => {
   for (const token of ['pg_advisory_xact_lock', 'insert into public.training_weeks', 'insert into public.sessions', 'insert into public.session_exercises', 'prescription', 'calculation_context', 'coach_notes']) assert.match(cloneSql, new RegExp(token))
@@ -30,4 +31,20 @@ test('builder extension keeps RLS and cascade ownership', () => {
   assert.match(workflowSql, /private\.can_manage_program\(program_id\)/)
   assert.match(workflowSql, /security invoker/)
   assert.match(workflowSql, /adjust_prescription_loads/)
+})
+
+test('load scaling preserves JSON representation and rejects incompatible units', () => {
+  assert.match(loadSemanticsSql, /create or replace function private\.scale_load_values\(value jsonb, factor numeric\)/i)
+  assert.match(loadSemanticsSql, /create or replace function private\.scale_load_values_report\(value jsonb, factor numeric\)/i)
+  assert.match(loadSemanticsSql, /create or replace function private\.prescription_load_adjustment_report\(prescription jsonb, calculation_context jsonb, factor numeric\)/i)
+  assert.match(loadSemanticsSql, /private\.has_derived_load_context\(calculation_context\)/i)
+  assert.match(loadSemanticsSql, /create or replace function public\.adjust_prescription_loads_reported/i)
+  assert.match(loadSemanticsSql, /select se\.id, se\.prescription, se\.calculation_context/i)
+  assert.match(loadSemanticsSql, /updatedRows/i)
+  assert.match(loadSemanticsSql, /unscalableRows/i)
+  assert.match(loadSemanticsSql, /jsonb_typeof\(item\) = 'string'/i)
+  assert.match(loadSemanticsSql, /load_type/i)
+  assert.match(loadSemanticsSql, /unit/i)
+  assert.match(loadSemanticsSql, /bodyweight/i)
+  assert.match(loadSemanticsSql, /climbing_grade/i)
 })

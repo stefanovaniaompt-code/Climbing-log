@@ -47,6 +47,48 @@ describe('session runner selectors', () => {
     expect(formatPrescription(item)).toBe('5 serie · 8 ripetizioni · 24.5 kg')
   })
 
+  it('non mostra valori legacy in conflitto con i campi moderni espliciti', () => {
+    const item = exercise({ prescription: { sets: 3, reps: 8, seconds: 0, loadKg: 24.5, dose: '5 sec', load_value: '40', unit: 'kg' } })
+    expect(formatPrescription(item)).toBe('3 serie · 8 ripetizioni · 24.5 kg')
+  })
+
+  it('preserva le indicazioni descrittive legacy non rappresentate dai campi moderni', () => {
+    const item = exercise({ prescription: { sets: 3, reps: 6, seconds: 0, loadKg: 20, dose: '6 ripetizioni · tenuta 5 s a 90°', unit: 'kg' } })
+    expect(formatPrescription(item)).toBe('3 serie · 6 ripetizioni · Nota: tenuta 5 s a 90° · 20 kg')
+  })
+
+  it('non duplica le righe strutturate ma conserva una nota legacy separata', () => {
+    const item = exercise({ prescription: { sets: 2, dose: '20 kg × 8 · 25 kg × 5 · mantenere spalle attive', steps: [
+      { label: 'Set 1', loadKg: 20, reps: 8 },
+      { label: 'Set 2', loadKg: 25, reps: 5 },
+    ] } })
+    expect(formatPrescription(item)).toBe('2 serie · Nota: mantenere spalle attive')
+    expect(getVariableSeries(item)).toEqual(['20 kg × 8 rep', '25 kg × 5 rep'])
+  })
+
+  it('usa le righe strutturate come dettaglio senza ripetere un riepilogo incompatibile', () => {
+    const item = exercise({ prescription: { sets: 2, reps: 10, loadKg: 30, dose: '3 rep', load_value: '50', unit: 'kg', steps: [
+      { label: 'Set 1', loadKg: 20, reps: 8 },
+      { label: 'Set 2', loadKg: 25, reps: 5 },
+    ] } })
+    expect(formatPrescription(item)).toBe('2 serie')
+    expect(getVariableSeries(item)).toEqual(['20 kg × 8 rep', '25 kg × 5 rep'])
+  })
+
+  it('non trasforma loadKg nullo in 0 kg nelle progressioni', () => {
+    expect(getVariableSeries(exercise({ prescription: { sets: 2, steps: [
+      { label: 'Corpo libero', loadKg: null, reps: 5 },
+      { label: 'Tenuta', seconds: 10 },
+    ] } }))).toEqual(['5 rep', '10 sec'])
+  })
+
+  it('mantiene distinte le semantiche di kg, corpo libero, carico aggiunto e grado', () => {
+    expect(formatPrescription(exercise({ prescription: { sets: 3, load_type: 'bodyweight', load_value: '70', unit: 'kg' } }))).toBe('3 serie · bodyweight')
+    expect(formatPrescription(exercise({ prescription: { sets: 3, load_type: 'added_weight', load_value: '20', unit: 'kg' } }))).toBe('3 serie · 20 kg')
+    expect(formatPrescription(exercise({ prescription: { sets: 3, load_type: 'climbing_grade', load_value: '7a', unit: 'french' } }))).toBe('3 serie · 7a french')
+    expect(formatPrescription(exercise({ prescription: { sets: 3, load_type: 'external', loadKg: 18, unit: 'kg' } }))).toBe('3 serie · 18 kg')
+  })
+
   it('mantiene il formato actual storico della V1', () => {
     expect(buildActualFromPrescription(exercise().prescription)).toEqual({
       dose: '5 sec',
