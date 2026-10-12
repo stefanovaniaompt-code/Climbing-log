@@ -113,6 +113,57 @@ describe('session runner selectors', () => {
     expect(getVariableSeries(exercise({ prescription: { sets: 4, dose: '6 ripetizioni · tenuta 5 s a 90°' } }))).toEqual([])
   })
 
+  it('mostra il carico manuale salvato nell’ultima riga anche con un target da test collegato', () => {
+    const item = exercise({
+      prescription: {
+        sets: 5,
+        steps: [
+          { label: 'Set 1', loadKg: 32, reps: 8 },
+          { label: 'Set 2', loadKg: 34, reps: 6 },
+          { label: 'Set 3', loadKg: 36, reps: 5 },
+          { label: 'Set 4', loadKg: 38, reps: 4 },
+          { label: 'Set 5', loadKg: 46.5, reps: 3 },
+        ],
+      },
+      calculationContext: {
+        test_target: {
+          set_targets: [32, 34, 36, 38, 40].map((calculatedTarget, index) => ({
+            set_number: index + 1,
+            percentage: 80,
+            calculated_target: calculatedTarget,
+            target_unit: 'kg_external',
+          })),
+        },
+      },
+    })
+
+    expect(getVariableSeries(item)).toEqual([
+      '32 kg · 8 rep',
+      '34 kg · 6 rep',
+      '36 kg · 5 rep',
+      '38 kg · 4 rep',
+      '46.5 kg · 3 rep',
+    ])
+  })
+
+  it('continua a mostrare il target derivato nelle righe senza carico manuale', () => {
+    const item = exercise({
+      prescription: { sets: 2, steps: [
+        { label: 'Set 1', loadKg: null, reps: 8 },
+        { label: 'Set 2', loadKg: 46.5, reps: 3 },
+      ] },
+      calculationContext: { test_target: { set_targets: [
+        { set_number: 1, percentage: 80, calculated_target: 32, target_unit: 'kg_external' },
+        { set_number: 2, percentage: 80, calculated_target: 40, target_unit: 'kg_external' },
+      ] } },
+    })
+
+    expect(getVariableSeries(item)).toEqual([
+      '80% = 32 kg_external · 8 rep',
+      '46.5 kg · 3 rep',
+    ])
+  })
+
   it('crea un recupero uniforme per gli esercizi a ripetizioni', () => {
     const item = exercise({
       prescription: { sets: 4, reps: 6, dose: '6 ripetizioni' },

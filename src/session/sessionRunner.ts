@@ -535,9 +535,14 @@ export function getVariableSeries(
       const reps = positiveInteger(row.reps) || fallbackReps
       const seconds = positiveInteger(row.seconds) || fallbackSeconds
       const dose = reps ? `${reps} rep` : seconds ? `${seconds} sec` : ''
-      const load = target
-        ? `${target.percentage}% = ${Number(target.calculatedTarget.toFixed(2))} ${target.targetUnit}`
-        : usesKilogramLoads(exercise.prescription) && optionalNonNegativeNumber(row.loadKg) !== null ? `${optionalNonNegativeNumber(row.loadKg)} kg` : ''
+      const manualLoad = usesKilogramLoads(exercise.prescription)
+        ? optionalNonNegativeNumber(row.loadKg)
+        : null
+      const load = manualLoad !== null
+        ? `${manualLoad} kg`
+        : target
+          ? `${target.percentage}% = ${Number(target.calculatedTarget.toFixed(2))} ${target.targetUnit}`
+          : ''
       return [load, dose].filter(Boolean).join(' · ') || textValue(row.label) || `Set ${index + 1}`
     })
   }

@@ -5,6 +5,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AppProfile } from '../onboarding/types'
 import type { ProgramBuilderData } from './programBuilder'
+import { mergePrescriptionForUpdate } from './programBuilder'
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -205,6 +206,69 @@ afterEach(async () => {
 })
 
 describe('BuilderScreen autosave durante i cambi di selezione', () => {
+  it('salva e riapre il carico scelto nell’ultima di cinque righe senza alterare le altre serie', async () => {
+    const fiveRows = [32, 34, 36, 38, 40].map((loadKg, index) => ({
+      label: `Set ${index + 1}`,
+      loadKg,
+      reps: 8 - index,
+      seconds: 0,
+    }))
+    let persistedData: ProgramBuilderData = {
+      ...builderData,
+      exercises: builderData.exercises.map(item => ({
+        ...item,
+        prescription: { sets: 5, reps: 8, steps: fiveRows },
+      })),
+    }
+    repository.loadProgramBuilder.mockImplementation(async () => structuredClone(persistedData))
+    repository.updateExercise.mockImplementation(async (_profile, exerciseId, currentPrescription, patch) => {
+      persistedData = {
+        ...persistedData,
+        exercises: persistedData.exercises.map(item => item.id === exerciseId
+          ? { ...item, prescription: mergePrescriptionForUpdate(currentPrescription, patch) }
+          : item),
+      }
+    })
+
+    const screen = await renderBuilder()
+    await act(async () => { buttonWithText(screen, 'Hang board').click() })
+    const loads = screen.querySelectorAll<HTMLInputElement>('input[aria-label="Carico kg"]')
+    expect(loads).toHaveLength(5)
+
+    await act(async () => { changeInput(loads[4], '45') })
+    const finalLoadInput = screen.querySelectorAll<HTMLInputElement>('input[aria-label="Carico kg"]')[4]
+    await act(async () => { changeInput(finalLoadInput, '46.5') })
+    expect(repository.updateExercise).not.toHaveBeenCalled()
+
+    await act(async () => { vi.advanceTimersByTime(700); await Promise.resolve() })
+    await flushPromises()
+
+    expect(repository.updateExercise).toHaveBeenCalledTimes(1)
+    expect(repository.updateExercise.mock.calls[0]?.[3].steps).toEqual([
+      ...fiveRows.slice(0, 4),
+      { ...fiveRows[4], loadKg: 46.5 },
+    ])
+    expect(persistedData.exercises[0]?.prescription.steps).toEqual([
+      ...fiveRows.slice(0, 4),
+      { ...fiveRows[4], loadKg: 46.5 },
+    ])
+
+    await act(async () => { screen.querySelector<HTMLButtonElement>('#builder-week-week-2')?.click() })
+    await act(async () => { screen.querySelector<HTMLButtonElement>('#builder-week-week-1')?.click() })
+    await act(async () => { buttonWithText(screen, 'Hang board').click() })
+    expect(screen.querySelectorAll<HTMLInputElement>('input[aria-label="Carico kg"]')[4]?.value).toBe('46.5')
+
+    await act(async () => { root?.unmount() })
+    root = null
+    container?.remove()
+    container = null
+    const reopened = await renderBuilder()
+    await act(async () => { buttonWithText(reopened, 'Hang board').click() })
+
+    expect(reopened.querySelectorAll<HTMLInputElement>('input[aria-label="Carico kg"]')[4]?.value).toBe('46.5')
+    expect(Array.from(reopened.querySelectorAll<HTMLInputElement>('input[aria-label="Carico kg"]')).slice(0, 4).map(input => input.value)).toEqual(['32', '34', '36', '38'])
+  })
+
   it('salva la settimana modificata se si cambia settimana prima dei 700 ms', async () => {
     const screen = await renderBuilder()
 

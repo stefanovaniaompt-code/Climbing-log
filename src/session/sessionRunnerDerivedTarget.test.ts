@@ -139,7 +139,7 @@ describe(
       },
     )
 
-    it('combines each test-derived load percentage with that set’s own repetitions', () => {
+    it('prefers each manually prescribed row load while retaining its own repetitions', () => {
       const fiveSetExercise: RunnerExercise = {
         ...exercise,
         prescription: {
@@ -165,11 +165,11 @@ describe(
       }
 
       expect(getVariableSeries(fiveSetExercise)).toEqual([
-        '50% = 25 kg · 10 rep',
-        '60% = 30 kg · 8 rep',
-        '70% = 35 kg · 6 rep',
-        '80% = 40 kg · 4 rep',
-        '90% = 45 kg · 3 rep',
+        '85 kg · 10 rep',
+        '94 kg · 8 rep',
+        '101.5 kg · 6 rep',
+        '108.5 kg · 4 rep',
+        '122.5 kg · 3 rep',
       ])
     })
 
