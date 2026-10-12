@@ -262,6 +262,61 @@ describe('BuilderScreen autosave durante i cambi di selezione', () => {
     expect(inputWithLabel(reopened, 'Recupero').value).toBe('90')
   })
 
+  it('usa la progressione reale nella preview e applica una modifica globale alle righe strutturate', async () => {
+    let persistedData: ProgramBuilderData = {
+      ...builderData,
+      exercises: builderData.exercises.map(item => ({
+        ...item,
+        prescription: {
+          sets: 3, reps: 10, seconds: 7,
+          steps: [{ reps: 10, seconds: 7, loadKg: 20 }, { reps: 8, seconds: 6, loadKg: 22 }, { reps: 6, seconds: 5, loadKg: 24 }],
+          timer: { mode: 'guided', execution_mode: 'alternate_hands', hand_change_seconds: 2 },
+        },
+        restSeconds: 60,
+      })),
+    }
+    repository.loadProgramBuilder.mockImplementation(async () => structuredClone(persistedData))
+    repository.updateExercise.mockImplementation(async (_profile, exerciseId, currentPrescription, patch) => {
+      persistedData = {
+        ...persistedData,
+        exercises: persistedData.exercises.map(item => item.id === exerciseId
+          ? { ...item, prescription: mergePrescriptionForUpdate(currentPrescription, patch), restSeconds: patch.restSeconds }
+          : item),
+      }
+    })
+
+    const screen = await renderBuilder()
+    await act(async () => { buttonWithText(screen, 'Hang board').click() })
+    expect(screen.querySelector('.timer-configuration__preview')?.textContent).toContain('24 per mano (24 DX + 24 SX)')
+    await act(async () => { changeInput(inputWithLabel(screen, 'Ripetizioni'), '9') })
+    await act(async () => { vi.advanceTimersByTime(700); await Promise.resolve() })
+    await flushPromises()
+
+    expect(persistedData.exercises[0]?.prescription.steps).toEqual([
+      { label: 'Set 1', reps: 9, seconds: 7, loadKg: 20 },
+      { label: 'Set 2', reps: 9, seconds: 6, loadKg: 22 },
+      { label: 'Set 3', reps: 9, seconds: 5, loadKg: 24 },
+    ])
+    const persistedSteps = persistedData.exercises[0]?.prescription.steps as Array<{ loadKg: number | null }> | undefined
+    expect(persistedSteps?.map(step => step.loadKg)).toEqual([20, 22, 24])
+  })
+
+  it('non anteprima un recupero predefinito per una configurazione V2 esplicita senza recupero', async () => {
+    repository.loadProgramBuilder.mockResolvedValue({
+      ...builderData,
+      exercises: builderData.exercises.map(item => ({
+        ...item,
+        prescription: { sets: 3, reps: 5, seconds: 7, timer: { mode: 'guided' } },
+        restSeconds: null,
+      })),
+    })
+    const screen = await renderBuilder()
+    await act(async () => { buttonWithText(screen, 'Hang board').click() })
+    const preview = screen.querySelector('.timer-configuration__preview')?.textContent ?? ''
+    expect(preview).not.toContain('recupero 90s')
+    expect(preview).not.toContain('recupero 120s')
+  })
+
   it('salva e riapre il carico scelto nell’ultima di cinque righe senza alterare le altre serie', async () => {
     const fiveRows = [32, 34, 36, 38, 40].map((loadKg, index) => ({
       label: `Set ${index + 1}`,

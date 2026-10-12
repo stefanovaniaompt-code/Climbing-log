@@ -94,4 +94,14 @@ describe('SessionExerciseCard descrizioni legacy', () => {
     expect(screen.querySelectorAll('.athlete-prescription-row')).toHaveLength(2)
     expect(screen.textContent).not.toContain('6 ripetizioni')
   })
+
+  it('non inventa un recupero di 90 secondi per una configurazione timer esplicita senza recupero', async () => {
+    const screen = await renderCard(exercise({
+      prescription: { sets: 2, reps: 5, seconds: 7, timer: { mode: 'guided' } },
+      restSeconds: null,
+    }))
+
+    expect(screen.textContent).toContain('RECUPERO—')
+    expect(screen.textContent).not.toContain('90 sec')
+  })
 })

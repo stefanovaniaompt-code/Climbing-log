@@ -49,4 +49,19 @@ describe('exercise library', () => {
     const prescription = readExerciseLibraryPrescription({ timer: { sets: 4, repetitions: 6, work_seconds: 7, set_rest_seconds: 90, execution_mode: 'single_hand' } })
     expect(prescription).toMatchObject({ sets: 4, reps: 6, seconds: 7, timer: { repetitions: 6, work_seconds: 7, set_rest_seconds: 90 } })
   })
+
+  it('allinea una modifica globale di ripetizioni o durata alle righe strutturate preservandone i campi extra', () => {
+    const original = readExerciseLibraryPrescription({
+      sets: 2, reps: 10, seconds: 7, loadKg: 20,
+      steps: [{ reps: 10, seconds: 7, loadKg: 20, note: 'keep-a' }, { reps: 8, seconds: 6, loadKg: 22, note: 'keep-b' }],
+    })
+    const changed = updateExerciseLibraryTimerConfiguration(original, {
+      sets: 2, reps: 9, seconds: 5, restSeconds: null,
+      mode: 'guided', executionMode: 'bilateral', preparationSeconds: 0, handChangeSeconds: 0, intervalRestSeconds: 0,
+    })
+    expect(changed.steps).toEqual([
+      { reps: 9, seconds: 5, loadKg: 20, note: 'keep-a' },
+      { reps: 9, seconds: 5, loadKg: 22, note: 'keep-b' },
+    ])
+  })
 })

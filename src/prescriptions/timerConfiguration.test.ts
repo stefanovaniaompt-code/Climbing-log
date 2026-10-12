@@ -23,6 +23,11 @@ describe('timer configuration', () => {
     expect(readTimerSettings({ seconds: 7 })).toMatchObject({ mode: 'none', executionMode: 'bilateral' })
   })
 
+  it('riconosce il recupero legacy per il Builder quando è prescritto e rispetta un recupero canonico zero', () => {
+    expect(readTimerSettings({ sets: 3, timer: { set_rest_seconds: 60 } }).mode).toBe('recovery_only')
+    expect(readTimerSettings({ sets: 3, timer: { set_rest_seconds: 60 } }, 0).mode).toBe('none')
+  })
+
   it('mantiene guided e alternanza legacy single_hand, senza duplicare serie/ripetizioni/durata', () => {
     const prescription = { sets: 3, reps: 6, seconds: 7, timer: { work_seconds: 7, repetitions: 6, execution_mode: 'single_hand', vendor_extension: 'keep' } }
     expect(timerSettingsFromPrescription(prescription, 90)).toMatchObject({ mode: 'guided', executionMode: 'alternate_hands', sets: 3, reps: 6, seconds: 7 })
@@ -66,8 +71,24 @@ describe('timer configuration', () => {
   })
 
   it('descrive modalità recupero e nessun timer senza inventare prescrizioni', () => {
-    expect(formatTimerPreview({ ...base, mode: 'recovery_only' })).toContain('lavoro libero; recupero avviato dall’atleta')
+    expect(formatTimerPreview({ ...base, mode: 'recovery_only' })).toContain('lavoro libero; conferma serie e recupero avviato dall’atleta')
     expect(formatTimerPreview({ ...base, mode: 'none' })).toBe('Nessun timer: esecuzione libera.')
     expect(buildTimerSeriesSequence({ ...base, mode: 'none' })).toEqual([])
+  })
+
+  it('non mostra una sequenza attiva quando guidato o solo recupero non sono ricostruibili', () => {
+    expect(formatTimerPreview({ ...base, mode: 'guided', reps: 0, seconds: 0 })).toContain('Timer non avviabile')
+    expect(formatTimerPreview({ ...base, mode: 'recovery_only', restSeconds: null })).toContain('specificare il recupero')
+  })
+
+  it('mantiene la preview coerente con le ripetizioni variabili di ogni serie', () => {
+    const values = { ...base, executionMode: 'alternate_hands' as const, series: [
+      { reps: 10, seconds: 7 }, { reps: 8, seconds: 6 }, { reps: 6, seconds: 5 },
+    ] }
+    const secondSeries = buildTimerSeriesSequence(values, 2).filter(step => step.kind === 'work').map(step => step.label)
+    expect(secondSeries).toHaveLength(16)
+    expect(secondSeries.slice(0, 4)).toEqual(['DX1 6s', 'SX1 6s', 'DX2 6s', 'SX2 6s'])
+    expect(secondSeries.slice(-2)).toEqual(['DX8 6s', 'SX8 6s'])
+    expect(formatTimerPreview(values)).toContain('24 per mano (24 DX + 24 SX)')
   })
 })

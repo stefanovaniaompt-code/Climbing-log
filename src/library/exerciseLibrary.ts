@@ -1,4 +1,4 @@
-import { mergeTimerSettings, type TimerEditorValues } from '../prescriptions/timerConfiguration'
+import { mergeTimerSettings, timerSettingsFromPrescription, type TimerEditorValues } from '../prescriptions/timerConfiguration'
 
 export type ExercisePrescription = { sets: number; reps: number; seconds: number; loadKg: number; [key: string]: unknown }
 
@@ -31,9 +31,25 @@ export function readExerciseLibraryPrescription(value: unknown): ExercisePrescri
 
 export function updateExerciseLibraryTimerConfiguration(current: ExercisePrescription, values: TimerEditorValues): ExercisePrescription {
   const next: ExercisePrescription = { ...current, sets: values.sets, reps: values.reps, seconds: values.seconds }
+  const previous = timerSettingsFromLibrary(current)
+  if (Array.isArray(current.steps) && (values.reps !== previous.reps || values.seconds !== previous.seconds)) {
+    next.steps = current.steps.map(value => {
+      const row = value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
+      return {
+        ...row,
+        ...(values.reps !== previous.reps ? { reps: values.reps } : {}),
+        ...(values.seconds !== previous.seconds ? { seconds: values.seconds } : {}),
+      }
+    })
+  }
   if (values.restSeconds === null) delete next.restSeconds
   else next.restSeconds = values.restSeconds
   return mergeTimerSettings(next, values) as ExercisePrescription
+}
+
+function timerSettingsFromLibrary(prescription: ExercisePrescription): TimerEditorValues {
+  const restSeconds = typeof prescription.restSeconds === 'number' ? prescription.restSeconds : null
+  return timerSettingsFromPrescription(prescription, restSeconds)
 }
 
 const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('it-IT').trim()

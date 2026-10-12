@@ -14,9 +14,13 @@ import {
   tickExerciseTimer,
   elapseExerciseTimer,
   restoreExerciseTimerSnapshot,
-  restartExerciseTimerState,
+  advanceExerciseTimer,
+  skipExerciseTimerPhase,
+  toggleExerciseTimerState,
   type RunnerExercise,
+  type ExerciseTimerState,
 } from './sessionRunner'
+import { buildTimerSeriesSequence, buildTimerProtocolSequence, timerSettingsFromPrescription } from '../prescriptions/timerConfiguration'
 
 function exercise(overrides: Partial<RunnerExercise> = {}): RunnerExercise {
   return {
@@ -164,25 +168,27 @@ describe('session runner selectors', () => {
     ])
   })
 
-  it('crea un recupero uniforme per gli esercizi a ripetizioni', () => {
+  it('attende la fine della serie e crea un recupero uniforme per gli esercizi a ripetizioni', () => {
     const item = exercise({
       prescription: { sets: 4, reps: 6, dose: '6 ripetizioni' },
       restSeconds: 120,
     })
     const initial = createExerciseTimerState(item)!
 
-    expect(initial.config.mode).toBe('recovery')
-    expect(initial.phase).toBe('set_rest')
-    expect(initial.remaining).toBe(120)
-    expect(exerciseTimerProgressLabel(initial)).toBe('RECUPERO 1/3')
+    expect(initial.config.mode).toBe('recovery_only')
+    expect(initial.phase).toBe('awaiting_set')
+    expect(initial.remaining).toBe(0)
+    expect(exerciseTimerProgressLabel(initial)).toBe('SERIE 1/4')
 
+    const recovery = { ...advanceExerciseTimer(initial), running: true }
     const completed = elapseExerciseTimer(
-      { ...initial, running: true },
+      recovery,
       120,
     )
-    const next = restartExerciseTimerState(item, completed)!
+    const next = advanceExerciseTimer(completed)
 
-    expect(completed.phase).toBe('complete')
+    expect(completed.phase).toBe('awaiting_set')
+    expect(next.phase).toBe('set_rest')
     expect(next.set).toBe(2)
     expect(next.remaining).toBe(120)
   })
@@ -221,6 +227,8 @@ describe('session runner selectors', () => {
     state = elapseExerciseTimer(state, 2)
     expect(exerciseTimerPhaseLabel(state)).toBe('LAVORO SX')
     state = elapseExerciseTimer(state, 1)
+    expect(exerciseTimerPhaseLabel(state)).toBe('CAMBIO MANO')
+    state = elapseExerciseTimer(state, 2)
     expect(exerciseTimerPhaseLabel(state)).toBe('PAUSA')
     state = elapseExerciseTimer(state, 3)
     expect(exerciseTimerPhaseLabel(state)).toBe('LAVORO DX')
@@ -296,7 +304,7 @@ describe('session runner selectors', () => {
       5000,
     )
 
-    expect(restored.remaining).toBe(6)
+    expect(restored?.remaining).toBe(6)
   })
 
   it('does not advance a paused persisted timer', () => {
@@ -326,8 +334,179 @@ describe('session runner selectors', () => {
       9000,
     )
 
-    expect(restored.remaining).toBe(10)
-    expect(restored.running).toBe(false)
+    expect(restored?.remaining).toBe(10)
+    expect(restored?.running).toBe(false)
   })
 
+})
+
+describe('timer V2 runtime acceptance', () => {
+  const configured = (prescription: Record<string, unknown>, restSeconds: number | null = 90) => exercise({ prescription, restSeconds })
+
+  it('esegue bilateralmente 4 serie × 5 ripetizioni', () => {
+    const item = configured({ sets: 4, reps: 5, seconds: 7, timer: { mode: 'guided' } }, 30)
+    const state = createExerciseTimerState(item)!
+    const works = state.sequence.filter(step => step.kind === 'work')
+    expect(works).toHaveLength(20)
+    expect(works.every(step => step.hand === undefined)).toBe(true)
+    expect(works.map(step => step.setNumber)).toEqual([...Array(5).fill(1), ...Array(5).fill(2), ...Array(5).fill(3), ...Array(5).fill(4)])
+  })
+
+  it('alterna DX/SX per 3 × 6, con 18 esecuzioni per lato e pause nei due sensi', () => {
+    const item = configured({ sets: 3, reps: 6, seconds: 7, timer: { mode: 'guided', execution_mode: 'alternate_hands', hand_change_seconds: 2 } }, 45)
+    const state = createExerciseTimerState(item)!
+    const works = state.sequence.filter(step => step.kind === 'work')
+    expect(works.filter(step => step.hand === 'DX')).toHaveLength(18)
+    expect(works.filter(step => step.hand === 'SX')).toHaveLength(18)
+    expect(state.sequence.slice(0, 4).map(step => [step.kind, step.hand])).toEqual([
+      ['work', 'DX'], ['hand_change', undefined], ['work', 'SX'], ['hand_change', undefined],
+    ])
+    const firstSetEnd = state.sequence.findIndex(step => step.kind === 'set_rest')
+    expect(state.sequence[firstSetEnd - 1]).toMatchObject({ kind: 'work', hand: 'SX', repetition: 6 })
+    expect(state.sequence[firstSetEnd - 1].kind).not.toBe('hand_change')
+    expect(state.sequence.at(-1)?.kind).toBe('work')
+  })
+
+  it.each([
+    ['right_only', 'right'],
+    ['left_only', 'left'],
+  ] as const)('supporta la modalità %s senza fasi dell’altro lato', (executionMode, expectedHand) => {
+    const item = configured({ sets: 1, reps: 3, seconds: 5, timer: { mode: 'guided', execution_mode: executionMode } }, 0)
+    const state = createExerciseTimerState(item)!
+    expect(state.sequence.filter(step => step.kind === 'work')).toHaveLength(3)
+    expect(state.sequence.filter(step => step.kind === 'work').every(step => step.hand === (expectedHand === 'right' ? 'DX' : 'SX'))).toBe(true)
+    expect(state.sequence.some(step => step.kind === 'hand_change')).toBe(false)
+  })
+
+  it('rispetta 3 × 6 Repeaters con 7 secondi di lavoro e 3 di recupero', () => {
+    const item = configured({ sets: 3, reps: 6, seconds: 7, timer: { mode: 'guided', interval_rest_seconds: 3 } }, 60)
+    const state = createExerciseTimerState(item)!
+    expect(state.sequence.filter(step => step.kind === 'work')).toHaveLength(18)
+    expect(state.sequence.filter(step => step.kind === 'interval_rest')).toHaveLength(15)
+    expect(state.sequence.filter(step => step.kind === 'work').every(step => step.durationSeconds === 7)).toBe(true)
+    expect(state.sequence.filter(step => step.kind === 'interval_rest').every(step => step.durationSeconds === 3)).toBe(true)
+    expect(state.sequence.filter(step => step.kind === 'set_rest').map(step => step.durationSeconds)).toEqual([60, 60])
+  })
+
+  it('attende conferma manuale a ogni serie e non programma il recupero finale', () => {
+    const item = configured({ sets: 3, reps: 6, seconds: 0, timer: { mode: 'recovery_only' } }, 40)
+    const state = createExerciseTimerState(item)!
+    expect(state.phase).toBe('awaiting_set')
+    const started = toggleExerciseTimerState(item, state)
+    expect(started).toMatchObject({ phase: 'set_rest', running: true, set: 1 })
+    expect(toggleExerciseTimerState(item, null)).toMatchObject({ phase: 'set_rest', running: true, set: 1 })
+    expect(toggleExerciseTimerState(item, started)).toMatchObject({ phase: 'set_rest', running: false, set: 1 })
+    expect(state.sequence.filter(step => step.kind === 'awaiting_set')).toHaveLength(3)
+    expect(state.sequence.filter(step => step.kind === 'set_rest')).toHaveLength(2)
+    const rest = advanceExerciseTimer(state)
+    expect(rest.phase).toBe('set_rest')
+    expect(rest.running).toBe(false)
+    const afterRest = elapseExerciseTimer({ ...rest, running: true }, 40)
+    expect(afterRest.phase).toBe('awaiting_set')
+    const lastRest = advanceExerciseTimer(afterRest)
+    expect(lastRest.phase).toBe('set_rest')
+    const complete = elapseExerciseTimer({ ...lastRest, running: true }, 40)
+    expect(complete.phase).toBe('awaiting_set')
+    expect(advanceExerciseTimer(complete).phase).toBe('complete')
+    expect(createExerciseTimerState(configured({ sets: 1, reps: 6, seconds: 0, timer: { mode: 'recovery_only' } }, null))).toBeNull()
+  })
+
+  it('nessun timer prevale su durata e recupero, senza creare stato attivo', () => {
+    expect(createExerciseTimerState(configured({ sets: 3, reps: 5, seconds: 7, timer: { mode: 'none' } }, 90))).toBeNull()
+  })
+
+  it('usa i valori differenti di ogni serie senza appiattirli', () => {
+    const item = configured({
+      sets: 3,
+      reps: 10,
+      seconds: 7,
+      timer: { mode: 'guided', interval_rest_seconds: 3 },
+      steps: [{ reps: 10, seconds: 7 }, { reps: 8, seconds: 6 }, { reps: 6, seconds: 5 }],
+    }, 30)
+    const works = createExerciseTimerState(item)!.sequence.filter(step => step.kind === 'work')
+    expect(works.map(step => [step.setNumber, step.repetition, step.durationSeconds])).toEqual([
+      [1, 1, 7], [1, 2, 7], [1, 3, 7], [1, 4, 7], [1, 5, 7], [1, 6, 7], [1, 7, 7], [1, 8, 7], [1, 9, 7], [1, 10, 7],
+      [2, 1, 6], [2, 2, 6], [2, 3, 6], [2, 4, 6], [2, 5, 6], [2, 6, 6], [2, 7, 6], [2, 8, 6],
+      [3, 1, 5], [3, 2, 5], [3, 3, 5], [3, 4, 5], [3, 5, 5], [3, 6, 5],
+    ])
+    const state = createExerciseTimerState(item)!
+    const secondSetStart = state.sequence.findIndex(step => step.kind === 'work' && step.setNumber === 2)
+    const secondSetState = { ...state, sequenceIndex: secondSetStart, set: 2, repetition: 1, phase: 'work' as const, remaining: 6 }
+    expect(exerciseTimerProgressLabel(secondSetState)).toContain('RIPETIZIONE 1/8')
+  })
+
+  it('segue i campi canonici rispetto alle chiavi timer legacy e non inventa recuperi espliciti', () => {
+    const item = configured({ sets: 2, reps: 3, seconds: 5, timer: { mode: 'guided', repetitions: 8, work_seconds: 9, set_rest_seconds: 90 } }, 0)
+    const state = createExerciseTimerState(item)!
+    expect(state.config.repetitions).toBe(3)
+    expect(state.config.workSeconds).toBe(5)
+    expect(state.config.setRestSeconds).toBe(0)
+    expect(state.sequence.filter(step => step.kind === 'set_rest')).toHaveLength(0)
+  })
+
+  it('mantiene compatibilità legacy single_hand e timer guided storici', () => {
+    const item = configured({ sets: 1, reps: 2, seconds: 5, timer: { execution_mode: 'single_hand', work_seconds: 5, repetitions: 2, hand_change_seconds: 1 } }, 0)
+    const state = createExerciseTimerState(item)!
+    expect(state.sequence.filter(step => step.kind === 'work').map(step => step.hand)).toEqual(['DX', 'SX', 'DX', 'SX'])
+  })
+
+  it('ripristina snapshot legacy single_hand in pausa e rifiuta snapshot incompatibili senza crash', () => {
+    const legacyState = {
+      exerciseId: 'exercise-1',
+      config: { mode: 'guided', executionMode: 'single_hand', preparationSeconds: 0, workSeconds: 5, handChangeSeconds: 2, intervalRestSeconds: 0, repetitions: 2, sets: 1, setRestSeconds: 0 },
+      phase: 'work', set: 1, repetition: 1, hand: 'right', remaining: 3, running: false,
+    } as unknown as ExerciseTimerState
+    const restored = restoreExerciseTimerSnapshot({ state: legacyState, savedAt: 1000 }, 9000)
+    expect(restored).toMatchObject({ phase: 'work', hand: 'right', remaining: 3, running: false })
+    expect(restored?.sequence.filter(step => step.kind === 'work').map(step => step.hand)).toEqual(['DX', 'SX', 'DX', 'SX'])
+    expect(restoreExerciseTimerSnapshot({ state: { ...legacyState, config: null } as unknown as ExerciseTimerState, savedAt: 1000 }, 9000)).toBeNull()
+  })
+
+  it('la sequenza runtime usa lo stesso generatore della preview, incluse alternanza e recuperi', () => {
+    const prescription = { sets: 2, reps: 2, seconds: 4, timer: { mode: 'guided', execution_mode: 'alternate_hands', hand_change_seconds: 1, interval_rest_seconds: 2 } }
+    const editorValues = timerSettingsFromPrescription(prescription, 10)
+    const previewSteps = buildTimerSeriesSequence(editorValues)
+    const runtime = createExerciseTimerState(configured(prescription, 10))!
+    const firstRuntimeSet = runtime.sequence.filter(step => step.setNumber === 1 && step.kind !== 'preparation' && step.kind !== 'set_rest')
+    expect(firstRuntimeSet.map(step => step.kind === 'work' ? `${step.hand}${step.repetition} ${step.durationSeconds}s` : `${step.kind === 'hand_change' ? 'cambio' : 'pausa'} ${step.durationSeconds}s`)).toEqual(previewSteps.map(step => step.label))
+    expect(runtime.sequence.filter(step => step.kind === 'set_rest')).toHaveLength(1)
+    expect(buildTimerProtocolSequence(editorValues).map(step => step.kind)).toEqual(runtime.sequence.map(step => step.kind))
+  })
+
+  it('la pausa SX→DX somma cambio mano e intervallo una volta e non aggiunge pause finali', () => {
+    const item = configured({ sets: 1, reps: 2, seconds: 1, timer: { mode: 'guided', execution_mode: 'alternate_hands', hand_change_seconds: 2, interval_rest_seconds: 3 } }, 30)
+    const state = createExerciseTimerState(item)!
+    const sxIndex = state.sequence.findIndex(step => step.kind === 'work' && step.hand === 'SX' && step.repetition === 1)
+    expect(state.sequence.slice(sxIndex + 1, sxIndex + 3).map(step => [step.kind, step.durationSeconds])).toEqual([['hand_change', 2], ['interval_rest', 3]])
+    expect(state.sequence.slice(-1)[0]).toMatchObject({ kind: 'work', hand: 'SX', repetition: 2 })
+  })
+
+  it('non modifica prescrizioni, carichi o stato di completamento mentre il timer avanza', () => {
+    const item = configured({ sets: 2, reps: 2, seconds: 3, loadKg: 42.5, steps: [
+      { reps: 2, seconds: 3, loadKg: 40 }, { reps: 1, seconds: 2, loadKg: 42.5 },
+    ], timer: { mode: 'guided', interval_rest_seconds: 1 } }, 30)
+    const beforePrescription = structuredClone(item.prescription)
+    const beforeProgress = item.progress
+    let state = createExerciseTimerState(item)!
+    for (let tick = 0; tick < 50 && state.phase !== 'complete'; tick += 1) {
+      state = elapseExerciseTimer({ ...state, running: true }, 1)
+    }
+    expect(state.phase).toBe('complete')
+    expect(item.prescription).toEqual(beforePrescription)
+    expect(item.progress).toBe(beforeProgress)
+  })
+
+  it('salta fasi e recuperi a durata zero senza loop e mantiene in pausa il timer', () => {
+    const item = configured({ sets: 2, reps: 2, seconds: 1, timer: { mode: 'guided', preparation_seconds: 0, interval_rest_seconds: 0 } }, 0)
+    const initial = createExerciseTimerState(item)!
+    expect(initial.phase).toBe('work')
+    const skipped = skipExerciseTimerPhase(initial)
+    expect(skipped.phase).toBe('work')
+    expect(skipped.repetition).toBe(2)
+    const paused = restoreExerciseTimerSnapshot({ state: { ...initial, running: false }, savedAt: 1000 }, 100000)
+    expect(paused?.phase).toBe('work')
+    expect(paused?.remaining).toBe(1)
+    const longRun = elapseExerciseTimer({ ...initial, running: true }, 100000)
+    expect(longRun.phase).toBe('complete')
+  })
 })

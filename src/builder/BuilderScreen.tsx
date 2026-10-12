@@ -7,7 +7,7 @@ import { addExercise, createProgram, createSession, createWeek, deleteExercise, 
 import { builderDraftValuesMatch, compareBuilderLocalDraft, compareBuilderLocalDrafts, planBuilderLocalDraftRecovery, type BuilderDraftComparison, type BuilderDraftComparisonStatus, type BuilderDraftRecoveryPlan } from './builderLocalDraftComparison'
 import { builderLocalDraftKey, claimBuilderLocalDraftRevision, clearBuilderLocalDraftRevision, readBuilderLocalDraft, scanBuilderLocalDrafts, writeBuilderLocalDraft, type BuilderDraftEntityType, type BuilderDraftIdentity, type BuilderLocalDraftScanIssue } from './builderLocalDraftStorage'
 import { ExerciseTestTargetPanel } from './ExerciseTestTargetPanel'
-import { readTimerSettings, timerSettingsEqual } from '../prescriptions/timerConfiguration'
+import { readTimerSettings, resolveTimerRestSeconds, timerSettingsEqual } from '../prescriptions/timerConfiguration'
 import { TimerConfigurationEditor } from '../shared/TimerConfigurationEditor'
 import './BuilderScreen.css'
 
@@ -841,7 +841,7 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
     if (!exercise) return
     if (hydratedExercise.current === exercise.id && JSON.stringify(patchRef.current) !== hydratedExerciseValue.current) return
     const values = readPrescriptionEditorValues(exercise.prescription)
-    const remote = { sets: values.sets, reps: values.reps, seconds: values.seconds, loadKg: values.loadKg, rpe: exercise.targetRpeMax ?? 7, restSeconds: exercise.restSeconds ?? 120, instructions: exercise.instructions ?? '', steps: values.steps }
+    const remote = { sets: values.sets, reps: values.reps, seconds: values.seconds, loadKg: values.loadKg, rpe: exercise.targetRpeMax ?? 7, restSeconds: resolveTimerRestSeconds(exercise.prescription, exercise.restSeconds, 120) ?? 0, instructions: exercise.instructions ?? '', steps: values.steps }
     const currentSession = data?.sessions.find(item => item.id === exercise.sessionId)
     const currentWeek = currentSession ? data?.weeks.find(item => item.id === currentSession.weekId) : null
     const recovered = currentWeek ? recoveredDraftValues.current.get(builderLocalDraftKey(draftIdentity('exercise', exercise.id, currentWeek.programId))) as ExercisePatch | undefined : undefined
@@ -1216,7 +1216,14 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
         {!exercise && <div className="empty-state empty-state--compact"><Settings2 size={20} /><b>Seleziona un esercizio</b><span>Qui modificherai volume, carico, RPE e recupero.</span></div>}
         {exercise && <>
           <TimerConfigurationEditor
-            value={{ ...(patch.timerSettings ?? readTimerSettings(exercise.prescription)), sets: patch.sets, reps: patch.reps, seconds: patch.seconds, restSeconds: patch.restSeconds }}
+            value={{
+              ...(patch.timerSettings ?? readTimerSettings(exercise.prescription, patch.restSeconds)),
+              sets: patch.sets,
+              reps: patch.reps,
+              seconds: patch.seconds,
+              restSeconds: patch.restSeconds,
+              series: patch.steps.length ? patch.steps.map(step => ({ reps: step.reps, seconds: step.seconds })) : undefined,
+            }}
             renderSetControl={(sets, onChange) => <label><span>Serie</span><div className="stepper"><button type="button" onClick={() => onChange(Math.max(1, sets - 1))}>−</button><b>{sets}</b><button type="button" onClick={() => onChange(sets + 1)}>+</button></div></label>}
             onChange={next => updateExerciseEditor(value => ({
               ...value,
@@ -1224,7 +1231,7 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
               reps: next.reps,
               seconds: next.seconds,
               restSeconds: next.restSeconds ?? 0,
-              timerSettings: timerSettingsEqual(readTimerSettings(exercise.prescription), {
+              timerSettings: timerSettingsEqual(readTimerSettings(exercise.prescription, patch.restSeconds), {
                 mode: next.mode,
                 executionMode: next.executionMode,
                 preparationSeconds: next.preparationSeconds,
@@ -1237,7 +1244,13 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
                 handChangeSeconds: next.handChangeSeconds,
                 intervalRestSeconds: next.intervalRestSeconds,
               },
-              steps: resizePrescriptionSteps(value.steps, next.sets, value),
+              // The shared controls prescribe one reps/duration value across
+              // sets; keep structured rows aligned when that value is edited.
+              steps: resizePrescriptionSteps(value.steps, next.sets, value).map(step => ({
+                ...step,
+                ...(next.reps !== value.reps ? { reps: next.reps } : {}),
+                ...(next.seconds !== value.seconds ? { seconds: next.seconds } : {}),
+              })),
             }))}
           />
           <label><span>Carico</span><div className="input-shell"><input type="number" min="0" step="0.5" value={patch.loadKg} onChange={event => updateExerciseEditor(value => ({ ...value, loadKg: Number(event.target.value) }))} /><em>kg</em></div></label>

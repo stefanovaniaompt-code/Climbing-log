@@ -190,8 +190,8 @@ export function mergePrescriptionForUpdate(current: Record<string, unknown>, nex
     : null
   if (timer && previous.seconds !== next.seconds && Object.hasOwn(timer, 'work_seconds')) timer.work_seconds = next.seconds
   if (timer && previous.reps !== next.reps && Object.hasOwn(timer, 'repetitions')) timer.repetitions = next.reps
-  const mergedTimer = next.timerSettings && !timerSettingsEqual(readTimerSettings(current), next.timerSettings)
-    ? mergeTimerSettings({ ...current, timer: timer ?? current.timer }, next.timerSettings).timer as Record<string, unknown>
+  const mergedTimer = next.timerSettings && !timerSettingsEqual(readTimerSettings(current, next.restSeconds), next.timerSettings)
+    ? mergeTimerSettings({ ...current, timer: timer ?? current.timer }, next.timerSettings, next.restSeconds).timer as Record<string, unknown>
     : timer
   if (mergedTimer && typeof next.restSeconds === 'number' && Object.hasOwn(mergedTimer, 'set_rest_seconds')) {
     mergedTimer.set_rest_seconds = next.restSeconds

@@ -11,7 +11,7 @@ const timer = (patch: Partial<ExerciseTimerState> = {}): ExerciseTimerState => (
     sets: 3, setRestSeconds: 90,
   },
   phase: 'preparation', set: 1, repetition: 1, hand: 'right',
-  remaining: 5, running: true, ...patch,
+  remaining: 5, running: true, sequence: [], sequenceIndex: 0, ...patch,
 })
 
 describe('timer audio feedback', () => {
