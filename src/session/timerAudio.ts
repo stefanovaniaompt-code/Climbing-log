@@ -1,6 +1,6 @@
 import type { ExerciseTimerState } from './sessionRunner'
 
-export type TimerAudioCue = 'countdown' | 'work' | 'rest' | 'complete'
+export type TimerAudioCue = 'countdown' | 'work' | 'hand_change' | 'rest' | 'complete'
 
 export function timerAudioCueForTransition(
   previous: ExerciseTimerState | null,
@@ -15,11 +15,8 @@ export function timerAudioCueForTransition(
   ) {
     if (current.phase === 'complete') return 'complete'
     if (current.phase === 'work') return 'work'
-    if (
-      current.phase === 'hand_rest' ||
-      current.phase === 'interval_rest' ||
-      current.phase === 'set_rest'
-    ) return 'rest'
+    if (current.phase === 'hand_rest') return 'hand_change'
+    if (current.phase === 'interval_rest' || current.phase === 'set_rest') return 'rest'
   }
 
   if (
@@ -47,6 +44,10 @@ const cueTones: Record<TimerAudioCue, Tone[]> = {
   work: [
     { delay: 0, duration: 0.18, frequency: 980, gain: 0.82, type: 'triangle' },
     { delay: 0.2, duration: 0.26, frequency: 1320, gain: 0.88, type: 'triangle' },
+  ],
+  hand_change: [
+    { delay: 0, duration: 0.12, frequency: 740, gain: 0.78, type: 'triangle' },
+    { delay: 0.14, duration: 0.12, frequency: 560, gain: 0.78, type: 'triangle' },
   ],
   rest: [
     { delay: 0, duration: 0.34, frequency: 430, gain: 0.78, type: 'sine' },

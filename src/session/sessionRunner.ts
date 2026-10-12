@@ -217,10 +217,7 @@ export function toggleExerciseTimerState(
   current: ExerciseTimerState | null,
 ): ExerciseTimerState | null {
   if (current?.exerciseId === exercise.id) {
-    if (current.phase === 'awaiting_set') {
-      const recovery = advanceExerciseTimer(current)
-      return recovery.phase === 'set_rest' ? { ...recovery, running: true } : recovery
-    }
+    if (current.phase === 'awaiting_set') return current
     if (current.phase === 'complete') {
       const restarted = restartExerciseTimerState(exercise, current)
       return restarted ? startExerciseTimerFromState(restarted) : null
@@ -232,11 +229,16 @@ export function toggleExerciseTimerState(
   return startExerciseTimerFromState(created)
 }
 
+export function confirmExerciseTimerSet(
+  state: ExerciseTimerState,
+): ExerciseTimerState {
+  if (state.phase !== 'awaiting_set') return state
+  const next = advanceExerciseTimer(state)
+  return next.phase === 'set_rest' ? { ...next, running: true } : next
+}
+
 function startExerciseTimerFromState(initial: ExerciseTimerState): ExerciseTimerState {
-  if (initial.phase === 'awaiting_set') {
-    const recovery = advanceExerciseTimer(initial)
-    return recovery.phase === 'set_rest' ? { ...recovery, running: true } : recovery
-  }
+  if (initial.phase === 'awaiting_set') return initial
   return { ...initial, running: true }
 }
 
@@ -394,7 +396,7 @@ export function exerciseTimerPhaseLabel(state: ExerciseTimerState): string {
   if (state.phase === 'hand_rest') return 'CAMBIO MANO'
   if (state.phase === 'interval_rest') return 'PAUSA'
   if (state.phase === 'set_rest') return 'RECUPERO SERIE'
-  if (state.phase === 'complete') return 'COMPLETATO'
+  if (state.phase === 'complete') return 'PROTOCOLLO TERMINATO'
   return 'PREPARAZIONE'
 }
 

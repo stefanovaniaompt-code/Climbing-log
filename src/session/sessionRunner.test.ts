@@ -15,6 +15,7 @@ import {
   elapseExerciseTimer,
   restoreExerciseTimerSnapshot,
   advanceExerciseTimer,
+  confirmExerciseTimerSet,
   skipExerciseTimerPhase,
   toggleExerciseTimerState,
   type RunnerExercise,
@@ -393,21 +394,22 @@ describe('timer V2 runtime acceptance', () => {
     const state = createExerciseTimerState(item)!
     expect(state.phase).toBe('awaiting_set')
     const started = toggleExerciseTimerState(item, state)
-    expect(started).toMatchObject({ phase: 'set_rest', running: true, set: 1 })
-    expect(toggleExerciseTimerState(item, null)).toMatchObject({ phase: 'set_rest', running: true, set: 1 })
-    expect(toggleExerciseTimerState(item, started)).toMatchObject({ phase: 'set_rest', running: false, set: 1 })
+    expect(started).toMatchObject({ phase: 'awaiting_set', running: false, set: 1 })
+    expect(toggleExerciseTimerState(item, null)).toMatchObject({ phase: 'awaiting_set', running: false, set: 1 })
+    expect(toggleExerciseTimerState(item, started)).toMatchObject({ phase: 'awaiting_set', running: false, set: 1 })
+    expect(confirmExerciseTimerSet(state)).toMatchObject({ phase: 'set_rest', running: true, set: 1 })
     expect(state.sequence.filter(step => step.kind === 'awaiting_set')).toHaveLength(3)
     expect(state.sequence.filter(step => step.kind === 'set_rest')).toHaveLength(2)
-    const rest = advanceExerciseTimer(state)
+    const rest = confirmExerciseTimerSet(state)
     expect(rest.phase).toBe('set_rest')
-    expect(rest.running).toBe(false)
+    expect(rest.running).toBe(true)
     const afterRest = elapseExerciseTimer({ ...rest, running: true }, 40)
     expect(afterRest.phase).toBe('awaiting_set')
-    const lastRest = advanceExerciseTimer(afterRest)
-    expect(lastRest.phase).toBe('set_rest')
-    const complete = elapseExerciseTimer({ ...lastRest, running: true }, 40)
-    expect(complete.phase).toBe('awaiting_set')
-    expect(advanceExerciseTimer(complete).phase).toBe('complete')
+    const secondRest = confirmExerciseTimerSet(afterRest)
+    expect(secondRest).toMatchObject({ phase: 'set_rest', running: true, set: 2 })
+    const lastAwaiting = elapseExerciseTimer(secondRest, 40)
+    expect(lastAwaiting.phase).toBe('awaiting_set')
+    expect(confirmExerciseTimerSet(lastAwaiting).phase).toBe('complete')
     expect(createExerciseTimerState(configured({ sets: 1, reps: 6, seconds: 0, timer: { mode: 'recovery_only' } }, null))).toBeNull()
   })
 

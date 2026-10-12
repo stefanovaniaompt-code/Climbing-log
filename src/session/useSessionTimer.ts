@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
-import { advanceExerciseTimer, createExerciseTimerState, tickExerciseTimer, toggleExerciseTimerState, type ExerciseTimerState, type SessionRunnerData } from './sessionRunner'
+import { advanceExerciseTimer, confirmExerciseTimerSet, createExerciseTimerState, tickExerciseTimer, toggleExerciseTimerState, type ExerciseTimerState, type SessionRunnerData } from './sessionRunner'
 import { playTimerAudioCue, timerAudioCueForTransition } from './timerAudio'
 
 type SessionExercise = SessionRunnerData['exercises'][number]
@@ -10,6 +10,7 @@ type SessionTimerController = {
   soundEnabled: boolean
   toggleSound: () => void
   toggleTimer: (exercise: SessionExercise) => void
+  confirmSet: (exerciseId: string) => void
   resetTimer: (exercise: SessionExercise) => void
   adjustTimer: (exerciseId: string, seconds: number) => void
   skipTimerPhase: (exerciseId: string) => void
@@ -82,6 +83,10 @@ const toggleTimer = (exercise: SessionRunnerData['exercises'][number]) => {
   setTimerState(current => toggleExerciseTimerState(exercise, current))
 }
 
+const confirmSet = (exerciseId: string) => {
+  setTimerState(current => current?.exerciseId === exerciseId ? confirmExerciseTimerSet(current) : current)
+}
+
 const resetTimer = (exercise: SessionRunnerData['exercises'][number]) => {
   setTimerState(createExerciseTimerState(exercise))
 }
@@ -98,5 +103,5 @@ const skipTimerPhase = (exerciseId: string) => {
     : current)
 }
 
-  return { timerState, setTimerState, soundEnabled, toggleSound, toggleTimer, resetTimer, adjustTimer, skipTimerPhase }
+  return { timerState, setTimerState, soundEnabled, toggleSound, toggleTimer, confirmSet, resetTimer, adjustTimer, skipTimerPhase }
 }

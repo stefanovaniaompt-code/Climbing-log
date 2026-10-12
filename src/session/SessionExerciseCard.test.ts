@@ -25,11 +25,14 @@ async function renderCard(exercise: RunnerExercise) {
       exerciseInput: { rpe: '', notes: '' },
       exerciseSaveState: 'idle',
       onToggleTimer: vi.fn(),
+      onConfirmSet: vi.fn(),
       onResetTimer: vi.fn(),
       onAdjustTimer: vi.fn(),
       onSkipTimerPhase: vi.fn(),
       onUpdateExerciseInput: vi.fn(),
       onRecordExercise: vi.fn(),
+      soundEnabled: true,
+      onToggleSound: vi.fn(),
     }))
   })
   return container

@@ -285,6 +285,7 @@
 .athlete-timer-focus__intro small { color: var(--athlete-mustard); font: 700 11px/1 'IBM Plex Mono', monospace; letter-spacing: .11em; }
 .athlete-timer-focus__intro h2 { max-width: 330px; margin: 12px auto 0; color: #fff; font-size: 26px; font-weight: 650; line-height: 1.05; letter-spacing: -.04em; }
 .athlete-timer-focus__intro p { margin: 8px 0 0; color: rgba(255,255,255,.55); font-size: 12px; font-weight: 500; }
+.athlete-timer-focus__hand { display: inline-flex; align-items: center; justify-content: center; min-height: 36px; margin-top: 12px; padding: 0 16px; border: 1px solid rgba(214,170,36,.6); background: rgba(214,170,36,.14); color: var(--athlete-mustard); font: 800 13px/1 'IBM Plex Mono', monospace; letter-spacing: .09em; }
 .athlete-timer-focus__exercise-progress { margin-top: 18px; }
 .athlete-timer-focus__exercise-progress > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: rgba(255,255,255,.6); font: 700 9px/1 'IBM Plex Mono', monospace; letter-spacing: .08em; }
 .athlete-timer-focus__exercise-progress > div strong { color: #fff; font-size: 11px; }
@@ -295,6 +296,7 @@
 .athlete-timer-focus__phase { text-align: center; }
 .athlete-timer-focus__phase small { display: block; color: var(--athlete-mustard); font: 700 11px/1 'IBM Plex Mono', monospace; letter-spacing: .11em; text-transform: uppercase; }
 .athlete-timer-focus__phase strong { display: block; margin-top: 10px; color: #fff; font: 650 64px/1 'IBM Plex Mono', monospace; letter-spacing: -.07em; font-variant-numeric: tabular-nums; }
+.athlete-timer-focus.is-awaiting_set .athlete-timer-focus__phase strong { font-size: clamp(34px, 9vw, 46px); letter-spacing: -.08em; }
 .athlete-timer-focus__phase span { display: block; margin-top: 12px; color: rgba(255,255,255,.45); font: 600 11px/1.3 'IBM Plex Mono', monospace; letter-spacing: .08em; text-transform: uppercase; }
 .athlete-timer-focus__next { margin-top: 28px; padding: 15px 16px; border: 1px solid rgba(255,255,255,.15); background: rgba(255,255,255,.07); }
 .athlete-timer-focus__next > small { color: rgba(255,255,255,.45); font: 700 9px/1 'IBM Plex Mono', monospace; letter-spacing: .08em; }
@@ -305,9 +307,16 @@
 .athlete-timer-focus__controls > button { min-height: 48px; border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.05); color: rgba(255,255,255,.7); font-weight: 700; cursor: pointer; }
 .athlete-timer-focus__controls .athlete-timer-focus__main { width: 78px; height: 78px; min-height: 78px; margin: 0 auto; border: 0; border-radius: 50%; background: linear-gradient(135deg, #d6aa24, #ffd64f); color: #210b2d; box-shadow: 0 10px 34px rgba(214,170,36,.22); }
 .athlete-timer-focus__skip { width: 100%; min-height: 48px; margin-top: 20px; border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.05); color: rgba(255,255,255,.65); font-size: 10px; font-weight: 700; letter-spacing: .08em; cursor: pointer; }
+.athlete-timer-focus__confirm-set { width: 100%; min-height: 64px; margin-top: 24px; border: 0; background: linear-gradient(135deg, #d6aa24, #ffd64f); color: var(--athlete-deep-purple); font-size: 15px; font-weight: 900; letter-spacing: .07em; cursor: pointer; touch-action: manipulation; }
+.athlete-timer-focus__controls button, .athlete-timer-focus__skip, .athlete-timer-focus__confirm-set, .athlete-timer-focus__complete, .athlete-timer-focus__sound { touch-action: manipulation; }
+.athlete-timer-focus__controls button:disabled { opacity: .4; cursor: not-allowed; }
 .athlete-timer-focus__complete { min-height: 52px; display: flex; align-items: center; justify-content: center; gap: 9px; margin-top: 28px; border: 0; background: var(--athlete-mustard); color: var(--athlete-deep-purple); font-size: 11px; font-weight: 800; letter-spacing: .065em; cursor: pointer; }
 .athlete-timer-focus__complete svg { transform: rotate(180deg); }
 .athlete-timer-focus__status { margin: auto 0 0; padding-top: 28px; color: rgba(255,255,255,.35); text-align: center; font: 700 10px/1 'IBM Plex Mono', monospace; letter-spacing: .08em; }
+.athlete-timer-focus__footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: auto; padding-top: 20px; }
+.athlete-timer-focus__footer .athlete-timer-focus__status { margin: 0; padding-top: 0; }
+.athlete-timer-focus__sound { min-height: 40px; padding: 0 12px; border: 1px solid rgba(255,255,255,.22); background: rgba(255,255,255,.07); color: #fff; font: 800 10px/1 'IBM Plex Mono', monospace; letter-spacing: .08em; cursor: pointer; }
+.athlete-timer-focus :focus-visible { outline: 3px solid #ffd64f; outline-offset: 3px; }
 .athlete-timer-focus__exercise-panel { min-height: calc(100dvh - 112px); margin-top: 20px; padding: clamp(18px, 5vw, 26px); background: #fff; color: var(--athlete-deep-purple); box-shadow: 0 24px 70px rgba(0,0,0,.24); }
 .athlete-timer-focus__exercise-panel > div:first-child > small { color: var(--athlete-purple); font: 800 10px/1 'IBM Plex Mono', monospace; letter-spacing: .1em; }
 .athlete-timer-focus__exercise-panel > div:first-child > h2 { margin: 10px 0 0; color: var(--athlete-deep-purple); font-size: 26px; line-height: 1.08; letter-spacing: -.04em; }
@@ -332,11 +341,13 @@
 @keyframes athlete-timer-urgency { 50% { transform: scale(1.025); filter: drop-shadow(0 0 22px rgba(214,170,36,.38)); } }
 
 @media (max-width: 380px), (max-height: 720px) {
+  .athlete-timer-focus { padding-right: max(14px, env(safe-area-inset-right)); padding-left: max(14px, env(safe-area-inset-left)); }
   .athlete-timer-focus__body { padding-top: 12px; }
   .athlete-timer-focus__intro h2 { font-size: 22px; }
-  .athlete-timer-focus__ring { width: 232px; height: 232px; margin-top: 18px; }
+  .athlete-timer-focus__ring { width: min(232px, calc(100vw - 56px)); height: min(232px, calc(100vw - 56px)); margin-top: 18px; }
   .athlete-timer-focus__next { margin-top: 18px; }
   .athlete-timer-focus__controls { margin-top: 18px; }
+  .athlete-timer-focus__controls { grid-template-columns: minmax(54px, 72px) 1fr minmax(54px, 72px); gap: 10px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

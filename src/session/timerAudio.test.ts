@@ -21,6 +21,11 @@ describe('timer audio feedback', () => {
     expect(timerAudioCueForTransition(timer({ phase: 'work' }), timer({ phase: 'complete', remaining: 0, running: false }))).toBe('complete')
   })
 
+  it('distingue il cambio mano dal recupero tra serie', () => {
+    expect(timerAudioCueForTransition(timer({ phase: 'work' }), timer({ phase: 'hand_rest' }))).toBe('hand_change')
+    expect(timerAudioCueForTransition(timer({ phase: 'work' }), timer({ phase: 'set_rest' }))).toBe('rest')
+  })
+
   it('annuncia il lavoro quando parte il timer di un altro esercizio', () => {
     expect(timerAudioCueForTransition(
       timer({ exerciseId: 'exercise-1', phase: 'work' }),

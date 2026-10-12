@@ -17,7 +17,7 @@ import { useExerciseProgress } from './useExerciseProgress'
 
 export function SessionScreen({ profile, sessionId }: { profile: AppProfile; sessionId: string }) {
   const [runner, setRunner] = useState<SessionRunnerData | null | undefined>(undefined)
-  const { timerState, setTimerState, toggleTimer, resetTimer, adjustTimer, skipTimerPhase } = useSessionTimer()
+  const { timerState, setTimerState, soundEnabled, toggleSound, toggleTimer, confirmSet, resetTimer, adjustTimer, skipTimerPhase } = useSessionTimer()
   const [outcome, setOutcome] = useState<CompletionOutcome | null>(null)
   const [sessionRpe, setSessionRpe] = useState('')
   const [sessionNote, setSessionNote] = useState('')
@@ -481,9 +481,12 @@ export function SessionScreen({ profile, sessionId }: { profile: AppProfile; ses
             canEdit={canEdit}
             isNext={exercise.id === nextOpenExerciseId}
             timerState={timerState}
+            soundEnabled={soundEnabled}
+            onToggleSound={toggleSound}
             exerciseInput={exerciseInputs[exercise.id] ?? { rpe: '', notes: '' }}
             exerciseSaveState={exerciseSaveStates[exercise.id] ?? 'idle'}
             onToggleTimer={toggleTimer}
+            onConfirmSet={confirmSet}
             onResetTimer={resetTimer}
             onAdjustTimer={adjustTimer}
             onSkipTimerPhase={skipTimerPhase}
