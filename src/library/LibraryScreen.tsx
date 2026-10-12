@@ -2,7 +2,9 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Archive, BookOpen, ChevronDown, Plus, Save, Search, ShieldCheck, Trash2 } from 'lucide-react'
 import type { AppProfile } from '../onboarding/types'
 import { ConfirmDialog, Metric, Panel, ScreenHeader, Tag } from '../shared/ui'
-import { emptyExercise, filterExercises, validateExercise, type ExerciseLibraryInput, type ExerciseLibraryItem, type LibraryStatusFilter } from './exerciseLibrary'
+import { TimerConfigurationEditor } from '../shared/TimerConfigurationEditor'
+import { emptyExercise, filterExercises, updateExerciseLibraryTimerConfiguration, validateExercise, type ExerciseLibraryInput, type ExerciseLibraryItem, type LibraryStatusFilter } from './exerciseLibrary'
+import { timerSettingsFromPrescription } from '../prescriptions/timerConfiguration'
 import { createLibraryExercise, deleteLibraryExercise, loadExerciseLibrary, setLibraryExerciseArchived, updateLibraryExercise } from './exerciseLibraryRepository'
 
 export function LibraryScreen({ profile }: { profile: AppProfile }) {
@@ -34,6 +36,19 @@ export function LibraryScreen({ profile }: { profile: AppProfile }) {
   const categories = [...new Set(items.map(item => item.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'it'))
   const visibleItems = filterExercises(items, search, category, status)
   const usedCount = items.filter(item => item.usageCount > 0).length
+  const legacyTimer = input.defaultPrescription.timer && typeof input.defaultPrescription.timer === 'object' && !Array.isArray(input.defaultPrescription.timer)
+    ? input.defaultPrescription.timer as Record<string, unknown>
+    : {}
+  const configuredRest = typeof input.defaultPrescription.restSeconds === 'number'
+    ? input.defaultPrescription.restSeconds
+    : legacyTimer.set_rest_seconds
+  const numericRest = typeof configuredRest === 'number'
+    ? configuredRest
+    : typeof configuredRest === 'string' && configuredRest.trim() ? Number(configuredRest) : NaN
+  const timerEditorValues = timerSettingsFromPrescription(
+    input.defaultPrescription,
+    Number.isSafeInteger(numericRest) && numericRest >= 0 ? numericRest : null,
+  )
 
   const save = async (event: FormEvent) => {
     event.preventDefault()
@@ -85,7 +100,8 @@ export function LibraryScreen({ profile }: { profile: AppProfile }) {
       </Panel>
       <Panel className="library-editor" title={selected ? 'Modifica esercizio' : 'Nuovo esercizio'} index="02" action={selected && <Tag tone={selected.archived ? 'warning' : 'success'}>{selected.archived ? 'Archiviato' : 'Attivo'}</Tag>}>
         <form onSubmit={save}>
-          <div className="library-form-grid"><label className="library-form-grid__wide"><span>Nome</span><input value={input.name} onChange={event => setInput(value => ({ ...value, name: event.target.value }))} placeholder="Es. Max hang · 20 mm" required /></label><label><span>Categoria</span><input value={input.category} onChange={event => setInput(value => ({ ...value, category: event.target.value }))} placeholder="Dita, Trazione…" /></label><label><span>Modalità</span><input value={input.modality} onChange={event => setInput(value => ({ ...value, modality: event.target.value }))} placeholder="Forza, Isometrico…" /></label><label><span>Serie</span><input type="number" min="1" step="1" value={input.defaultPrescription.sets} onChange={event => setInput(value => ({ ...value, defaultPrescription: { ...value.defaultPrescription, sets: Number(event.target.value) } }))} /></label><label><span>Ripetizioni</span><input type="number" min="0" value={input.defaultPrescription.reps} onChange={event => setInput(value => ({ ...value, defaultPrescription: { ...value.defaultPrescription, reps: Number(event.target.value) } }))} /></label><label><span>Durata</span><div className="input-shell"><input type="number" min="0" value={input.defaultPrescription.seconds} onChange={event => setInput(value => ({ ...value, defaultPrescription: { ...value.defaultPrescription, seconds: Number(event.target.value) } }))} /><em>sec</em></div></label><label><span>Carico</span><div className="input-shell"><input type="number" min="0" step="0.5" value={input.defaultPrescription.loadKg} onChange={event => setInput(value => ({ ...value, defaultPrescription: { ...value.defaultPrescription, loadKg: Number(event.target.value) } }))} /><em>kg</em></div></label><label className="library-form-grid__wide"><span>Descrizione</span><textarea value={input.description} onChange={event => setInput(value => ({ ...value, description: event.target.value }))} placeholder="Scopo e configurazione dell’esercizio" /></label><label className="library-form-grid__wide"><span>Indicazioni predefinite</span><textarea value={input.defaultInstructions} onChange={event => setInput(value => ({ ...value, defaultInstructions: event.target.value }))} placeholder="Tecnica, criteri di stop, sicurezza…" /></label></div>
+          <div className="library-form-grid"><label className="library-form-grid__wide"><span>Nome</span><input value={input.name} onChange={event => setInput(value => ({ ...value, name: event.target.value }))} placeholder="Es. Max hang · 20 mm" required /></label><label><span>Categoria</span><input value={input.category} onChange={event => setInput(value => ({ ...value, category: event.target.value }))} placeholder="Dita, Trazione…" /></label><label><span>Modalità</span><input value={input.modality} onChange={event => setInput(value => ({ ...value, modality: event.target.value }))} placeholder="Forza, Isometrico…" /></label><label><span>Carico</span><div className="input-shell"><input type="number" min="0" step="0.5" value={input.defaultPrescription.loadKg} onChange={event => setInput(value => ({ ...value, defaultPrescription: { ...value.defaultPrescription, loadKg: Number(event.target.value) } }))} /><em>kg</em></div></label><label className="library-form-grid__wide"><span>Descrizione</span><textarea value={input.description} onChange={event => setInput(value => ({ ...value, description: event.target.value }))} placeholder="Scopo e configurazione dell’esercizio" /></label><label className="library-form-grid__wide"><span>Indicazioni predefinite</span><textarea value={input.defaultInstructions} onChange={event => setInput(value => ({ ...value, defaultInstructions: event.target.value }))} placeholder="Tecnica, criteri di stop, sicurezza…" /></label></div>
+          <TimerConfigurationEditor value={timerEditorValues} onChange={next => setInput(value => ({ ...value, defaultPrescription: updateExerciseLibraryTimerConfiguration(value.defaultPrescription, next) }))} />
           {error && <p className="form-error form-error--box" role="alert">{error}</p>}
           <div className="library-actions"><button className="button button--primary" disabled={state === 'saving'}><Save size={16} /> {state === 'saving' ? 'Salvo…' : selected ? 'Salva modifiche' : 'Crea esercizio'}</button>{selected?.archived && <button type="button" className="button button--secondary" disabled={state === 'saving'} onClick={toggleArchive}><Archive size={16} /> Ripristina</button>}{selected && <button type="button" className="button button--danger" disabled={state === 'saving'} onClick={() => setDeleteTarget(selected)}><Trash2 size={16} /> Elimina</button>}</div>
         </form>

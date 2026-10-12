@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { emptyExercise, filterExercises, validateExercise, type ExerciseLibraryItem } from './exerciseLibrary'
+import { emptyExercise, filterExercises, readExerciseLibraryPrescription, updateExerciseLibraryTimerConfiguration, validateExercise, type ExerciseLibraryItem } from './exerciseLibrary'
 
 const items: ExerciseLibraryItem[] = [
   { id: '1', name: 'Trazione zavorrata', category: 'Trazione', modality: 'Forza', description: 'Presa prona', defaultInstructions: '', defaultPrescription: { sets: 5, reps: 3, seconds: 0, loadKg: 20 }, archived: false, usageCount: 4 },
@@ -21,5 +21,32 @@ describe('exercise library', () => {
     input.defaultPrescription.reps = 0
     input.defaultPrescription.seconds = 7
     expect(validateExercise(input)).toBeNull()
+  })
+
+  it('preserva timer e proprietà JSON avanzate quando si modifica una prescrizione della libreria', () => {
+    const original = readExerciseLibraryPrescription({
+      sets: 3, reps: 6, seconds: 7, loadKg: 25, restSeconds: 90,
+      customPrescription: { protocol: 'v2' },
+      timer: { mode: 'guided', execution_mode: 'single_hand', preparation_seconds: 4, hand_change_seconds: 3, interval_rest_seconds: 2, vendorTimerFlag: 'keep' },
+    })
+    const changed = updateExerciseLibraryTimerConfiguration(original, {
+      sets: 4, reps: 8, seconds: 9, restSeconds: 120,
+      mode: 'guided', executionMode: 'alternate_hands', preparationSeconds: 5, handChangeSeconds: 3, intervalRestSeconds: 2,
+    })
+    expect(changed).toMatchObject({
+      sets: 4, reps: 8, seconds: 9, restSeconds: 120,
+      customPrescription: { protocol: 'v2' },
+      timer: { mode: 'guided', execution_mode: 'single_hand', preparation_seconds: 5, hand_change_seconds: 3, interval_rest_seconds: 2, vendorTimerFlag: 'keep' },
+    })
+  })
+
+  it('mantiene le chiavi avanzate anche quando si rilegge il JSON già salvato', () => {
+    const prescription = readExerciseLibraryPrescription({ sets: 2, reps: 5, seconds: 0, loadKg: 12, timer: { mode: 'recovery_only', futureField: 17 }, custom: 'preserve' })
+    expect(prescription).toMatchObject({ timer: { mode: 'recovery_only', futureField: 17 }, custom: 'preserve' })
+  })
+
+  it('legge i campi legacy dal timer senza trasformarli in configurazioni indipendenti', () => {
+    const prescription = readExerciseLibraryPrescription({ timer: { sets: 4, repetitions: 6, work_seconds: 7, set_rest_seconds: 90, execution_mode: 'single_hand' } })
+    expect(prescription).toMatchObject({ sets: 4, reps: 6, seconds: 7, timer: { repetitions: 6, work_seconds: 7, set_rest_seconds: 90 } })
   })
 })

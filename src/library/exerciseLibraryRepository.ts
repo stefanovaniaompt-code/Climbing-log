@@ -1,7 +1,7 @@
 import { dataRuntime } from '../dataRuntime'
 import { supabase } from '../lib/supabase'
 import type { AppProfile } from '../onboarding/types'
-import type { ExerciseLibraryInput, ExerciseLibraryItem, ExercisePrescription } from './exerciseLibrary'
+import { readExerciseLibraryPrescription, type ExerciseLibraryInput, type ExerciseLibraryItem } from './exerciseLibrary'
 
 const demo: ExerciseLibraryItem[] = [
   { id: 'demo-1', name: 'Block lift · 20 mm', category: 'Dita', modality: 'Isometrico', description: 'Trazione su blocco con presa semiarcuata.', defaultInstructions: 'Trazione progressiva e spalla attiva.', defaultPrescription: { sets: 4, reps: 0, seconds: 5, loadKg: 32.5 }, archived: false, usageCount: 6 },
@@ -12,11 +12,6 @@ const demo: ExerciseLibraryItem[] = [
 
 const isDemo = (profile: AppProfile) => !supabase || profile.userId.startsWith('00000000-') || dataRuntime.backendSchema !== 'legacy-v1'
 const assertCoach = (profile: AppProfile) => { if (profile.role !== 'coach') throw new Error('La libreria esercizi è riservata al coach.') }
-
-const parsePrescription = (value: unknown): ExercisePrescription => {
-  const row = value && typeof value === 'object' ? value as Record<string, unknown> : {}
-  return { sets: Number(row.sets) || 1, reps: Number(row.reps) || 0, seconds: Number(row.seconds) || 0, loadKg: Number(row.loadKg) || 0 }
-}
 
 export async function loadExerciseLibrary(profile: AppProfile): Promise<{ source: 'demo' | 'legacy-v1'; items: ExerciseLibraryItem[] }> {
   assertCoach(profile)
@@ -37,7 +32,7 @@ export async function loadExerciseLibrary(profile: AppProfile): Promise<{ source
       modality: row.modality ?? '',
       description: row.description ?? '',
       defaultInstructions: row.default_instructions ?? '',
-      defaultPrescription: parsePrescription(row.default_prescription),
+      defaultPrescription: readExerciseLibraryPrescription(row.default_prescription),
       archived: row.archived,
       usageCount: usage.get(row.id) ?? 0,
     })),

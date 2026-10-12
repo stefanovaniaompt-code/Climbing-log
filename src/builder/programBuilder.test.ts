@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { formatPrescription, getRestSeconds, getVariableSeries, type RunnerExercise } from '../session/sessionRunner'
-import { canPublishProgram, describePrescriptionLoadAdjustment, getPrescriptionSteps, latestWeek, mergePrescriptionForUpdate, nextSequence, prescriptionSummary, readPrescriptionEditorValues, saveBeforeSelectingExercise, scalePrescriptionLoads, type ProgramBuilderData } from './programBuilder'
+import { canPublishProgram, describePrescriptionLoadAdjustment, getPrescriptionSteps, latestWeek, mergePrescriptionForUpdate, nextSequence, prescriptionSummary, readPrescriptionEditorValues, saveBeforeSelectingExercise, scalePrescriptionLoads, sessionExerciseDefaultsFromLibrary, type ProgramBuilderData } from './programBuilder'
 
 function runnerExercise(prescription: Record<string, unknown>, restSeconds: number): RunnerExercise {
   return { id: 'e', order: 1, name: 'Hang', prescription, calculationContext: {}, targetRpeMin: 7, targetRpeMax: 8, restSeconds, instructions: null, progress: null }
@@ -76,6 +76,30 @@ describe('program builder', () => {
       { sets: 4, reps: 0, seconds: 0, loadKg: 0, steps: [] },
     )
     expect(saved).toMatchObject({ reps: 0, seconds: 0, dose: null, timer: { work_seconds: 0, repetitions: 0 } })
+  })
+  it('allinea il recupero tra serie alla prescrizione della seduta senza creare un nuovo campo timer', () => {
+    const saved = mergePrescriptionForUpdate(
+      { sets: 3, reps: 6, seconds: 7, timer: { mode: 'guided', set_rest_seconds: 90, custom: 'keep' } },
+      { sets: 3, reps: 6, seconds: 7, loadKg: 0, steps: [], restSeconds: 120 },
+    )
+    expect(saved.timer).toEqual({ mode: 'guided', set_rest_seconds: 120, custom: 'keep' })
+    expect(saved).not.toHaveProperty('restSeconds')
+  })
+  it('mantiene timer e campi avanzati quando converte un preset libreria in esercizio di sessione', () => {
+    const defaults = sessionExerciseDefaultsFromLibrary({
+      sets: 3, reps: 6, seconds: 7, restSeconds: 90,
+      timer: { mode: 'guided', execution_mode: 'single_hand', preparation_seconds: 5, vendorOption: 'keep' },
+      unknownPrescriptionField: { key: 'keep' },
+    })
+    expect(defaults).toEqual({
+      restSeconds: 90,
+      prescription: {
+        sets: 3, reps: 6, seconds: 7,
+        timer: { mode: 'guided', execution_mode: 'single_hand', preparation_seconds: 5, vendorOption: 'keep' },
+        unknownPrescriptionField: { key: 'keep' },
+      },
+    })
+    expect(sessionExerciseDefaultsFromLibrary({ sets: 2, reps: 3, timer: { set_rest_seconds: 75 } }).restSeconds).toBe(75)
   })
   it('mantiene coerenti il contatore serie e le righe strutturate', () => {
     const saved = mergePrescriptionForUpdate(

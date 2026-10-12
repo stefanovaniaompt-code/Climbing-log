@@ -2,7 +2,8 @@ import { dataRuntime } from '../dataRuntime'
 import { supabase } from '../lib/supabase'
 import type { AppProfile } from '../onboarding/types'
 import { normalizeProgramType, type ProgramType } from '../programs/programType'
-import { mergePrescriptionForUpdate, nextSequence, type PrescriptionStep, type ProgramBuilderData, type WeekLoadType } from './programBuilder'
+import { mergePrescriptionForUpdate, nextSequence, sessionExerciseDefaultsFromLibrary, type PrescriptionStep, type ProgramBuilderData, type WeekLoadType } from './programBuilder'
+import type { TimerSettings } from '../prescriptions/timerConfiguration'
 
 const demo: ProgramBuilderData = {
   source: 'demo',
@@ -122,22 +123,23 @@ export async function updateSessionDetails(profile: AppProfile, sessionId: strin
 
 export async function addExercise(profile: AppProfile, sessionId: string, existingOrders: number[], name: string, libraryExercise?: ProgramBuilderData['library'][number]) {
   assertCoach(profile); if (isDemo(profile)) return 'demo-e'
+  const defaults = libraryExercise ? sessionExerciseDefaultsFromLibrary(libraryExercise.defaultPrescription) : null
   const result = await supabase!.from('session_exercises').insert({
     session_id: sessionId,
     exercise_id: libraryExercise?.id ?? null,
     exercise_order: nextSequence(existingOrders),
     exercise_name: (libraryExercise?.name ?? name).trim(),
-    prescription: libraryExercise?.defaultPrescription ?? { sets: 3, reps: 5 },
+    prescription: defaults?.prescription ?? { sets: 3, reps: 5 },
     target_rpe_min: 6,
     target_rpe_max: 8,
-    rest_seconds: 120,
+    rest_seconds: defaults?.restSeconds ?? 120,
     instructions: libraryExercise?.defaultInstructions ?? null,
   }).select('id').single()
   if (result.error) throw result.error
   return result.data.id as string
 }
 
-export type ExercisePatch = { sets: number; reps: number; seconds: number; loadKg: number; rpe: number; restSeconds: number; instructions: string; steps: PrescriptionStep[] }
+export type ExercisePatch = { sets: number; reps: number; seconds: number; loadKg: number; rpe: number; restSeconds: number; instructions: string; steps: PrescriptionStep[]; timerSettings?: TimerSettings }
 export type LoadAdjustmentResult = { updatedRows: number; unscalableRows: number; unchangedRows: number; partialRows: number }
 
 export async function updateExercise(profile: AppProfile, exerciseId: string, currentPrescription: Record<string, unknown>, patch: ExercisePatch) {

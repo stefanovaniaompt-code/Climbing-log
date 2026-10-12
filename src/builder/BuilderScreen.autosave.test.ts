@@ -206,6 +206,62 @@ afterEach(async () => {
 })
 
 describe('BuilderScreen autosave durante i cambi di selezione', () => {
+  it('salva e riapre la configurazione timer usando serie, ripetizioni, durata e recupero della prescrizione', async () => {
+    let persistedData: ProgramBuilderData = {
+      ...builderData,
+      exercises: builderData.exercises.map(item => ({ ...item, prescription: { sets: 3, reps: 5, seconds: 0, timer: { vendor_setting: 'keep' } } })),
+    }
+    repository.loadProgramBuilder.mockImplementation(async () => structuredClone(persistedData))
+    repository.updateExercise.mockImplementation(async (_profile, exerciseId, currentPrescription, patch) => {
+      persistedData = {
+        ...persistedData,
+        exercises: persistedData.exercises.map(item => item.id === exerciseId
+          ? { ...item, prescription: mergePrescriptionForUpdate(currentPrescription, patch), restSeconds: patch.restSeconds }
+          : item),
+      }
+    })
+
+    const screen = await renderBuilder()
+    await act(async () => { buttonWithText(screen, 'Hang board').click() })
+    const timerMode = screen.querySelector<HTMLSelectElement>('select[aria-label="Modalità timer"]')
+    const executionMode = screen.querySelector<HTMLSelectElement>('select[aria-label="Modalità esecuzione"]')
+    if (!timerMode || !executionMode) throw new Error('Configurazione timer non visualizzata')
+    await act(async () => { changeSelect(timerMode, 'guided') })
+    await act(async () => { changeSelect(executionMode, 'alternate_hands') })
+    await act(async () => { screen.querySelector<HTMLButtonElement>('.stepper button')?.click() })
+    await act(async () => { changeInput(inputWithLabel(screen, 'Ripetizioni'), '6') })
+    await act(async () => { changeInput(inputWithLabel(screen, 'Durata'), '7') })
+    await act(async () => { changeInput(inputWithLabel(screen, 'Preparazione iniziale'), '5') })
+    await act(async () => { changeInput(inputWithLabel(screen, 'Pausa breve cambio mano'), '3') })
+    await act(async () => { changeInput(inputWithLabel(screen, 'Pausa tra ripetizioni'), '2') })
+    await act(async () => { changeInput(inputWithLabel(screen, 'Recupero'), '90') })
+    expect(screen.querySelector('.timer-configuration__preview')?.textContent).toContain('12 DX + 12 SX')
+
+    await act(async () => { vi.advanceTimersByTime(700); await Promise.resolve() })
+    await flushPromises()
+    expect(repository.updateExercise).toHaveBeenCalledTimes(1)
+    expect(persistedData.exercises[0]).toMatchObject({
+      prescription: {
+        sets: 2, reps: 6, seconds: 7,
+        timer: { mode: 'guided', execution_mode: 'single_hand', preparation_seconds: 5, hand_change_seconds: 3, interval_rest_seconds: 2, vendor_setting: 'keep' },
+      },
+      restSeconds: 90,
+    })
+
+    await act(async () => { root?.unmount() })
+    root = null
+    container?.remove()
+    container = null
+    const reopened = await renderBuilder()
+    await act(async () => { buttonWithText(reopened, 'Hang board').click() })
+    expect(reopened.querySelector<HTMLSelectElement>('select[aria-label="Modalità timer"]')?.value).toBe('guided')
+    expect(reopened.querySelector<HTMLSelectElement>('select[aria-label="Modalità esecuzione"]')?.value).toBe('alternate_hands')
+    expect(reopened.querySelector('.stepper b')?.textContent).toBe('2')
+    expect(inputWithLabel(reopened, 'Ripetizioni').value).toBe('6')
+    expect(inputWithLabel(reopened, 'Durata').value).toBe('7')
+    expect(inputWithLabel(reopened, 'Recupero').value).toBe('90')
+  })
+
   it('salva e riapre il carico scelto nell’ultima di cinque righe senza alterare le altre serie', async () => {
     const fiveRows = [32, 34, 36, 38, 40].map((loadKg, index) => ({
       label: `Set ${index + 1}`,
@@ -2068,14 +2124,30 @@ describe('BuilderScreen scenari integrati RC1', () => {
 
   it('modifica la settimana duplicata senza alterare l’originale', async () => {
     const copiedWeek: ProgramBuilderData['weeks'][number] = { id: 'week-copy', programId: 'program-1', weekNumber: 4, blockName: 'Blocco uno copia', phase: 'Forza', status: 'planned', loadType: 'load', notes: null }
+    const timerPrescription = { sets: 3, reps: 6, seconds: 7, timer: { mode: 'guided', execution_mode: 'single_hand', preparation_seconds: 5, hand_change_seconds: 3, interval_rest_seconds: 2, extension_flag: 'preserve' } }
+    const sourceData: ProgramBuilderData = { ...builderData, exercises: builderData.exercises.map(item => ({ ...item, prescription: timerPrescription })) }
+    const sourceSession = builderData.sessions.find(item => item.id === 'session-1')!
+    const copiedSession = { ...sourceSession, id: 'session-copy', weekId: copiedWeek.id }
+    const copiedExercise = { ...sourceData.exercises[0]!, id: 'exercise-copy', sessionId: copiedSession.id, prescription: structuredClone(timerPrescription) }
+    const copiedData: ProgramBuilderData = {
+      ...sourceData,
+      weeks: [...sourceData.weeks, copiedWeek],
+      sessions: [...sourceData.sessions, copiedSession],
+      exercises: [...sourceData.exercises, copiedExercise],
+    }
+    repository.loadProgramBuilder.mockResolvedValueOnce(sourceData).mockResolvedValueOnce(copiedData)
     const screen = await renderBuilder()
-    repository.loadProgramBuilder.mockResolvedValueOnce({ ...builderData, weeks: [...builderData.weeks, copiedWeek] })
 
     await act(async () => {
       buttonWithText(screen, 'Duplica settimana').click()
       await Promise.resolve()
     })
     await flushPromises()
+    await act(async () => { buttonWithText(screen, 'Hang board').click() })
+    expect(screen.querySelector<HTMLSelectElement>('select[aria-label="Modalità timer"]')?.value).toBe('guided')
+    expect(screen.querySelector<HTMLSelectElement>('select[aria-label="Modalità esecuzione"]')?.value).toBe('alternate_hands')
+    expect(screen.querySelector<HTMLInputElement>('input[aria-label="Pausa breve cambio mano"]')?.value).toBe('3')
+    expect(screen.querySelector<HTMLInputElement>('input[aria-label="Pausa tra ripetizioni"]')?.value).toBe('2')
     await act(async () => { screen.querySelector<HTMLButtonElement>('button[aria-label="Azioni settimana"]')?.click() })
     await act(async () => { changeInput(inputWithLabel(screen, 'Note / obiettivi'), 'Solo sulla copia') })
     await act(async () => {

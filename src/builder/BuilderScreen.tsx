@@ -7,6 +7,8 @@ import { addExercise, createProgram, createSession, createWeek, deleteExercise, 
 import { builderDraftValuesMatch, compareBuilderLocalDraft, compareBuilderLocalDrafts, planBuilderLocalDraftRecovery, type BuilderDraftComparison, type BuilderDraftComparisonStatus, type BuilderDraftRecoveryPlan } from './builderLocalDraftComparison'
 import { builderLocalDraftKey, claimBuilderLocalDraftRevision, clearBuilderLocalDraftRevision, readBuilderLocalDraft, scanBuilderLocalDrafts, writeBuilderLocalDraft, type BuilderDraftEntityType, type BuilderDraftIdentity, type BuilderLocalDraftScanIssue } from './builderLocalDraftStorage'
 import { ExerciseTestTargetPanel } from './ExerciseTestTargetPanel'
+import { readTimerSettings, timerSettingsEqual } from '../prescriptions/timerConfiguration'
+import { TimerConfigurationEditor } from '../shared/TimerConfigurationEditor'
 import './BuilderScreen.css'
 
 type BuilderViewState = { showBuilder: boolean; creatingProgram: boolean; athleteId: string; programId: string; weekId: string; sessionId: string; exerciseId: string; sessionTab: 'exercises' | 'notes' | 'details'; exerciseEditorOpen: boolean; exerciseAdderOpen: boolean; weekSettingsOpen: boolean }
@@ -1213,11 +1215,32 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
           {sessionId && sessionTab === 'exercises' && exerciseEditorOpen && <Panel className="inspector coach-builder__inspector" title="Parametri esercizio" index="03" action={exercise && <div className="builder-exercise-save"><span role="status">{saveStatus === 'saving' ? 'Modifiche da salvare' : saveStatus === 'error' ? 'Salvataggio non riuscito' : 'Salvato'}</span><button type="button" className="button button--primary" disabled={state === 'saving' || !exerciseHasUnsavedChanges} onClick={() => void saveExerciseChanges()}><Save size={15} /> {exerciseHasUnsavedChanges ? 'Salva modifiche' : 'Salvato'}</button></div>}>
         {!exercise && <div className="empty-state empty-state--compact"><Settings2 size={20} /><b>Seleziona un esercizio</b><span>Qui modificherai volume, carico, RPE e recupero.</span></div>}
         {exercise && <>
-          <label><span>Serie</span><div className="stepper"><button onClick={() => updateExerciseEditor(value => { const sets = Math.max(1, value.sets - 1); return { ...value, sets, steps: resizePrescriptionSteps(value.steps, sets, value) } })}>−</button><b>{patch.sets}</b><button onClick={() => updateExerciseEditor(value => { const sets = value.sets + 1; return { ...value, sets, steps: resizePrescriptionSteps(value.steps, sets, value) } })}>+</button></div></label>
-          <label><span>Ripetizioni</span><div className="input-shell"><input type="number" min="0" value={patch.reps} onChange={event => updateExerciseEditor(value => ({ ...value, reps: Number(event.target.value) }))} /><em>rep</em></div></label>
-          <label><span>Durata</span><div className="input-shell"><input type="number" min="0" value={patch.seconds} onChange={event => updateExerciseEditor(value => ({ ...value, seconds: Number(event.target.value) }))} /><em>sec</em></div></label>
+          <TimerConfigurationEditor
+            value={{ ...(patch.timerSettings ?? readTimerSettings(exercise.prescription)), sets: patch.sets, reps: patch.reps, seconds: patch.seconds, restSeconds: patch.restSeconds }}
+            renderSetControl={(sets, onChange) => <label><span>Serie</span><div className="stepper"><button type="button" onClick={() => onChange(Math.max(1, sets - 1))}>−</button><b>{sets}</b><button type="button" onClick={() => onChange(sets + 1)}>+</button></div></label>}
+            onChange={next => updateExerciseEditor(value => ({
+              ...value,
+              sets: next.sets,
+              reps: next.reps,
+              seconds: next.seconds,
+              restSeconds: next.restSeconds ?? 0,
+              timerSettings: timerSettingsEqual(readTimerSettings(exercise.prescription), {
+                mode: next.mode,
+                executionMode: next.executionMode,
+                preparationSeconds: next.preparationSeconds,
+                handChangeSeconds: next.handChangeSeconds,
+                intervalRestSeconds: next.intervalRestSeconds,
+              }) ? undefined : {
+                mode: next.mode,
+                executionMode: next.executionMode,
+                preparationSeconds: next.preparationSeconds,
+                handChangeSeconds: next.handChangeSeconds,
+                intervalRestSeconds: next.intervalRestSeconds,
+              },
+              steps: resizePrescriptionSteps(value.steps, next.sets, value),
+            }))}
+          />
           <label><span>Carico</span><div className="input-shell"><input type="number" min="0" step="0.5" value={patch.loadKg} onChange={event => updateExerciseEditor(value => ({ ...value, loadKg: Number(event.target.value) }))} /><em>kg</em></div></label>
-          <label><span>Recupero</span><div className="input-shell"><input type="number" min="0" step="15" value={patch.restSeconds} onChange={event => updateExerciseEditor(value => ({ ...value, restSeconds: Number(event.target.value) }))} /><em>sec</em></div></label>
           <label><span>RPE target</span><div className="rpe-scale">{[6, 7, 8, 9, 10].map(value => <button className={value === patch.rpe ? 'active' : ''} key={value} onClick={() => updateExerciseEditor(current => ({ ...current, rpe: value }))}>{value}</button>)}</div></label>
           <label className="inspector-notes"><span>Indicazioni</span><textarea value={patch.instructions} onChange={event => updateExerciseEditor(value => ({ ...value, instructions: event.target.value }))} /></label>
           <section className="builder-exercise-load"><div className="builder-exercise-load__title"><b>Variazione carico esercizio</b><span>Ripetizioni, durata e recupero non cambiano.</span></div><label><span>Variazione %</span><input aria-label="Variazione percentuale carico per questo esercizio" type="number" min="-100" max="500" value={exerciseLoadPercentages[exercise.id] ?? 0} onChange={event => setExerciseLoadPercentages(value => ({ ...value, [exercise.id]: Number(event.target.value) }))} /></label><div className="builder-exercise-load__preview">{(scaledExercisePatch.steps.some(step => step.loadKg !== null && step.loadKg > 0) ? scaledExercisePatch.steps.map((step, index) => step.loadKg !== null && step.loadKg > 0 ? `${step.label || `S${index + 1}`}: ${patch.steps[index]?.loadKg} → ${step.loadKg} kg` : null).filter(Boolean) : patch.loadKg > 0 ? [`${patch.loadKg} → ${scaledExercisePatch.loadKg} kg`] : []).join(' · ') || (hasTestDerivedTarget ? 'Il carico viene calcolato dal test, mantenendo le ripetizioni di ogni serie.' : 'Nessun carico numerico in questa prescrizione.')}</div><button type="button" className="text-button" disabled={state === 'saving' || safeExerciseLoadPercentage === 0 || (!hasTestDerivedTarget && !((patch.loadKg > 0) || patch.steps.some(step => step.loadKg !== null && step.loadKg > 0)))} onClick={applyExerciseLoadAdjustment}>Applica variazione a questo esercizio</button></section>

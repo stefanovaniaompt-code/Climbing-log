@@ -1,5 +1,6 @@
 import type { ProgramType } from '../programs/programType'
 import { hasPrescriptionField, legacyDoseDescription, optionalNonNegativeNumber, usesKilogramLoads } from '../prescriptions/prescriptionConsistency'
+import { mergeTimerSettings, readTimerSettings, timerSettingsEqual, type TimerSettings } from '../prescriptions/timerConfiguration'
 
 export type BuilderAthlete = { id: string; name: string }
 export type BuilderProgram = { id: string; athleteId: string; name: string; goal: string | null; programType: ProgramType; status: 'draft' | 'active' | 'completed' | 'archived'; startDate: string | null; endDate: string | null }
@@ -180,15 +181,21 @@ function parseDoseSteps(dose: string): PrescriptionStep[] {
   return parsed.every((step): step is PrescriptionStep => step !== null) ? parsed : []
 }
 
-export function mergePrescriptionForUpdate(current: Record<string, unknown>, next: PrescriptionEditorValues) {
+export function mergePrescriptionForUpdate(current: Record<string, unknown>, next: PrescriptionEditorValues & { timerSettings?: TimerSettings; restSeconds?: number }) {
   const previous = readPrescriptionEditorValues(current)
   const doseChanged = previous.reps !== next.reps || previous.seconds !== next.seconds
   const loadChanged = previous.loadKg !== next.loadKg
   const timer = current.timer && typeof current.timer === 'object' && !Array.isArray(current.timer)
     ? { ...(current.timer as Record<string, unknown>) }
     : null
-  if (timer && previous.seconds !== next.seconds) timer.work_seconds = next.seconds
-  if (timer && previous.reps !== next.reps) timer.repetitions = next.reps
+  if (timer && previous.seconds !== next.seconds && Object.hasOwn(timer, 'work_seconds')) timer.work_seconds = next.seconds
+  if (timer && previous.reps !== next.reps && Object.hasOwn(timer, 'repetitions')) timer.repetitions = next.reps
+  const mergedTimer = next.timerSettings && !timerSettingsEqual(readTimerSettings(current), next.timerSettings)
+    ? mergeTimerSettings({ ...current, timer: timer ?? current.timer }, next.timerSettings).timer as Record<string, unknown>
+    : timer
+  if (mergedTimer && typeof next.restSeconds === 'number' && Object.hasOwn(mergedTimer, 'set_rest_seconds')) {
+    mergedTimer.set_rest_seconds = next.restSeconds
+  }
   const dose = [next.reps > 0 ? `${next.reps} ripetizioni` : '', next.seconds > 0 ? `${next.seconds} sec` : ''].filter(Boolean).join(' · ')
   const steps = resizePrescriptionSteps(next.steps, next.sets, next)
   const legacyDoseSteps = Array.isArray(current.steps) ? [] : parseDoseSteps(String(current.dose ?? ''))
@@ -208,8 +215,20 @@ export function mergePrescriptionForUpdate(current: Record<string, unknown>, nex
     dose: persistedDose,
     load_value: loadChanged ? next.loadKg > 0 ? String(next.loadKg) : null : current.load_value,
     unit: loadChanged ? next.loadKg > 0 ? 'kg' : null : current.unit,
-    timer: timer ?? current.timer,
+    timer: mergedTimer ?? current.timer,
   }
+}
+
+export function sessionExerciseDefaultsFromLibrary(defaultPrescription: Record<string, unknown>) {
+  const { restSeconds: configuredRest, ...prescription } = defaultPrescription
+  const timer = prescription.timer && typeof prescription.timer === 'object' && !Array.isArray(prescription.timer)
+    ? prescription.timer as Record<string, unknown>
+    : null
+  const restSeconds = optionalNonNegativeNumber(configuredRest)
+    ?? optionalNonNegativeNumber(timer?.set_rest_seconds)
+    ?? 120
+  if (timer && Object.hasOwn(timer, 'set_rest_seconds')) timer.set_rest_seconds = restSeconds
+  return { prescription, restSeconds }
 }
 
 export function getPrescriptionSteps(prescription: Record<string, unknown>): PrescriptionStep[] {
