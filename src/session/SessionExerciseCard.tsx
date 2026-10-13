@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { ArrowLeft, Check, ChevronDown, Pause, Play, RotateCcw, Save, SkipForward } from 'lucide-react'
 import { legacyDoseDescription } from '../prescriptions/prescriptionConsistency'
 import { resolveTimerRestSeconds } from '../prescriptions/timerConfiguration'
-import { advanceExerciseTimer, createExerciseTimerState, exerciseTimerPhaseLabel, exerciseTimerProgressLabel, getExerciseTimerConfig, getPrescriptionDose, getPrescriptionLoad, getSetCount, getVariableSeries, timerPhaseDuration, type ExerciseTimerState, type SessionRunnerData } from './sessionRunner'
+import { advanceExerciseTimer, createExerciseTimerState, exerciseTimerPhaseLabel, exerciseTimerProgressLabel, getExerciseLoadLabel, getExerciseTimerConfig, getPrescriptionDose, getSetCount, getVariableSeries, timerPhaseDuration, type ExerciseTimerState, type SessionRunnerData } from './sessionRunner'
 import type { ExerciseInputDraft } from './sessionLocalDraft'
 import type { ExerciseSaveState } from './useExerciseProgress'
 
@@ -104,7 +104,7 @@ export function SessionExerciseCard({ exercise, coachNotes, canEdit, isNext, tim
   const dose = getPrescriptionDose(exercise) ?? 'Dose indicata dal coach'
   const doseDescription = legacyDoseDescription(exercise.prescription)
   const doseNote = doseDescription ? `Nota: ${doseDescription}` : null
-  const load = getPrescriptionLoad(exercise) ?? 'Corpo libero'
+  const load = getExerciseLoadLabel(exercise)
   return <article
     id={`exercise-${exercise.id}`}
     className={

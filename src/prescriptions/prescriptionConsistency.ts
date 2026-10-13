@@ -71,3 +71,35 @@ export function legacyDoseDescription(prescription: PrescriptionRecord): string 
   ))
   return descriptive.length ? descriptive.join(' · ') : null
 }
+
+/** Read only: recognize complete legacy rows without changing the stored dose. */
+export function legacyDoseRows(prescription: PrescriptionRecord) {
+  if (typeof prescription.dose !== 'string') return []
+  const segments = prescription.dose.split(/\s*[·•;]\s*/).map(value => value.trim()).filter(Boolean)
+  if (segments.length < 2) return []
+  const rows = segments.map(segment => {
+    const match = segment.match(/^(?:(\d+(?:[.,]\d+)?)\s*(?:kg|kgs)?\s*[×x]\s*)?(\d+(?:[.,]\d+)?)\s*(rep(?:etizioni)?|ripetizioni|sec(?:ondi)?|s)?$/i)
+    if (!match) return null
+    const amount = Number(match[2].replace(',', '.'))
+    const loadKg = match[1] ? Number(match[1].replace(',', '.')) : null
+    if (!Number.isFinite(amount)) return null
+    return { loadKg, reps: match[3]?.toLowerCase().startsWith('s') ? 0 : amount, seconds: match[3]?.toLowerCase().startsWith('s') ? amount : 0 }
+  })
+  return rows.every((row): row is NonNullable<typeof row> => row !== null) ? rows : []
+}
+
+/** A row-specific value wins; modern global values outrank potentially stale prose. */
+export function displayDoseForRow(prescription: PrescriptionRecord, row: PrescriptionRecord, index: number) {
+  if (hasPrescriptionField(row, 'reps') || hasPrescriptionField(row, 'seconds')) {
+    return { reps: optionalNonNegativeNumber(row.reps) ?? 0, seconds: optionalNonNegativeNumber(row.seconds) ?? 0 }
+  }
+  if (hasPrescriptionField(prescription, 'reps') || hasPrescriptionField(prescription, 'seconds')) {
+    return { reps: optionalNonNegativeNumber(prescription.reps) ?? 0, seconds: optionalNonNegativeNumber(prescription.seconds) ?? 0 }
+  }
+  const legacy = legacyDoseRows(prescription)[index]
+  const rowLoad = optionalNonNegativeNumber(row.loadKg)
+  if (legacy && (legacy.loadKg === null || rowLoad === legacy.loadKg)) {
+    return { reps: legacy.reps, seconds: legacy.seconds }
+  }
+  return { reps: 0, seconds: 0 }
+}

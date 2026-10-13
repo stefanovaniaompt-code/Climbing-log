@@ -1,0 +1,88 @@
+CLIMBING COACH V2 — TIMER V2, COMPLETAMENTO SENZA VITE LOCALE
+Data: 13 ottobre 2026
+Branch: codex/timer-v2-session-alignment
+
+RISULTATO
+Il problema di visualizzazione delle ripetizioni nelle progressioni è stato riprodotto
+con un test Node prima della correzione: due righe con carichi 20/25 kg e 6
+ripetizioni globali mostravano solo "20 kg" e "25 kg" nella vista atleta.
+La correzione usa una precedenza di sola lettura: valore specifico della riga,
+campo moderno globale, quindi riga legacy di dose solo se il carico coincide.
+Il Builder mostra le righe legacy e strutturate con le ripetizioni corrette.
+La scheda atleta indica "Carichi variabili" quando trova carichi numerici nelle
+righe, oppure "Carichi da test" per target derivati, invece di etichettarli
+"Corpo libero". Nessuna prescrizione è stata scritta.
+
+ESTRATTI DEL CODICE MODIFICATO
+src/prescriptions/prescriptionConsistency.ts:
+  if (hasPrescriptionField(row, 'reps') || hasPrescriptionField(row, 'seconds')) {
+    return { reps: optionalNonNegativeNumber(row.reps) ?? 0, seconds: optionalNonNegativeNumber(row.seconds) ?? 0 }
+  }
+  if (hasPrescriptionField(prescription, 'reps') || hasPrescriptionField(prescription, 'seconds')) {
+    return { reps: optionalNonNegativeNumber(prescription.reps) ?? 0, seconds: optionalNonNegativeNumber(prescription.seconds) ?? 0 }
+  }
+  const legacy = legacyDoseRows(prescription)[index]
+  if (legacy && (legacy.loadKg === null || rowLoad === legacy.loadKg)) {
+    return { reps: legacy.reps, seconds: legacy.seconds }
+  }
+
+src/session/sessionRunner.ts:
+  const rowDose = displayDoseForRow(exercise.prescription, row, index)
+  const reps = positiveInteger(rowDose.reps)
+  const seconds = positiveInteger(rowDose.seconds)
+
+src/session/SessionExerciseCard.tsx:
+  const load = getExerciseLoadLabel(exercise)
+
+src/builder/programBuilder.ts:
+  const displayed = steps.map((step, index) => ({
+    ...step, ...displayDoseForRow(exercise.prescription, rawSteps[index] ?? {}, index),
+  }))
+
+AUDIT IN SOLA LETTURA DEL PROGETTO CANONICO
+Progetto verificato: Climbing coach (ref xkymrvalnydxeamrajqs).
+Sono state contate tutte le 245 righe di public.session_exercises, senza esportare
+ID, dati di atleti o contenuti delle prescrizioni:
+- 34 con parametri timer legacy; 0 con timer.mode V2 esplicito;
+- 226 con sets numerico; 19 senza sets numerico;
+- 84 con reps numerico; 50 con seconds numerico; 48 con indizio testuale di ripetizioni;
+- 4 con steps strutturati (tutti con reps/seconds per riga);
+- 14 con possibile progressione di carico legacy in dose; 18 con sequenza numerica legacy;
+- 197 con recupero esplicito nella colonna rest_seconds;
+  34 con set_rest_seconds nel timer; 48 senza recupero esplicito in nessuno dei due.
+I conteggi possono sovrapporsi. Mancanza di un campo esplicito non equivale
+automaticamente a errore: il resolver storico può applicare regole contestuali.
+Il controllo automatico del resolver copre 29 categorie/varianti sintetiche,
+non un replay esatto di tutte le 245 righe. Quest'ultimo resta da verificare
+in un ambiente con esportazione autorizzata e test completi.
+
+VERIFICHE ESEGUITE
+- Test Node senza Vite, parser/formatter e rendering React reale della scheda atleta: superato.
+- Test Node di compatibilità timer: 29 categorie/varianti e 10 controlli di sequenza/ripristino superati.
+- ESLint sui file coinvolti: superato.
+- TypeScript mirato su moduli e test coinvolti, memoria limitata: superato.
+- git diff --check: superato.
+- Test Vitest, typecheck globale, build e verifica visiva nel browser: non eseguiti
+  per il limite di RAM e l'installazione Vitest locale incompleta.
+
+CI CLOUD
+.github/workflows/ci.yml era già presente. Usa Ubuntu, Node 22 e pnpm 11.19.0;
+installa dal lockfile, esegue lint, typecheck, test e build. Non è stato creato
+un secondo workflow né eseguito alcun push: la CI cloud non è ancora partita
+su questo commit locale.
+
+FILE DEL CAMBIAMENTO
+src/prescriptions/prescriptionConsistency.ts
+src/session/sessionRunner.ts
+src/session/SessionExerciseCard.tsx
+src/builder/programBuilder.ts
+src/session/sessionRunner.test.ts
+src/session/SessionExerciseCard.test.ts
+src/builder/programBuilder.test.ts
+scripts/verify-prescription-display.cjs
+TIMER-V2-COMPLETAMENTO-SENZA-VITE.txt
+
+PRIMA DELLA PUBBLICAZIONE
+Serve eseguire la CI GitHub Actions sul commit e verificare in browser la vista
+atleta e il Builder con un programma fittizio. Nessun push, merge o deploy
+è stato effettuato in questo incarico.

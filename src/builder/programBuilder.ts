@@ -1,5 +1,5 @@
 import type { ProgramType } from '../programs/programType'
-import { hasPrescriptionField, legacyDoseDescription, optionalNonNegativeNumber, usesKilogramLoads } from '../prescriptions/prescriptionConsistency'
+import { displayDoseForRow, hasPrescriptionField, legacyDoseDescription, optionalNonNegativeNumber, usesKilogramLoads } from '../prescriptions/prescriptionConsistency'
 import { mergeTimerSettings, readTimerSettings, timerSettingsEqual, type TimerSettings } from '../prescriptions/timerConfiguration'
 
 export type BuilderAthlete = { id: string; name: string }
@@ -51,8 +51,20 @@ export function prescriptionSummary(exercise: BuilderSessionExercise) {
   const steps = getPrescriptionSteps(exercise.prescription)
   const description = legacyDoseDescription(exercise.prescription)
   const note = description ? `Nota: ${description}` : null
-  if (steps.length) return [steps.map(formatPrescriptionStep).join(' · '), note].filter(Boolean).join(' · ')
-  const { sets, reps, seconds, loadKg: load } = readPrescriptionEditorValues(exercise.prescription)
+  if (steps.length) {
+    const rawSteps = exercise.prescription.steps as Record<string, unknown>[]
+    const displayed = steps.map((step, index) => ({ ...step, ...displayDoseForRow(exercise.prescription, rawSteps[index] ?? {}, index) }))
+    return [displayed.map(formatPrescriptionStep).join(' · '), note].filter(Boolean).join(' · ')
+  }
+  const editorValues = readPrescriptionEditorValues(exercise.prescription)
+  const legacySteps = editorValues.steps
+  if (legacySteps.length) return [
+    `${editorValues.sets} serie`,
+    legacySteps.map(formatPrescriptionStep).join(' · '),
+    note,
+    exercise.targetRpeMax ? `RPE ${exercise.targetRpeMax}` : null,
+  ].filter(Boolean).join(' · ')
+  const { sets, reps, seconds, loadKg: load } = editorValues
   const effort = exercise.targetRpeMax ? `RPE ${exercise.targetRpeMax}` : null
   return [
     `${sets} serie`,

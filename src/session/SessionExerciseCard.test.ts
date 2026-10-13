@@ -62,6 +62,18 @@ afterEach(async () => {
 })
 
 describe('SessionExerciseCard descrizioni legacy', () => {
+  it('mostra ripetizioni e carichi variabili nella scheda atleta', async () => {
+    const screen = await renderCard(exercise({
+      prescription: { sets: 2, reps: 6, steps: [{ loadKg: 20 }, { loadKg: 25 }] },
+    }))
+
+    expect(screen.querySelectorAll('.athlete-prescription-row')).toHaveLength(2)
+    expect(screen.querySelectorAll('.athlete-prescription-value')[0]?.textContent).toBe('20 kg × 6 rep')
+    expect(screen.querySelectorAll('.athlete-prescription-value')[1]?.textContent).toBe('25 kg × 6 rep')
+    expect(screen.textContent).toContain('Carichi variabili')
+    expect(screen.textContent).not.toContain('Corpo libero')
+  })
+
   it('mostra la nota senza duplicare le righe strutturate', async () => {
     const screen = await renderCard(exercise({
       prescription: {

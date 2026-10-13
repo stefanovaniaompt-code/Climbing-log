@@ -5,6 +5,7 @@ import {
   exerciseTimerPhaseLabel,
   exerciseTimerProgressLabel,
   getExerciseTimerConfig,
+  getExerciseLoadLabel,
   firstOpenExerciseIndex,
   formatPrescription,
   getRestSeconds,
@@ -85,6 +86,24 @@ describe('session runner selectors', () => {
       { label: 'Corpo libero', loadKg: null, reps: 5 },
       { label: 'Tenuta', seconds: 10 },
     ] } }))).toEqual(['5 rep', '10 sec'])
+  })
+
+  it('mostra le ripetizioni accanto alla riga corrispondente e non etichetta i carichi numerici come corpo libero', () => {
+    const item = exercise({ prescription: { sets: 5, reps: 6, steps: [20, 25, 30, 35, 40].map((loadKg, index) => ({ label: `Set ${index + 1}`, loadKg })) } })
+    expect(getVariableSeries(item)).toEqual([20, 25, 30, 35, 40].map(load => `${load} kg × 6 rep`))
+    expect(getExerciseLoadLabel(item)).toBe('Carichi variabili')
+    expect(getExerciseLoadLabel(exercise({ prescription: { sets: 2, dose: '20 kg × 8 · 25 kg × 5' } }))).toBe('Carichi variabili')
+    expect(getExerciseLoadLabel(exercise({ prescription: { sets: 2 }, calculationContext: { test_target: { set_targets: [
+      { set_number: 1, percentage: 70, calculated_target: 20, target_unit: 'kg' },
+      { set_number: 2, percentage: 80, calculated_target: 25, target_unit: 'kg' },
+    ] } } }))).toBe('Carichi da test')
+  })
+
+  it('usa le ripetizioni legacy della riga solo quando il carico corrisponde e non prevalgono campi moderni', () => {
+    const prescription = { sets: 2, dose: '20 kg × 8 · 25 kg × 5', steps: [{ loadKg: 20 }, { loadKg: 25 }] }
+    expect(getVariableSeries(exercise({ prescription }))).toEqual(['20 kg × 8 rep', '25 kg × 5 rep'])
+    expect(getVariableSeries(exercise({ prescription: { ...prescription, reps: 6 } }))).toEqual(['20 kg × 6 rep', '25 kg × 6 rep'])
+    expect(getVariableSeries(exercise({ prescription: { ...prescription, steps: [{ loadKg: 21 }, { loadKg: 25 }] } }))).toEqual(['21 kg', '25 kg × 5 rep'])
   })
 
   it('mantiene distinte le semantiche di kg, corpo libero, carico aggiunto e grado', () => {

@@ -1,6 +1,6 @@
 export type JsonRecord = Record<string, unknown>
 import type { ProgramType } from '../programs/programType'
-import { hasPrescriptionField, legacyDoseDescription, optionalNonNegativeNumber, usesKilogramLoads } from '../prescriptions/prescriptionConsistency'
+import { displayDoseForRow, hasPrescriptionField, legacyDoseDescription, legacyDoseRows, optionalNonNegativeNumber, usesKilogramLoads } from '../prescriptions/prescriptionConsistency'
 import { buildTimerProtocolSequence, hasExplicitTimerMode, resolveExerciseTimerValues, timerProtocolSequenceIssue, type TimerSequenceStep, type TimerSeriesPrescription } from '../prescriptions/timerConfiguration'
 import type { CompletionOutcome } from './sessionFeedback'
 
@@ -620,6 +620,19 @@ export function getPrescriptionLoad(exercise: RunnerExercise): string | null {
   return loadType && loadType !== 'none' ? loadType : null
 }
 
+export function getExerciseLoadLabel(exercise: RunnerExercise): string {
+  const load = getPrescriptionLoad(exercise)
+  if (load) return load
+  if (getDerivedSetTargets(exercise).length) return 'Carichi da test'
+  const steps = exercise.prescription.steps
+  if (usesKilogramLoads(exercise.prescription) && Array.isArray(steps) && steps.some(value => {
+    const row = value && typeof value === 'object' && !Array.isArray(value) ? value as JsonRecord : {}
+    return optionalNonNegativeNumber(row.loadKg) !== null
+  })) return 'Carichi variabili'
+  if (usesKilogramLoads(exercise.prescription) && legacyDoseRows(exercise.prescription).some(row => row.loadKg !== null)) return 'Carichi variabili'
+  return 'Corpo libero'
+}
+
 export function formatPrescription(exercise: RunnerExercise): string {
   const sets = getSetCount(exercise)
   const dose = getPrescriptionDose(exercise)
@@ -638,16 +651,15 @@ export function getVariableSeries(
 
   if (derived.length) {
     const prescriptionSteps = Array.isArray(steps) ? steps : []
-    const fallbackReps = positiveInteger(exercise.prescription.reps)
-    const fallbackSeconds = positiveInteger(exercise.prescription.seconds)
     const seriesCount = Math.max(getSetCount(exercise), derived.length, prescriptionSteps.length)
 
     return Array.from({ length: seriesCount }, (_, index) => {
       const target = derived[index]
       const value = prescriptionSteps[index]
       const row = value && typeof value === 'object' && !Array.isArray(value) ? value as JsonRecord : {}
-      const reps = positiveInteger(row.reps) || fallbackReps
-      const seconds = positiveInteger(row.seconds) || fallbackSeconds
+      const rowDose = displayDoseForRow(exercise.prescription, row, index)
+      const reps = positiveInteger(rowDose.reps)
+      const seconds = positiveInteger(rowDose.seconds)
       const dose = reps ? `${reps} rep` : seconds ? `${seconds} sec` : ''
       const manualLoad = usesKilogramLoads(exercise.prescription)
         ? optionalNonNegativeNumber(row.loadKg)
@@ -665,8 +677,9 @@ export function getVariableSeries(
     return steps.map((value, index) => {
       const row = value && typeof value === 'object' && !Array.isArray(value) ? value as JsonRecord : {}
       const load = optionalNonNegativeNumber(row.loadKg)
-      const reps = positiveInteger(row.reps)
-      const seconds = positiveInteger(row.seconds)
+      const rowDose = displayDoseForRow(exercise.prescription, row, index)
+      const reps = positiveInteger(rowDose.reps)
+      const seconds = positiveInteger(rowDose.seconds)
       const label = textValue(row.label) || `Set ${index + 1}`
       const dose = reps ? `${reps} rep` : seconds ? `${seconds} sec` : ''
       return [usesKilogramLoads(exercise.prescription) && load !== null ? `${load} kg` : '', dose].filter(Boolean).join(' × ') || label
