@@ -184,57 +184,6 @@ export function SessionScreen({ profile, sessionId }: { profile: AppProfile; ses
   ])
 
   useEffect(() => {
-    if (!draftReady) return
-
-    const reconcileTimer = () => {
-      if (
-        document.visibilityState === 'hidden'
-      ) {
-        return
-      }
-
-      const draft =
-        readSessionLocalDraft(draftStorageKey)
-
-      if (
-        !draft?.timer ||
-        draft.timer.state.phase === 'complete'
-      ) {
-        return
-      }
-
-      setTimerState(
-        restoreExerciseTimerSnapshot(
-          draft.timer,
-        ),
-      )
-    }
-
-    document.addEventListener(
-      'visibilitychange',
-      reconcileTimer,
-    )
-    window.addEventListener(
-      'focus',
-      reconcileTimer,
-    )
-
-    return () => {
-      document.removeEventListener(
-        'visibilitychange',
-        reconcileTimer,
-      )
-      window.removeEventListener(
-        'focus',
-        reconcileTimer,
-      )
-    }
-  }, [
-    draftReady,
-    draftStorageKey,
-  ])
-
-  useEffect(() => {
     if (
       !draftReady ||
       !runner?.session.logId ||
