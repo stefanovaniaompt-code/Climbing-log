@@ -15,6 +15,8 @@ export type TimerEditorValues = TimerSettings & {
   seconds: number
   restSeconds: number | null
   series?: TimerSeriesPrescription[]
+  workPhases?: { label: string; seconds: number }[]
+  maxSetRestSeconds?: number
 }
 
 export type TimerSequenceStep = {
@@ -24,6 +26,7 @@ export type TimerSequenceStep = {
   setNumber: number
   hand?: 'DX' | 'SX'
   repetition?: number
+  workPhase?: string
 }
 
 export type TimerSeriesPrescription = Pick<TimerEditorValues, 'reps' | 'seconds'>
@@ -107,6 +110,76 @@ export function timerSettingsFromPrescription(prescription: Record<string, unkno
   }
 }
 
+/** Runtime-only compatibility for historic session prescriptions. Never write these defaults back. */
+export function resolveExerciseTimerValues(
+  name: string,
+  prescription: Record<string, unknown>,
+  restSeconds: number | null,
+  instructions: string | null = null,
+): TimerEditorValues {
+  const prescribedRest = resolveTimerRestSeconds(prescription, restSeconds)
+  const base = timerSettingsFromPrescription(prescription, prescribedRest)
+  if (hasExplicitTimerMode(prescription)) return base
+
+  const normalized = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  const dose = typeof prescription.dose === 'string' ? prescription.dose : ''
+  const guidance = `${dose} ${instructions ?? ''}`.toLowerCase()
+  const timer = record(prescription.timer)
+  const fallbackRest = (seconds: number) => prescribedRest ?? (base.sets > 1 ? seconds : null)
+  const guided = (changes: Partial<TimerEditorValues>): TimerEditorValues => ({ ...base, mode: 'guided', ...changes })
+  const recovery = (changes: Partial<TimerEditorValues> = {}): TimerEditorValues => ({ ...base, mode: 'recovery_only', ...changes })
+
+  if (/wall crawl|scalata libera/.test(normalized)) return { ...base, mode: 'none' }
+  if (/open hand iso grip/.test(normalized)) {
+    const fromDose = guidance.match(/(?:×|x|\b)\s*(\d+)\s*(?:s|sec|second)/)?.[1]
+    return guided({
+      executionMode: 'alternate_hands',
+      handChangeSeconds: base.handChangeSeconds || 10,
+      reps: nonNegativeInteger(timer.repetitions, base.sets > 1 ? 1 : base.reps) || (base.sets > 1 ? 1 : base.reps),
+      seconds: base.seconds || nonNegativeInteger(fromDose),
+      restSeconds: prescribedRest,
+    })
+  }
+  if (/bloccaggio.*90.*120/.test(normalized)) {
+    return guided({
+      seconds: 6,
+      intervalRestSeconds: base.intervalRestSeconds || 5,
+      restSeconds: prescribedRest,
+      workPhases: [{ label: '90°', seconds: 3 }, { label: '120°', seconds: 3 }],
+    })
+  }
+  if (/bloccagg.*90.*(?:manopol|sbarra)/.test(normalized)) {
+    const duration = base.seconds || nonNegativeInteger(timer.work_seconds) || nonNegativeInteger(normalized.match(/(\d+)\s*(?:"|s)\s*a\s*90/)?.[1])
+    return guided({ seconds: duration, intervalRestSeconds: base.intervalRestSeconds || 5, restSeconds: prescribedRest })
+  }
+  if (/half crimp iso grip/.test(normalized)) return guided({ intervalRestSeconds: base.intervalRestSeconds || 5, restSeconds: prescribedRest })
+  if (/^plank\b/.test(normalized)) return guided({ intervalRestSeconds: base.intervalRestSeconds || prescribedRest || 0, restSeconds: prescribedRest })
+  if (/campus board/.test(normalized)) {
+    if (base.seconds > 0 || /20\s*(?:s|sec|second)/.test(guidance)) return guided({ reps: 1, seconds: base.seconds || 20, restSeconds: prescribedRest })
+    return recovery({ restSeconds: prescribedRest })
+  }
+  if (/anaerobic capacity/.test(normalized)) {
+    if (prescribedRest === null || /autoregolat|autogestit/.test(guidance)) return { ...base, mode: 'none' }
+    return recovery({ sets: base.sets === 1 && base.reps > 1 ? base.reps : base.sets, restSeconds: prescribedRest })
+  }
+  if (/intentional block lifting/.test(normalized)) {
+    const range = prescribedRest === null && /(?:2\s*[-–]\s*3|due\s*[-–]\s*tre)\s*minut/.test(guidance)
+    return recovery({ restSeconds: range ? 120 : prescribedRest, ...(range ? { maxSetRestSeconds: 180 } : {}) })
+  }
+  if (/piramidale di forza/.test(normalized)) {
+    const groups = /4\s*[-–]\s*2\s*[-–]\s*1\s*[-–]\s*1\s*[-–]\s*2\s*[-–]\s*4/.test(dose)
+    return recovery({ sets: groups && !Object.hasOwn(prescription, 'sets') ? 6 : base.sets, restSeconds: prescribedRest })
+  }
+  if (/pan gullich/.test(normalized)) {
+    return recovery({ restSeconds: prescribedRest ?? (/1\s*[-–]\s*2\s*minut/.test(guidance) ? 60 : null) })
+  }
+  if (/4x4|4×4|trazioni|bloccaggio con sbarra livello occhi/.test(normalized)) return recovery({ restSeconds: prescribedRest })
+  if (/panca piana|\bdip\b|rematore|push up|hanging leg raises|rotazione esterna|\by pancia|\bw pancia|pancia in giu w/.test(normalized)) {
+    return recovery({ restSeconds: fallbackRest(60) })
+  }
+  return base
+}
+
 export function hasExplicitTimerMode(prescription: Record<string, unknown>): boolean {
   const timer = record(prescription.timer)
   return timer.mode === 'guided' || timer.mode === 'recovery_only' || timer.mode === 'none'
@@ -148,7 +221,7 @@ function makeStep(
   label: string,
   durationSeconds: number,
   setNumber: number,
-  extras: Pick<TimerSequenceStep, 'hand' | 'repetition'> = {},
+  extras: Pick<TimerSequenceStep, 'hand' | 'repetition' | 'workPhase'> = {},
 ): TimerSequenceStep {
   return { kind, label, durationSeconds, setNumber, ...extras }
 }
@@ -177,7 +250,11 @@ function buildOneSeries(
         }
       } else {
         const hand = values.executionMode === 'right_only' ? 'DX' : values.executionMode === 'left_only' ? 'SX' : undefined
-        steps.push(makeStep('work', `${hand ? `${hand}${repetition}` : `ripetizione ${repetition}`} ${seconds}s`, seconds, setNumber, { ...(hand ? { hand } : {}), repetition }))
+        if (values.workPhases?.length) {
+          for (const phase of values.workPhases) steps.push(makeStep('work', `${phase.label} ${phase.seconds}s`, phase.seconds, setNumber, { ...(hand ? { hand } : {}), repetition, workPhase: phase.label }))
+        } else {
+          steps.push(makeStep('work', `${hand ? `${hand}${repetition}` : `ripetizione ${repetition}`} ${seconds}s`, seconds, setNumber, { ...(hand ? { hand } : {}), repetition }))
+        }
         if (repetition < reps && values.intervalRestSeconds > 0) {
           steps.push(makeStep('interval_rest', `pausa ${values.intervalRestSeconds}s`, values.intervalRestSeconds, setNumber))
         }

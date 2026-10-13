@@ -1,0 +1,80 @@
+CLIMBING COACH V2 — TIMER V2 / ALLINEAMENTO SESSIONI STORICHE
+Stato: modifica locale da revisionare; NON pubblicata e NON applicata ai dati.
+Branch locale: codex/timer-v2-session-alignment (base main 04f16d6779410e286f99e61d97b3efb9665d10a7).
+
+OBIETTIVO E VINCOLO
+Il timer delle sessioni esistenti viene interpretato a runtime. Nessuna prescrizione di Monica, migrazione o dato Supabase è stato scritto o convertito. Nel controllo aggregato in sola lettura risultavano 245 esercizi di sessione, 29 nomi distinti, 34 payload timer legacy e nessun timer.mode V2 esplicito. Questi numeri descrivono la situazione osservata, non dimostrano che ogni riga sia già avviabile.
+
+CAUSE E MODIFICHE
+Prima, il runtime deduceva il timer principalmente da timer.work_seconds o da sets/rest_seconds. Mancavano quindi guidati storici senza timer JSON e potevano comparire timer su Wall Crawl o scalata libera. src/prescriptions/timerConfiguration.ts ora centralizza resolveExerciseTimerValues(name, prescription, restSeconds, instructions): la modalità esplicita resta prioritaria; le regole compatibili per nomi storici aggiungono soltanto valori effettivi del timer, senza persisterli. src/session/sessionRunner.ts usa la stessa risoluzione dell'anteprima Builder/Libreria. Il fallback di recupero generico da 90 s non viene più inventato per decidere se avviare il timer.
+
+ESTRATTI REALI DI CODICE MODIFICATO
+
+1. Precedenza e normalizzazione runtime (timerConfiguration.ts):
+  const base = timerSettingsFromPrescription(prescription, prescribedRest)
+  if (hasExplicitTimerMode(prescription)) return base
+  if (/wall crawl|scalata libera/.test(normalized)) return { ...base, mode: 'none' }
+  if (/panca piana|\bdip\b|rematore|push up|hanging leg raises|rotazione esterna|\by pancia|\bw pancia|pancia in giu w/.test(normalized)) {
+    return recovery({ restSeconds: fallbackRest(60) })
+  }
+
+2. Due fasi consecutive per bloccaggio 90° + 120° (timerConfiguration.ts):
+  workPhases: [{ label: '90°', seconds: 3 }, { label: '120°', seconds: 3 }],
+  // Il motore aggiunge la pausa da 5 s soltanto dopo la ripetizione completa.
+
+3. Runtime atleta (sessionRunner.ts):
+  const settings = resolveExerciseTimerValues(exercise.name, exercise.prescription, resolveTimerRest(exercise, timer), exercise.instructions)
+  const mode = settings.mode
+  if (mode === 'none') return null
+
+4. Segnale sonoro anche tra le due fasi work (timerAudio.ts):
+  previous.phase !== current.phase ||
+  (current.phase === 'work' && previous.sequenceIndex !== current.sequenceIndex)
+
+5. Recupero 2–3 minuti estendibile al massimo di 60 s aggiuntivi (useSessionTimer.ts):
+  const used = current.restExtensionSeconds ?? 0
+  const allowed = Math.max(0, current.config.maxSetRestSeconds - current.config.setRestSeconds - used)
+  const extension = Math.min(seconds, allowed)
+  return { ...current, remaining: current.remaining + extension, restExtensionSeconds: used + extension }
+
+6. Builder e Libreria usano la risoluzione condivisa solo per modalità e anteprima. TimerConfigurationEditor accetta previewValue separato dai campi di prescrizione, così il fallback del timer non viene copiato nella prescrizione al semplice rendering.
+
+COPERTURA PREVISTA
+Guidato: Open Hand alternato DX/SX, bloccaggi 90°, 90°+120°, Half Crimp, Plank, Campus a 20 s.
+Solo recupero: Campus a ripetizioni, Anaerobic con recupero temporizzato, Intentional Block Lifting, Trazioni, Panca, Dip, Rematore e accessori, 4x4, Pan Gullich, Piramidale, bloccaggio con sbarra a livello occhi.
+Nessun timer: Wall Crawl, scalata libera, Anaerobic con recupero autoregolato.
+La modalità timer esplicita nella singola prescrizione prevale sempre sulla compatibilità per nome.
+
+ANOMALIE E LIMITI NON CORRETTI AUTOMATICAMENTE
+- Alcune prescrizioni storiche Open Hand hanno reps=0 o serie/ripetizioni in apparente conflitto con il timer legacy; il numero di serie salvato non viene modificato.
+- Pan Gullich contiene il dato importato "5-Sep" e alcune righe senza serie valorizzate: il timer non inventa gruppi mancanti e può restare non avviabile.
+- Alcune righe Intentional Block Lifting indicano sets=1 pur contenendo progressioni testuali: non vengono create serie aggiuntive per supposizione.
+- La compatibilità si basa sui nomi storici osservati; nomi futuri diversi richiedono timer.mode esplicito o una regola verificata.
+- Il Builder preesistente può normalizzare campi storici quando il coach salva manualmente un esercizio; questo intervento non cambia tale persistenza. Occorre una verifica separata prima del rilascio se si devono modificare quei record.
+
+VERIFICHE EFFETTUATE
+- scripts/verify-timer-compatibility.cjs: 29 categorie/varianti e 10 controlli di sequenza/ripristino superati, con memoria Node limitata a 192 MB.
+- TypeScript mirato: moduli timer, UI, Builder/Libreria e nuovi test superati in gruppi separati con massimo 256 MB.
+- ESLint sui soli file toccati: superato.
+- Encoding check: superato (570 file testuali).
+- UI copy check: superato.
+- Test Vitest aggiunti ma NON eseguiti: l'installazione locale di node_modules è incompleta (manca std-env/index.js). Nessuna installazione effettuata.
+- Typecheck globale tentato con limite 384 MB: terminato per memoria insufficiente. pnpm check e build completa NON eseguiti.
+
+FILE COINVOLTI
+src/prescriptions/timerConfiguration.ts
+src/prescriptions/exerciseTimerCompatibility.test.ts
+src/session/sessionRunner.ts
+src/session/timerAudio.ts
+src/session/timerAudio.test.ts
+src/session/useSessionTimer.ts
+src/session/useSessionTimer.test.ts
+src/session/SessionExerciseCard.tsx
+src/session/SessionExerciseCard.timer.test.ts
+src/shared/TimerConfigurationEditor.tsx
+src/builder/BuilderScreen.tsx
+src/library/LibraryScreen.tsx
+scripts/verify-timer-compatibility.cjs
+
+PUBBLICAZIONE
+Nessun push, merge, deploy o aggiornamento Supabase. La suite completa va eseguita su un ambiente con dipendenze integre e memoria sufficiente prima di proporre la pubblicazione.

@@ -7,7 +7,7 @@ import { addExercise, createProgram, createSession, createWeek, deleteExercise, 
 import { builderDraftValuesMatch, compareBuilderLocalDraft, compareBuilderLocalDrafts, planBuilderLocalDraftRecovery, type BuilderDraftComparison, type BuilderDraftComparisonStatus, type BuilderDraftRecoveryPlan } from './builderLocalDraftComparison'
 import { builderLocalDraftKey, claimBuilderLocalDraftRevision, clearBuilderLocalDraftRevision, readBuilderLocalDraft, scanBuilderLocalDrafts, writeBuilderLocalDraft, type BuilderDraftEntityType, type BuilderDraftIdentity, type BuilderLocalDraftScanIssue } from './builderLocalDraftStorage'
 import { ExerciseTestTargetPanel } from './ExerciseTestTargetPanel'
-import { readTimerSettings, resolveTimerRestSeconds, timerSettingsEqual } from '../prescriptions/timerConfiguration'
+import { readTimerSettings, resolveExerciseTimerValues, resolveTimerRestSeconds, timerSettingsEqual } from '../prescriptions/timerConfiguration'
 import { TimerConfigurationEditor } from '../shared/TimerConfigurationEditor'
 import './BuilderScreen.css'
 
@@ -246,6 +246,20 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
   const program = athletePrograms.find(item => item.id === programId)
   const session = sessions.find(item => item.id === sessionId)
   const exercise = exercises.find(item => item.id === exerciseId)
+  const inferredExerciseTimer = exercise
+    ? resolveExerciseTimerValues(exercise.name, exercise.prescription, exercise.restSeconds, patch.instructions)
+    : null
+  const originalExerciseValues = exercise ? readPrescriptionEditorValues(exercise.prescription) : null
+  const timerPreview = inferredExerciseTimer && originalExerciseValues ? {
+    ...inferredExerciseTimer,
+    ...patch.timerSettings,
+    sets: patch.sets !== originalExerciseValues.sets ? patch.sets : inferredExerciseTimer.sets,
+    reps: patch.reps !== originalExerciseValues.reps ? patch.reps : inferredExerciseTimer.reps,
+    seconds: patch.seconds !== originalExerciseValues.seconds ? patch.seconds : inferredExerciseTimer.seconds,
+    restSeconds: patch.restSeconds !== (resolveTimerRestSeconds(exercise!.prescription, exercise!.restSeconds, 120) ?? 0)
+      ? patch.restSeconds : inferredExerciseTimer.restSeconds,
+    series: patch.steps.length ? patch.steps.map(step => ({ reps: step.reps, seconds: step.seconds })) : inferredExerciseTimer.series,
+  } : undefined
   const selectedWeek = weeks.find(item => item.id === weekId)
   const exerciseLoadPercentage = exercise ? exerciseLoadPercentages[exercise.id] ?? 0 : 0
   const safeExerciseLoadPercentage = Number.isFinite(exerciseLoadPercentage) && exerciseLoadPercentage >= -100 ? exerciseLoadPercentage : 0
@@ -1217,13 +1231,14 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
         {exercise && <>
           <TimerConfigurationEditor
             value={{
-              ...(patch.timerSettings ?? readTimerSettings(exercise.prescription, patch.restSeconds)),
+              ...(patch.timerSettings ?? inferredExerciseTimer ?? readTimerSettings(exercise.prescription, patch.restSeconds)),
               sets: patch.sets,
               reps: patch.reps,
               seconds: patch.seconds,
               restSeconds: patch.restSeconds,
               series: patch.steps.length ? patch.steps.map(step => ({ reps: step.reps, seconds: step.seconds })) : undefined,
             }}
+            previewValue={timerPreview}
             renderSetControl={(sets, onChange) => <label><span>Serie</span><div className="stepper"><button type="button" onClick={() => onChange(Math.max(1, sets - 1))}>−</button><b>{sets}</b><button type="button" onClick={() => onChange(sets + 1)}>+</button></div></label>}
             onChange={next => updateExerciseEditor(value => ({
               ...value,
@@ -1231,7 +1246,7 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
               reps: next.reps,
               seconds: next.seconds,
               restSeconds: next.restSeconds ?? 0,
-              timerSettings: timerSettingsEqual(readTimerSettings(exercise.prescription, patch.restSeconds), {
+              timerSettings: timerSettingsEqual(inferredExerciseTimer ?? readTimerSettings(exercise.prescription, patch.restSeconds), {
                 mode: next.mode,
                 executionMode: next.executionMode,
                 preparationSeconds: next.preparationSeconds,

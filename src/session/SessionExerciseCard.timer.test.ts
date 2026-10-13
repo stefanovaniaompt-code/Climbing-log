@@ -70,6 +70,17 @@ async function openTimer(screen: HTMLElement) {
 }
 
 describe('interfaccia Timer V2 atleta', () => {
+  it('mostra le due fasi 90° e 120° senza pausa intermedia', async () => {
+    const item = { ...makeExercise({ sets: 4, reps: 4 }), name: 'Bloccaggio a 90°i 3" poi a 120° per 3" consecutivi', restSeconds: 120 }
+    const first = createExerciseTimerState(item)!
+    const { screen, render } = await renderTimer({ exercise: item, timerState: first })
+    const dialog = await openTimer(screen!)
+    expect(dialog.textContent).toContain('LAVORO 90°')
+    const second = { ...first, sequenceIndex: 1, remaining: 3, phase: 'work' as const }
+    await render(second)
+    expect(dialog.textContent).toContain('LAVORO 120°')
+    expect(first.sequence[2]).toMatchObject({ kind: 'interval_rest', durationSeconds: 5 })
+  })
   it('mostra fase, serie, ripetizione e mano DX/SX alternate senza ambiguità', async () => {
     const exercise = makeExercise({ sets: 2, reps: 3, seconds: 7, timer: { mode: 'guided', execution_mode: 'alternate_hands', hand_change_seconds: 2 } })
     const timerState = createExerciseTimerState(exercise)!

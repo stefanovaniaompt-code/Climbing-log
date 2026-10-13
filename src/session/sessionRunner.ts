@@ -1,7 +1,7 @@
 export type JsonRecord = Record<string, unknown>
 import type { ProgramType } from '../programs/programType'
 import { hasPrescriptionField, legacyDoseDescription, optionalNonNegativeNumber, usesKilogramLoads } from '../prescriptions/prescriptionConsistency'
-import { buildTimerProtocolSequence, hasExplicitTimerMode, timerProtocolSequenceIssue, timerSettingsFromPrescription, type TimerSequenceStep, type TimerSeriesPrescription } from '../prescriptions/timerConfiguration'
+import { buildTimerProtocolSequence, hasExplicitTimerMode, resolveExerciseTimerValues, timerProtocolSequenceIssue, type TimerSequenceStep, type TimerSeriesPrescription } from '../prescriptions/timerConfiguration'
 import type { CompletionOutcome } from './sessionFeedback'
 
 export type ExerciseProgress = {
@@ -73,6 +73,8 @@ export type ExerciseTimerConfig = {
   sets: number
   setRestSeconds: number
   series?: TimerSeriesPrescription[]
+  workPhases?: { label: string; seconds: number }[]
+  maxSetRestSeconds?: number
 }
 
 export type ExerciseTimerPhase = 'preparation' | 'work' | 'hand_rest' | 'interval_rest' | 'set_rest' | 'awaiting_set' | 'complete'
@@ -88,6 +90,7 @@ export type ExerciseTimerState = {
   running: boolean
   sequence: TimerSequenceStep[]
   sequenceIndex: number
+  restExtensionSeconds?: number
 }
 
 export type ExerciseTimerSnapshot = {
@@ -115,23 +118,20 @@ export function getExerciseTimerConfig(exercise: RunnerExercise): ExerciseTimerC
   const timer = exercise.prescription.timer && typeof exercise.prescription.timer === 'object' && !Array.isArray(exercise.prescription.timer)
     ? exercise.prescription.timer as JsonRecord
     : {}
-  const explicitMode = hasExplicitTimerMode(exercise.prescription)
-  const settings = timerSettingsFromPrescription(exercise.prescription, resolveTimerRest(exercise, timer, explicitMode))
+  const settings = resolveExerciseTimerValues(exercise.name, exercise.prescription, resolveTimerRest(exercise, timer), exercise.instructions)
   const legacyWorkSeconds = positiveInteger(timer.work_seconds)
   const hasCanonicalSeconds = Object.hasOwn(exercise.prescription, 'seconds')
   const hasCanonicalReps = Object.hasOwn(exercise.prescription, 'reps')
-  const mode = explicitMode
-    ? settings.mode
-    : legacyWorkSeconds ? 'guided' : settings.restSeconds !== null && settings.restSeconds > 0 && settings.sets > 1 ? 'recovery_only' : 'none'
+  const mode = settings.mode
 
   if (mode === 'none') return null
 
   // Keep old timer payloads usable, while explicit V2 prescriptions never
   // receive an invented work duration or repetition count.
-  const repetitions = !hasCanonicalReps && !positiveInteger(timer.repetitions) && mode === 'guided'
+  const repetitions = !hasCanonicalReps && !positiveInteger(timer.repetitions) && mode === 'guided' && !settings.reps
     ? 1
     : settings.reps
-  const workSeconds = hasCanonicalSeconds ? settings.seconds : legacyWorkSeconds ?? settings.seconds
+  const workSeconds = hasCanonicalSeconds && !settings.workPhases ? settings.seconds : legacyWorkSeconds ?? settings.seconds
   const setRestSeconds = settings.restSeconds ?? 0
   const seriesRows = Array.isArray(exercise.prescription.steps)
     ? exercise.prescription.steps.map(value => {
@@ -152,19 +152,21 @@ export function getExerciseTimerConfig(exercise: RunnerExercise): ExerciseTimerC
     repetitions,
     sets: settings.sets,
     setRestSeconds,
+    workPhases: settings.workPhases,
+    maxSetRestSeconds: settings.maxSetRestSeconds,
     series: seriesRows ?? Array.from({ length: settings.sets }, () => ({ reps: repetitions, seconds: workSeconds })),
   }
   if (timerProtocolSequenceIssue({ ...settings, mode, reps: repetitions, seconds: workSeconds }, seriesRows)) return null
   return config
 }
 
-function resolveTimerRest(exercise: RunnerExercise, timer: JsonRecord, explicitMode: boolean): number | null {
+function resolveTimerRest(exercise: RunnerExercise, timer: JsonRecord): number | null {
   if (exercise.restSeconds !== null && Number.isSafeInteger(exercise.restSeconds) && exercise.restSeconds >= 0) return exercise.restSeconds
   if (Object.hasOwn(timer, 'set_rest_seconds')) {
     const value = nonNegativeInteger(timer.set_rest_seconds, 0)
     return value
   }
-  return explicitMode ? null : getRestSeconds(exercise)
+  return null
 }
 
 function timerSequenceForConfig(config: ExerciseTimerConfig): TimerSequenceStep[] {
@@ -178,18 +180,20 @@ function timerSequenceForConfig(config: ExerciseTimerConfig): TimerSequenceStep[
     seconds: config.workSeconds,
     sets: config.sets,
     restSeconds: config.setRestSeconds,
+    workPhases: config.workPhases,
+    maxSetRestSeconds: config.maxSetRestSeconds,
   }, config.series)
 }
 
 export function timerPhaseDuration(state: ExerciseTimerState): number {
   const step = state.sequence?.[state.sequenceIndex]
-  if (step) return step.durationSeconds
+  if (step) return step.durationSeconds + (step.kind === 'set_rest' ? state.restExtensionSeconds ?? 0 : 0)
   const durations: Record<ExerciseTimerPhase, number> = {
     preparation: state.config.preparationSeconds,
     work: state.config.workSeconds,
     hand_rest: state.config.handChangeSeconds,
     interval_rest: state.config.intervalRestSeconds,
-    set_rest: state.config.setRestSeconds,
+    set_rest: state.config.setRestSeconds + (state.restExtensionSeconds ?? 0),
     awaiting_set: 0,
     complete: 0,
   }
@@ -274,6 +278,7 @@ function timerStateAt(
     hand: step.hand === 'SX' ? 'left' : 'right',
     remaining: step.durationSeconds,
     running: step.kind === 'awaiting_set' ? false : running,
+    restExtensionSeconds: 0,
   }
 }
 
@@ -347,6 +352,9 @@ function normalizeTimerSnapshotState(candidate: ExerciseTimerState): ExerciseTim
       && Number.isSafeInteger(candidate.config.sets) && candidate.config.sets > 0
       && Number.isSafeInteger(candidate.config.repetitions) && candidate.config.repetitions >= 0
       && Number.isSafeInteger(candidate.config.workSeconds) && candidate.config.workSeconds >= 0
+      && (candidate.config.maxSetRestSeconds === undefined || Number.isSafeInteger(candidate.config.maxSetRestSeconds) && candidate.config.maxSetRestSeconds >= candidate.config.setRestSeconds)
+      && (candidate.config.workPhases === undefined || Array.isArray(candidate.config.workPhases)
+        && candidate.config.workPhases.every(phase => typeof phase.label === 'string' && Number.isSafeInteger(phase.seconds) && phase.seconds > 0))
       && (candidate.config.series === undefined || Array.isArray(candidate.config.series)
         && candidate.config.series.every(row => Number.isSafeInteger(row.reps) && row.reps >= 0 && Number.isSafeInteger(row.seconds) && row.seconds >= 0))
     const stateIsValid = Number.isSafeInteger(candidate.sequenceIndex) && candidate.sequenceIndex >= 0
@@ -355,6 +363,8 @@ function normalizeTimerSnapshotState(candidate: ExerciseTimerState): ExerciseTim
       && Number.isSafeInteger(candidate.repetition) && candidate.repetition > 0
       && (candidate.hand === 'right' || candidate.hand === 'left')
       && Number.isSafeInteger(candidate.remaining) && candidate.remaining >= 0
+      && (candidate.restExtensionSeconds === undefined || Number.isSafeInteger(candidate.restExtensionSeconds) && candidate.restExtensionSeconds >= 0
+        && (candidate.config.maxSetRestSeconds === undefined || candidate.restExtensionSeconds <= candidate.config.maxSetRestSeconds - candidate.config.setRestSeconds))
       && typeof candidate.running === 'boolean'
     return sequenceIsValid && configIsValid && stateIsValid ? candidate : null
   }
@@ -392,7 +402,9 @@ function normalizeTimerSnapshotState(candidate: ExerciseTimerState): ExerciseTim
 
 export function exerciseTimerPhaseLabel(state: ExerciseTimerState): string {
   if (state.phase === 'awaiting_set') return `CONFERMA FINE SERIE ${state.set}`
-  if (state.phase === 'work') return state.config.executionMode === 'alternate_hands' || state.config.executionMode === 'right_only' || state.config.executionMode === 'left_only' ? `LAVORO ${state.hand === 'right' ? 'DX' : 'SX'}` : 'LAVORO'
+  if (state.phase === 'work') return state.sequence?.[state.sequenceIndex]?.workPhase
+    ? `LAVORO ${state.sequence[state.sequenceIndex].workPhase}`
+    : state.config.executionMode === 'alternate_hands' || state.config.executionMode === 'right_only' || state.config.executionMode === 'left_only' ? `LAVORO ${state.hand === 'right' ? 'DX' : 'SX'}` : 'LAVORO'
   if (state.phase === 'hand_rest') return 'CAMBIO MANO'
   if (state.phase === 'interval_rest') return 'PAUSA'
   if (state.phase === 'set_rest') return 'RECUPERO SERIE'

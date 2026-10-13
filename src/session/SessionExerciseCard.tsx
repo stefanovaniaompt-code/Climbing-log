@@ -2,7 +2,8 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowLeft, Check, ChevronDown, Pause, Play, RotateCcw, Save, SkipForward } from 'lucide-react'
 import { legacyDoseDescription } from '../prescriptions/prescriptionConsistency'
-import { advanceExerciseTimer, createExerciseTimerState, exerciseTimerPhaseLabel, exerciseTimerProgressLabel, getExerciseTimerConfig, getPrescriptionDose, getPrescriptionLoad, getRestSeconds, getSetCount, getVariableSeries, timerPhaseDuration, type ExerciseTimerState, type SessionRunnerData } from './sessionRunner'
+import { resolveTimerRestSeconds } from '../prescriptions/timerConfiguration'
+import { advanceExerciseTimer, createExerciseTimerState, exerciseTimerPhaseLabel, exerciseTimerProgressLabel, getExerciseTimerConfig, getPrescriptionDose, getPrescriptionLoad, getSetCount, getVariableSeries, timerPhaseDuration, type ExerciseTimerState, type SessionRunnerData } from './sessionRunner'
 import type { ExerciseInputDraft } from './sessionLocalDraft'
 import type { ExerciseSaveState } from './useExerciseProgress'
 
@@ -33,7 +34,7 @@ function getExerciseTimerProgress(current: ExerciseTimerState) {
     const completedSets = current.phase === 'set_rest' ? current.set : current.set - 1
     return Math.max(0, Math.min(100, Math.round(completedSets / current.config.sets * 100)))
   }
-  const total = current.sequence.reduce((sum, step) => sum + step.durationSeconds, 0)
+  const total = current.sequence.reduce((sum, step) => sum + step.durationSeconds, current.restExtensionSeconds ?? 0)
   if (total <= 0) return 0
   const completed = current.sequence.slice(0, current.sequenceIndex).reduce((sum, step) => sum + step.durationSeconds, 0)
   const currentDuration = timerPhaseDuration(current)
@@ -50,9 +51,10 @@ export function SessionExerciseCard({ exercise, coachNotes, canEdit, isNext, tim
   const timerConfig = getExerciseTimerConfig(exercise)
   const timerActive = timerState?.exerciseId === exercise.id
   const activeTimer = timerActive ? timerState : createExerciseTimerState(exercise)
-  const timerSeconds = activeTimer?.remaining ?? getRestSeconds(exercise) ?? 0
-  const restLabel = getRestSeconds(exercise)
-  const restDescription = restLabel === null ? '—' : `${restLabel} sec`
+  const prescribedRest = resolveTimerRestSeconds(exercise.prescription, exercise.restSeconds)
+  const timerSeconds = activeTimer?.remaining ?? timerConfig?.setRestSeconds ?? 0
+  const restDescription = prescribedRest !== null ? `${prescribedRest} sec`
+    : timerConfig?.setRestSeconds ? `${timerConfig.setRestSeconds} sec (timer)` : '—'
   const timerLabel = activeTimer?.phase === 'awaiting_set' ? 'MANUALE' : activeTimer?.phase === 'complete' ? 'FINE' : String(Math.floor(timerSeconds / 60)).padStart(2, '0') + ':' + String(timerSeconds % 60).padStart(2, '0')
   const timerDuration = activeTimer ? timerPhaseDuration(activeTimer) : 0
   const timerProgress = activeTimer?.phase === 'complete' ? 100 : activeTimer && timerDuration > 0
@@ -138,11 +140,11 @@ export function SessionExerciseCard({ exercise, coachNotes, canEdit, isNext, tim
         <header><button onClick={() => setTimerFocus(false)} aria-label="Torna alla sessione"><ArrowLeft size={20} /></button><div className="athlete-timer-focus__switch" role="tablist" aria-label="Pannello timer"><button role="tab" aria-selected={timerView === 'exercise'} className={timerView === 'exercise' ? 'is-active' : ''} onClick={() => setTimerView('exercise')}>ESERCIZIO</button><button role="tab" aria-selected={timerView === 'timer'} className={timerView === 'timer' ? 'is-active' : ''} onClick={() => setTimerView('timer')}>TIMER</button></div><button onClick={() => onResetTimer(exercise)} aria-label="Reimposta timer"><RotateCcw size={18} /></button></header>
         <div className={`athlete-timer-focus__panels is-${timerView}`}>
         <div aria-hidden={timerView !== 'timer'} inert={timerView !== 'timer' ? true : undefined} className="athlete-timer-focus__body athlete-timer-focus__timer-panel">
-          <div className="athlete-timer-focus__intro"><small>SERIE {activeTimer.set} / {activeTimer.config.sets}</small><h2>{exercise.name}</h2><p>{dose}{load !== 'Corpo libero' ? ` · ${load}` : ''}</p><strong className="athlete-timer-focus__hand">{handIndicator}</strong></div>
+          <div className="athlete-timer-focus__intro"><small>SERIE {activeTimer.set} / {activeTimer.config.sets} · {activeTimer.config.mode === 'guided' ? 'GUIDATO' : 'SOLO RECUPERO'}</small><h2>{exercise.name}</h2><p>{dose}{load !== 'Corpo libero' ? ` · ${load}` : ''}</p><strong className="athlete-timer-focus__hand">{handIndicator}</strong></div>
           <div className="athlete-timer-focus__exercise-progress"><div><span>AVANZAMENTO ESERCIZIO</span><strong>{exerciseTimerProgress}%</strong></div><i><b style={{ width: `${exerciseTimerProgress}%` }} /></i></div>
           <div className="athlete-timer-focus__ring" style={{ '--timer-progress': `${timerProgress * 3.6}deg` } as CSSProperties}><div className="athlete-timer-focus__phase"><small aria-live="polite">{exerciseTimerPhaseLabel(activeTimer)}</small><strong aria-live="off">{timerLabel}</strong><span>{activeTimer.phase === 'work' && currentSeriesReps > 1 ? `SERIE ${activeTimer.set}/${activeTimer.config.sets} · RIPETIZIONE ${activeTimer.repetition}/${currentSeriesReps}` : exerciseTimerProgressLabel(activeTimer)}</span></div></div>
           <div className="athlete-timer-focus__next"><small>PROSSIMO</small><div><strong>{nextTimerLabel}</strong><SkipForward size={17} /></div></div>
-          {activeTimer.phase === 'awaiting_set' ? <button className="athlete-timer-focus__confirm-set" onClick={() => onConfirmSet(exercise.id)}>SERIE COMPLETATA</button> : activeTimer.phase !== 'complete' ? <><div className="athlete-timer-focus__controls"><button aria-label="Sottrai 10 secondi" onClick={() => onAdjustTimer(exercise.id, -10)}>−10″</button><button aria-label={activeTimer.running ? 'Pausa timer' : 'Riprendi timer'} className="athlete-timer-focus__main" onClick={() => onToggleTimer(exercise)}>{activeTimer.running ? <Pause size={32} fill="currentColor" /> : <Play size={30} fill="currentColor" />}</button><button aria-label="Aggiungi 10 secondi" onClick={() => onAdjustTimer(exercise.id, 10)}>+10″</button></div><button className="athlete-timer-focus__skip" onClick={() => onSkipTimerPhase(exercise.id)}>SALTA FASE</button></> : <button className="athlete-timer-focus__complete" onClick={() => { void onRecordExercise(exercise); setTimerFocus(false) }}>REGISTRA ESERCIZIO <Check size={18} /></button>}
+          {activeTimer.phase === 'awaiting_set' ? <button className="athlete-timer-focus__confirm-set" onClick={() => onConfirmSet(exercise.id)}>SERIE COMPLETATA</button> : activeTimer.phase !== 'complete' ? <><div className="athlete-timer-focus__controls"><button aria-label="Sottrai 10 secondi" onClick={() => onAdjustTimer(exercise.id, -10)}>−10″</button><button aria-label={activeTimer.running ? 'Pausa timer' : 'Riprendi timer'} className="athlete-timer-focus__main" onClick={() => onToggleTimer(exercise)}>{activeTimer.running ? <Pause size={32} fill="currentColor" /> : <Play size={30} fill="currentColor" />}</button><button aria-label="Aggiungi 10 secondi" disabled={activeTimer.phase === 'set_rest' && activeTimer.config.maxSetRestSeconds !== undefined && (activeTimer.restExtensionSeconds ?? 0) >= activeTimer.config.maxSetRestSeconds - activeTimer.config.setRestSeconds} onClick={() => onAdjustTimer(exercise.id, 10)}>+10″</button></div><button className="athlete-timer-focus__skip" onClick={() => onSkipTimerPhase(exercise.id)}>SALTA FASE</button></> : <button className="athlete-timer-focus__complete" onClick={() => { void onRecordExercise(exercise); setTimerFocus(false) }}>REGISTRA ESERCIZIO <Check size={18} /></button>}
           <div className="athlete-timer-focus__footer"><p className="athlete-timer-focus__status">{activeTimer.phase === 'complete' ? 'PROTOCOLLO TERMINATO' : activeTimer.phase === 'awaiting_set' ? 'ATTESA CONFERMA MANUALE' : activeTimer.running ? 'TIMER ATTIVO' : 'TIMER IN PAUSA'}</p><button className="athlete-timer-focus__sound" onClick={onToggleSound} aria-label={soundEnabled ? 'Disattiva audio timer' : 'Attiva audio timer'}>{soundEnabled ? 'AUDIO ON' : 'AUDIO OFF'}</button></div>
         </div>
         <div aria-hidden={timerView !== 'exercise'} inert={timerView !== 'exercise' ? true : undefined} className="athlete-timer-focus__exercise-panel">

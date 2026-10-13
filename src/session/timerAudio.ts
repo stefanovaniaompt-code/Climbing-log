@@ -11,7 +11,8 @@ export function timerAudioCueForTransition(
   if (
     !previous ||
     previous.exerciseId !== current.exerciseId ||
-    previous.phase !== current.phase
+    previous.phase !== current.phase ||
+    (current.phase === 'work' && previous.sequenceIndex !== current.sequenceIndex)
   ) {
     if (current.phase === 'complete') return 'complete'
     if (current.phase === 'work') return 'work'

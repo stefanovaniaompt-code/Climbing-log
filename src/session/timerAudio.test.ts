@@ -33,6 +33,13 @@ describe('timer audio feedback', () => {
     )).toBe('work')
   })
 
+  it('annuncia il passaggio diretto fra le due angolazioni di una ripetizione', () => {
+    expect(timerAudioCueForTransition(
+      timer({ phase: 'work', sequenceIndex: 0, remaining: 1 }),
+      timer({ phase: 'work', sequenceIndex: 1, remaining: 3 }),
+    )).toBe('work')
+  })
+
   it('suona negli ultimi tre secondi senza ripetere lo stesso secondo', () => {
     expect(timerAudioCueForTransition(timer({ remaining: 4 }), timer({ remaining: 3 }))).toBe('countdown')
     expect(timerAudioCueForTransition(timer({ remaining: 3 }), timer({ remaining: 3 }))).toBeNull()

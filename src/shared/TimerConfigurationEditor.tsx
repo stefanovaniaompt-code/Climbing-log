@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react'
 import { formatTimerPreview, type TimerEditorValues } from '../prescriptions/timerConfiguration'
 
-export function TimerConfigurationEditor({ value, onChange, renderSetControl }: {
+export function TimerConfigurationEditor({ value, previewValue, onChange, renderSetControl }: {
   value: TimerEditorValues
+  previewValue?: TimerEditorValues
   onChange: (next: TimerEditorValues) => void
   renderSetControl?: (sets: number, onChange: (sets: number) => void) => ReactNode
 }) {
@@ -44,6 +45,6 @@ export function TimerConfigurationEditor({ value, onChange, renderSetControl }: 
       {numberField('Pausa tra ripetizioni', value.intervalRestSeconds, intervalRestSeconds => update({ intervalRestSeconds }))}
       {numberField('Recupero', value.restSeconds, restSeconds => update({ restSeconds }), { nullable: true, step: 15 })}
     </div>
-    <p className="timer-configuration__preview" aria-live="polite"><b>Anteprima</b><span>{formatTimerPreview(value)}</span></p>
+    <p className="timer-configuration__preview" aria-live="polite"><b>Anteprima</b><span>{formatTimerPreview(previewValue ?? value)}</span></p>
   </section>
 }

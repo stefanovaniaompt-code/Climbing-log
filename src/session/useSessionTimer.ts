@@ -126,9 +126,16 @@ const resetTimer = (exercise: SessionRunnerData['exercises'][number]) => {
 
 const adjustTimer = (exerciseId: string, seconds: number) => {
   reconcileTimer()
-  setTimerState(current => current?.exerciseId === exerciseId && current.phase !== 'complete' && current.phase !== 'awaiting_set'
-    ? { ...current, remaining: Math.max(1, current.remaining + seconds) }
-    : current)
+  setTimerState(current => {
+    if (current?.exerciseId !== exerciseId || current.phase === 'complete' || current.phase === 'awaiting_set') return current
+    if (current.phase === 'set_rest' && seconds > 0 && current.config.maxSetRestSeconds !== undefined) {
+      const used = current.restExtensionSeconds ?? 0
+      const allowed = Math.max(0, current.config.maxSetRestSeconds - current.config.setRestSeconds - used)
+      const extension = Math.min(seconds, allowed)
+      return { ...current, remaining: current.remaining + extension, restExtensionSeconds: used + extension }
+    }
+    return { ...current, remaining: Math.max(1, current.remaining + seconds) }
+  })
 }
 
 const skipTimerPhase = (exerciseId: string) => {

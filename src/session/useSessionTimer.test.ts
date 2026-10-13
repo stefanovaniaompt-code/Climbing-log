@@ -40,6 +40,16 @@ afterEach(async () => {
 })
 
 describe('timer atleta e sospensione degli intervalli', () => {
+  it('limita a 180 secondi complessivi l’estensione del recupero 2–3 minuti', async () => {
+    const current = await mountTimer()
+    const item = { ...exercise, name: 'Intentional Block Lifting', prescription: { sets: 3 }, restSeconds: null, instructions: 'Recupero 2–3 minuti.' }
+    const initial = createExerciseTimerState(item)!
+    await act(async () => current().setTimerState(initial))
+    await act(async () => current().confirmSet(item.id))
+    expect(current().timerState).toMatchObject({ phase: 'set_rest', remaining: 120 })
+    for (let index = 0; index < 8; index += 1) await act(async () => current().adjustTimer(item.id, 10))
+    expect(current().timerState).toMatchObject({ remaining: 180, restExtensionSeconds: 60 })
+  })
   it('recupera il tempo reale trascorso dopo un callback sospeso, anche attraverso più fasi', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(1_000)
