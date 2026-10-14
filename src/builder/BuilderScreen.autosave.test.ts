@@ -206,6 +206,21 @@ afterEach(async () => {
 })
 
 describe('BuilderScreen autosave durante i cambi di selezione', () => {
+  it('rende accessibile la modifica del nome dalla testata della sessione e lo salva', async () => {
+    const screen = await renderBuilder()
+
+    await act(async () => { buttonWithText(screen, 'Modifica nome').click() })
+    await act(async () => { changeInput(inputWithLabel(screen, 'Titolo sessione'), 'Forza dita') })
+    await act(async () => {
+      vi.advanceTimersByTime(700)
+      await Promise.resolve()
+    })
+    await flushPromises()
+
+    expect(repository.updateSessionDetails).toHaveBeenCalledWith(profile, 'session-1', 'Forza dita', 'Obiettivo uno', 60, 1)
+    expect(screen.querySelector('.coach-builder__session-head h2')?.textContent).toBe('Forza dita')
+  })
+
   it('salva e riapre la configurazione timer usando serie, ripetizioni, durata e recupero della prescrizione', async () => {
     let persistedData: ProgramBuilderData = {
       ...builderData,
