@@ -62,6 +62,71 @@ afterEach(async () => {
 })
 
 describe('SessionExerciseCard descrizioni legacy', () => {
+  it('mostra le cinque ripetizioni storiche per serie senza modificare la prescrizione', async () => {
+    const prescription = { sets: 1, reps: 0 }
+    const screen = await renderCard(exercise({
+      name: 'Intentional Block Lifting',
+      prescription,
+      instructions: 'RPE 8–9/10. Carichi calcolati sul massimale di 27 kg.\n10 rep 60%\n8 rep 65%\n6 rep 70%\n4 rep 80%\n3 rep 86%',
+    }))
+    expect(Array.from(screen.querySelectorAll('.athlete-prescription-value'), row => row.textContent)).toEqual([
+      '60% = 16 kg · 10 rep',
+      '65% = 17.5 kg · 8 rep',
+      '70% = 19 kg · 6 rep',
+      '80% = 21.5 kg · 4 rep',
+      '86% = 23 kg · 3 rep',
+    ])
+    expect(screen.querySelector('.athlete-prescription-meta strong')?.textContent).toBe('5')
+    expect(screen.textContent).not.toContain('10 rep 60%')
+    expect(prescription).toEqual({ sets: 1, reps: 0 })
+  })
+
+  it('mostra le ripetizioni della serie corretta per il nuovo carico percentuale', async () => {
+    const screen = await renderCard(exercise({
+      name: 'Intentional Block Lifting',
+      prescription: {
+        sets: 2,
+        intentionalLoad: { version: 1, mode: 'percentage', source: { type: 'manual_max', maxKg: 27 } },
+        steps: [{ reps: 10, percentage: 60 }, { reps: 3, percentage: 86 }],
+      },
+      calculationContext: { test_target: { set_targets: [
+        { setNumber: 1, percentage: 80, calculatedTarget: 100, targetUnit: 'kg' },
+        { setNumber: 2, percentage: 80, calculatedTarget: 100, targetUnit: 'kg' },
+      ] } },
+    }))
+
+    expect(Array.from(screen.querySelectorAll('.athlete-prescription-value'), row => row.textContent)).toEqual([
+      '60% = 16 kg · 10 rep',
+      '86% = 23 kg · 3 rep',
+    ])
+    expect(screen.textContent).not.toContain('80%')
+    expect(screen.textContent).not.toContain('Corpo libero')
+  })
+
+  it('mostra kg e ripetizioni manuali senza riattivare un vecchio target da test', async () => {
+    const screen = await renderCard(exercise({
+      name: 'Intentional Block Lifting',
+      prescription: {
+        sets: 2,
+        intentionalLoad: { version: 1, mode: 'manual_kg' },
+        steps: [{ reps: 10, loadKg: 16 }, { reps: 3, loadKg: 23 }],
+      },
+      instructions: 'RPE 8–9/10. Carichi calcolati sul massimale di 27 kg.\n10 rep 60%\n3 rep 86%',
+      calculationContext: { test_target: { set_targets: [
+        { setNumber: 1, percentage: 80, calculatedTarget: 100, targetUnit: 'kg' },
+        { setNumber: 2, percentage: 80, calculatedTarget: 100, targetUnit: 'kg' },
+      ] } },
+    }))
+
+    expect(Array.from(screen.querySelectorAll('.athlete-prescription-value'), row => row.textContent)).toEqual([
+      '16 kg · 10 rep',
+      '23 kg · 3 rep',
+    ])
+    expect(screen.textContent).not.toContain('80%')
+    expect(screen.textContent).not.toContain('massimale di 27 kg')
+    expect(screen.textContent).toContain('RPE 8–9/10')
+  })
+
   it('mostra ripetizioni e carichi variabili nella scheda atleta', async () => {
     const screen = await renderCard(exercise({
       prescription: { sets: 2, reps: 6, steps: [{ loadKg: 20 }, { loadKg: 25 }] },

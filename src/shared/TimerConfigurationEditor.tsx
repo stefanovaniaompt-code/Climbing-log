@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react'
 import { formatTimerPreview, type TimerEditorValues } from '../prescriptions/timerConfiguration'
 
-export function TimerConfigurationEditor({ value, previewValue, onChange, renderSetControl }: {
+export function TimerConfigurationEditor({ value, previewValue, onChange, renderSetControl, hideVolumeControls = false }: {
   value: TimerEditorValues
   previewValue?: TimerEditorValues
   onChange: (next: TimerEditorValues) => void
   renderSetControl?: (sets: number, onChange: (sets: number) => void) => ReactNode
+  hideVolumeControls?: boolean
 }) {
   const update = (patch: Partial<TimerEditorValues>) => onChange({ ...value, ...patch })
   const numberField = (label: string, amount: number | null, change: (amount: number) => void, options: { min?: number; step?: number; nullable?: boolean } = {}) => (
@@ -34,11 +35,11 @@ export function TimerConfigurationEditor({ value, previewValue, onChange, render
       <label><span>Modalità esecuzione</span><select aria-label="Modalità esecuzione" value={value.executionMode} onChange={event => update({ executionMode: event.target.value as TimerEditorValues['executionMode'] })}>
         <option value="bilateral">Bilaterale</option><option value="alternate_hands">DX/SX alternato</option><option value="right_only">Solo DX</option><option value="left_only">Solo SX</option>
       </select></label>
-      {renderSetControl
+      {!hideVolumeControls && (renderSetControl
         ? renderSetControl(value.sets, sets => update({ sets: Math.max(1, Math.trunc(sets) || 1) }))
         : <label><span>Serie</span><input aria-label="Serie" type="number" min="1" step="1" value={value.sets} onChange={event => update({ sets: Math.max(1, Number(event.target.value) || 1) })} />
-        </label>}
-      <label><span>Ripetizioni</span><input aria-label="Ripetizioni" type="number" min="0" step="1" value={value.reps} onChange={event => update({ reps: Math.max(0, Number(event.target.value) || 0) })} /></label>
+        </label>)}
+      {!hideVolumeControls && <label><span>Ripetizioni</span><input aria-label="Ripetizioni" type="number" min="0" step="1" value={value.reps} onChange={event => update({ reps: Math.max(0, Number(event.target.value) || 0) })} /></label>}
       {numberField('Durata', value.seconds, seconds => update({ seconds }))}
       {numberField('Preparazione iniziale', value.preparationSeconds, preparationSeconds => update({ preparationSeconds }))}
       {numberField('Pausa breve cambio mano', value.handChangeSeconds, handChangeSeconds => update({ handChangeSeconds }))}

@@ -4,6 +4,7 @@ import type { AppProfile } from '../onboarding/types'
 import { normalizeProgramType, type ProgramType } from '../programs/programType'
 import { mergePrescriptionForUpdate, nextSequence, sessionExerciseDefaultsFromLibrary, type PrescriptionStep, type ProgramBuilderData, type WeekLoadType } from './programBuilder'
 import type { TimerSettings } from '../prescriptions/timerConfiguration'
+import { validateIntentionalLoadPlan, type IntentionalLoadPlan } from '../prescriptions/intentionalBlockLoad'
 
 const demo: ProgramBuilderData = {
   source: 'demo',
@@ -139,11 +140,13 @@ export async function addExercise(profile: AppProfile, sessionId: string, existi
   return result.data.id as string
 }
 
-export type ExercisePatch = { sets: number; reps: number; seconds: number; loadKg: number; rpe: number; restSeconds: number; instructions: string; steps: PrescriptionStep[]; timerSettings?: TimerSettings }
+export type ExercisePatch = { sets: number; reps: number; seconds: number; loadKg: number; rpe: number; restSeconds: number; instructions: string; steps: PrescriptionStep[]; timerSettings?: TimerSettings; intentionalLoad?: IntentionalLoadPlan | null }
 export type LoadAdjustmentResult = { updatedRows: number; unscalableRows: number; unchangedRows: number; partialRows: number }
 
 export async function updateExercise(profile: AppProfile, exerciseId: string, currentPrescription: Record<string, unknown>, patch: ExercisePatch) {
   assertCoach(profile); if (isDemo(profile)) return
+  const validationError = validateIntentionalLoadPlan(patch)
+  if (validationError) throw new Error(validationError)
   const result = await supabase!.from('session_exercises').update({
     prescription: mergePrescriptionForUpdate(currentPrescription, patch),
     target_rpe_min: Math.max(0, patch.rpe - 1),

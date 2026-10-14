@@ -7,6 +7,29 @@ function exercise(name: string, prescription: Record<string, unknown>, restSecon
 }
 
 describe('compatibilità timer delle sessioni storiche', () => {
+  it('ricostruisce in sola lettura le cinque serie storiche complete di Intentional Block Lifting', () => {
+    const prescription = { sets: 1, reps: 0 }
+    const item = exercise('Intentional Block Lifting', prescription, 120,
+      'Massimale di 27 kg\n10 rep 60%\n8 rep 65%\n6 rep 70%\n4 rep 80%\n3 rep 86%')
+    expect(getExerciseTimerConfig(item)?.sets).toBe(5)
+    expect(getExerciseTimerConfig(item)?.series?.map(row => row.reps)).toEqual([10, 8, 6, 4, 3])
+    expect(createExerciseTimerState(item)?.sequence.filter(step => step.kind === 'set_rest')).toHaveLength(4)
+    expect(prescription).toEqual({ sets: 1, reps: 0 })
+  })
+
+  it('mantiene cinque serie e ripetizioni variabili nel timer di Intentional Block Lifting', () => {
+    const item = exercise('Intentional Block Lifting', {
+      sets: 5,
+      reps: 0,
+      intentionalLoad: { version: 1, mode: 'percentage', source: { type: 'manual_max', maxKg: 27 } },
+      steps: [10, 8, 6, 4, 3].map((reps, index) => ({ reps, percentage: [60, 65, 70, 80, 86][index], seconds: 0 })),
+    }, 120)
+    const config = getExerciseTimerConfig(item)
+    expect(config).toMatchObject({ mode: 'recovery_only', sets: 5, setRestSeconds: 120 })
+    expect(config?.series?.map(row => row.reps)).toEqual([10, 8, 6, 4, 3])
+    expect(createExerciseTimerState(item)?.sequence.filter(step => step.kind === 'set_rest')).toHaveLength(4)
+  })
+
   it('guida Open Hand alternando DX e SX e conserva serie, durata e recupero della sessione', () => {
     const item = exercise('Open Hand iso Grip', { sets: 5, reps: 1, seconds: 14, timer: { execution_mode: 'single_hand', work_seconds: 10, repetitions: 1, set_rest_seconds: 120 } })
     const config = getExerciseTimerConfig(item)

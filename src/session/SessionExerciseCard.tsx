@@ -2,8 +2,9 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowLeft, Check, ChevronDown, Pause, Play, RotateCcw, Save, SkipForward } from 'lucide-react'
 import { legacyDoseDescription } from '../prescriptions/prescriptionConsistency'
+import { intentionalAthleteGuidance, isIntentionalBlockLifting, readIntentionalLoadPlan } from '../prescriptions/intentionalBlockLoad'
 import { resolveTimerRestSeconds } from '../prescriptions/timerConfiguration'
-import { advanceExerciseTimer, createExerciseTimerState, exerciseTimerPhaseLabel, exerciseTimerProgressLabel, getExerciseLoadLabel, getExerciseTimerConfig, getPrescriptionDose, getSetCount, getVariableSeries, timerPhaseDuration, type ExerciseTimerState, type SessionRunnerData } from './sessionRunner'
+import { advanceExerciseTimer, createExerciseTimerState, exerciseTimerPhaseLabel, exerciseTimerProgressLabel, getExerciseLoadLabel, getExerciseTimerConfig, getLegacyIntentionalProgression, getPrescriptionDose, getSetCount, getVariableSeries, timerPhaseDuration, type ExerciseTimerState, type SessionRunnerData } from './sessionRunner'
 import type { ExerciseInputDraft } from './sessionLocalDraft'
 import type { ExerciseSaveState } from './useExerciseProgress'
 
@@ -48,6 +49,10 @@ export function SessionExerciseCard({ exercise, coachNotes, canEdit, isNext, tim
   const timerDialogRef = useRef<HTMLDivElement>(null)
   const timerLauncherRef = useRef<HTMLButtonElement>(null)
   const variableSeries = getVariableSeries(exercise)
+  const hasLegacyIntentionalRows = Boolean(getLegacyIntentionalProgression(exercise))
+  const athleteGuidance = (isIntentionalBlockLifting(exercise.name)
+    ? intentionalAthleteGuidance(exercise.prescription, exercise.instructions, hasLegacyIntentionalRows)
+    : exercise.instructions) || coachNotes
   const timerConfig = getExerciseTimerConfig(exercise)
   const timerActive = timerState?.exerciseId === exercise.id
   const activeTimer = timerActive ? timerState : createExerciseTimerState(exercise)
@@ -103,8 +108,12 @@ export function SessionExerciseCard({ exercise, coachNotes, canEdit, isNext, tim
   }, [timerFocus])
   const dose = getPrescriptionDose(exercise) ?? 'Dose indicata dal coach'
   const doseDescription = legacyDoseDescription(exercise.prescription)
-  const doseNote = doseDescription ? `Nota: ${doseDescription}` : null
+  const hasIntentionalRows = Boolean(readIntentionalLoadPlan(exercise.prescription) || hasLegacyIntentionalRows)
+  const doseNote = hasIntentionalRows
+    ? (getPrescriptionDose(exercise)?.startsWith('Nota:') ? getPrescriptionDose(exercise) : null)
+    : doseDescription ? `Nota: ${doseDescription}` : null
   const load = getExerciseLoadLabel(exercise)
+  const timerIntro = [getPrescriptionDose(exercise), load !== 'Corpo libero' ? load : null].filter(Boolean).join(' · ')
   return <article
     id={`exercise-${exercise.id}`}
     className={
@@ -133,14 +142,14 @@ export function SessionExerciseCard({ exercise, coachNotes, canEdit, isNext, tim
         </div> : <div className="athlete-prescription"><p className="athlete-prescription-dose">{dose}</p><div className="athlete-prescription-meta"><div><span className="athlete-prescription-meta-label">SERIE</span><strong>{getSetCount(exercise)}</strong></div><div><span className="athlete-prescription-meta-label">CARICO</span><strong>{load}</strong></div><div><span className="athlete-prescription-meta-label">RECUPERO</span><strong>{restDescription}</strong></div></div></div>}
 
         {exercise.progress?.completed && <p className="athlete-exercise-complete-label">{exercise.progress.syncState === 'queued' ? 'IN CODA' : 'COMPLETATO'}</p>}
-        {(exercise.instructions || coachNotes) && <p className="exercise-guidance">{exercise.instructions || coachNotes}</p>}
+        {athleteGuidance && <p className="exercise-guidance">{athleteGuidance}</p>}
     {canEdit && timerConfig && activeTimer && <>
       {timerFocus && createPortal(<div ref={timerDialogRef} tabIndex={-1} className={`athlete-timer-focus is-${activeTimer.phase}${activeTimer.running ? ' is-running' : ''}${activeTimer.phase === 'work' && activeTimer.remaining <= 3 ? ' is-ending' : ''}`} role="dialog" aria-modal="true" aria-label={`Timer ${exercise.name}`}>
         <i className="athlete-timer-focus__geometry athlete-timer-focus__geometry--a" /><i className="athlete-timer-focus__geometry athlete-timer-focus__geometry--b" />
         <header><button onClick={() => setTimerFocus(false)} aria-label="Torna alla sessione"><ArrowLeft size={20} /></button><div className="athlete-timer-focus__switch" role="tablist" aria-label="Pannello timer"><button role="tab" aria-selected={timerView === 'exercise'} className={timerView === 'exercise' ? 'is-active' : ''} onClick={() => setTimerView('exercise')}>ESERCIZIO</button><button role="tab" aria-selected={timerView === 'timer'} className={timerView === 'timer' ? 'is-active' : ''} onClick={() => setTimerView('timer')}>TIMER</button></div><button onClick={() => onResetTimer(exercise)} aria-label="Reimposta timer"><RotateCcw size={18} /></button></header>
         <div className={`athlete-timer-focus__panels is-${timerView}`}>
         <div aria-hidden={timerView !== 'timer'} inert={timerView !== 'timer' ? true : undefined} className="athlete-timer-focus__body athlete-timer-focus__timer-panel">
-          <div className="athlete-timer-focus__intro"><small>SERIE {activeTimer.set} / {activeTimer.config.sets} · {activeTimer.config.mode === 'guided' ? 'GUIDATO' : 'SOLO RECUPERO'}</small><h2>{exercise.name}</h2><p>{dose}{load !== 'Corpo libero' ? ` · ${load}` : ''}</p><strong className="athlete-timer-focus__hand">{handIndicator}</strong></div>
+          <div className="athlete-timer-focus__intro"><small>SERIE {activeTimer.set} / {activeTimer.config.sets} · {activeTimer.config.mode === 'guided' ? 'GUIDATO' : 'SOLO RECUPERO'}</small><h2>{exercise.name}</h2><p>{timerIntro}</p><strong className="athlete-timer-focus__hand">{handIndicator}</strong></div>
           <div className="athlete-timer-focus__exercise-progress"><div><span>AVANZAMENTO ESERCIZIO</span><strong>{exerciseTimerProgress}%</strong></div><i><b style={{ width: `${exerciseTimerProgress}%` }} /></i></div>
           <div className="athlete-timer-focus__ring" style={{ '--timer-progress': `${timerProgress * 3.6}deg` } as CSSProperties}><div className="athlete-timer-focus__phase"><small aria-live="polite">{exerciseTimerPhaseLabel(activeTimer)}</small><strong aria-live="off">{timerLabel}</strong><span>{activeTimer.phase === 'work' && currentSeriesReps > 1 ? `SERIE ${activeTimer.set}/${activeTimer.config.sets} · RIPETIZIONE ${activeTimer.repetition}/${currentSeriesReps}` : exerciseTimerProgressLabel(activeTimer)}</span></div></div>
           <div className="athlete-timer-focus__next"><small>PROSSIMO</small><div><strong>{nextTimerLabel}</strong><SkipForward size={17} /></div></div>
@@ -150,7 +159,7 @@ export function SessionExerciseCard({ exercise, coachNotes, canEdit, isNext, tim
         <div aria-hidden={timerView !== 'exercise'} inert={timerView !== 'exercise' ? true : undefined} className="athlete-timer-focus__exercise-panel">
           <div><small>ESERCIZIO</small><h2>{exercise.name}</h2></div>
           {variableSeries.length > 0 ? <div className="athlete-prescription"><div className="athlete-prescription-table"><div className="athlete-prescription-head"><span>SERIE</span><span>PRESCRIZIONE</span></div>{variableSeries.map((series, index) => <div className="athlete-prescription-row" key={series + index}><span className="athlete-prescription-index">{String(index + 1).padStart(2, '0')}</span><span className="athlete-prescription-value">{series}</span></div>)}</div>{doseNote && <p className="athlete-prescription-note">{doseNote}</p>}<div className="athlete-prescription-meta"><div><span className="athlete-prescription-meta-label">SERIE</span><strong>{getSetCount(exercise)}</strong></div><div><span className="athlete-prescription-meta-label">CARICO</span><strong>{load}</strong></div><div><span className="athlete-prescription-meta-label">RECUPERO</span><strong>{restDescription}</strong></div></div></div> : <div className="athlete-prescription"><p className="athlete-prescription-dose">{dose}</p><div className="athlete-prescription-meta"><div><span className="athlete-prescription-meta-label">SERIE</span><strong>{getSetCount(exercise)}</strong></div><div><span className="athlete-prescription-meta-label">CARICO</span><strong>{load}</strong></div><div><span className="athlete-prescription-meta-label">RECUPERO</span><strong>{restDescription}</strong></div></div></div>}
-          {(exercise.instructions || coachNotes) && <p className="athlete-timer-focus__guidance">{exercise.instructions || coachNotes}</p>}
+          {athleteGuidance && <p className="athlete-timer-focus__guidance">{athleteGuidance}</p>}
           <button className="athlete-timer-focus__mini" onClick={() => setTimerView('timer')}><span><small>{exerciseTimerPhaseLabel(activeTimer)}</small><strong>{timerLabel}</strong></span><span><small>AVANZAMENTO</small><strong>{exerciseTimerProgress}%</strong></span><i><b style={{ width: `${exerciseTimerProgress}%` }} /></i></button>
         </div>
         </div>

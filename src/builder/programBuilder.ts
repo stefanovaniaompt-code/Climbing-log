@@ -1,6 +1,7 @@
 import type { ProgramType } from '../programs/programType'
 import { displayDoseForRow, hasPrescriptionField, legacyDoseDescription, optionalNonNegativeNumber, usesKilogramLoads } from '../prescriptions/prescriptionConsistency'
 import { mergeTimerSettings, readTimerSettings, timerSettingsEqual, type TimerSettings } from '../prescriptions/timerConfiguration'
+import { readIntentionalLoadPlan, resolveIntentionalSetRows, intentionalLoadUnit, type IntentionalLoadPlan } from '../prescriptions/intentionalBlockLoad'
 
 export type BuilderAthlete = { id: string; name: string }
 export type BuilderProgram = { id: string; athleteId: string; name: string; goal: string | null; programType: ProgramType; status: 'draft' | 'active' | 'completed' | 'archived'; startDate: string | null; endDate: string | null }
@@ -20,8 +21,8 @@ export type BuilderSessionExercise = {
   restSeconds: number | null
   instructions: string | null
 }
-export type PrescriptionStep = { label: string; reps: number; seconds: number; loadKg: number | null }
-export type PrescriptionEditorValues = { sets: number; reps: number; seconds: number; loadKg: number; steps: PrescriptionStep[] }
+export type PrescriptionStep = { label: string; reps: number; seconds: number; loadKg: number | null; percentage?: number | null; [key: string]: unknown }
+export type PrescriptionEditorValues = { sets: number; reps: number; seconds: number; loadKg: number; steps: PrescriptionStep[]; intentionalLoad?: IntentionalLoadPlan | null }
 export type ProgramCalendarEvent = { id: string; programId: string; eventType: 'travel' | 'off' | 'unavailable' | 'note'; startDate: string; endDate: string; note: string }
 
 export type ProgramBuilderData = {
@@ -48,6 +49,17 @@ export function latestWeek(weeks: BuilderWeek[]) {
 }
 
 export function prescriptionSummary(exercise: BuilderSessionExercise) {
+  const intentionalPlan = readIntentionalLoadPlan(exercise.prescription)
+  if (intentionalPlan) {
+    const unit = intentionalLoadUnit(intentionalPlan)
+    const series = resolveIntentionalSetRows(exercise.prescription).map(row => {
+      const load = intentionalPlan.mode === 'percentage'
+        ? `${row.percentage ?? '—'}%${row.calculatedKg !== null ? ` = ${row.calculatedKg} ${unit}` : ''}`
+        : row.manualKg !== null ? `${row.manualKg} kg` : '— kg'
+      return `${load} × ${row.reps ?? '—'} rep`
+    }).join(' · ')
+    return [series, exercise.targetRpeMax ? `RPE ${exercise.targetRpeMax}` : null].filter(Boolean).join(' · ')
+  }
   const steps = getPrescriptionSteps(exercise.prescription)
   const description = legacyDoseDescription(exercise.prescription)
   const note = description ? `Nota: ${description}` : null
@@ -104,6 +116,7 @@ export function readPrescriptionEditorValues(prescription: Record<string, unknow
         : firstStep?.loadKg ?? (legacyLoad !== null && legacyLoad > 0 ? legacyLoad : 0)
       : 0,
     steps,
+    ...(readIntentionalLoadPlan(prescription) ? { intentionalLoad: readIntentionalLoadPlan(prescription) } : {}),
   }
 }
 
@@ -210,6 +223,24 @@ export function mergePrescriptionForUpdate(current: Record<string, unknown>, nex
   }
   const dose = [next.reps > 0 ? `${next.reps} ripetizioni` : '', next.seconds > 0 ? `${next.seconds} sec` : ''].filter(Boolean).join(' · ')
   const steps = resizePrescriptionSteps(next.steps, next.sets, next)
+  if (next.intentionalLoad) {
+    const percentageMode = next.intentionalLoad.mode === 'percentage'
+    return {
+      ...current,
+      sets: Math.max(1, Math.trunc(next.sets) || 1),
+      reps: 0,
+      seconds: next.seconds,
+      loadKg: null,
+      load_value: null,
+      unit: percentageMode ? null : 'kg',
+      load_type: percentageMode ? 'percentage' : 'kg',
+      steps: steps.map(step => percentageMode
+        ? { ...step, loadKg: null, percentage: step.percentage ?? null }
+        : { ...step, loadKg: step.loadKg, percentage: undefined }),
+      intentionalLoad: next.intentionalLoad,
+      timer: mergedTimer ?? current.timer,
+    }
+  }
   const legacyDoseSteps = Array.isArray(current.steps) ? [] : parseDoseSteps(String(current.dose ?? ''))
   const legacyStepsChanged = steps.length > 0
     && legacyDoseSteps.some(step => step.loadKg !== null)
@@ -248,7 +279,7 @@ export function getPrescriptionSteps(prescription: Record<string, unknown>): Pre
   return prescription.steps.map((value, index) => {
     const row = value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
     const load = optionalNonNegativeNumber(row.loadKg)
-    return { label: String(row.label ?? `Set ${index + 1}`), reps: Math.max(0, Number(row.reps) || 0), seconds: Math.max(0, Number(row.seconds) || 0), loadKg: load }
+    return { ...row, label: String(row.label ?? `Set ${index + 1}`), reps: Math.max(0, Number(row.reps) || 0), seconds: Math.max(0, Number(row.seconds) || 0), loadKg: load, ...(Object.hasOwn(row, 'percentage') ? { percentage: optionalNonNegativeNumber(row.percentage) } : {}) }
   })
 }
 

@@ -63,6 +63,32 @@
 .screen.coach-builder .structured-prescription__row { grid-template-columns: minmax(130px,1.1fr) repeat(3,minmax(100px,.8fr)) 36px; gap: 10px; align-items: end; }
 .screen.coach-builder .structured-prescription__row > label span { min-height: 20px; }
 .screen.coach-builder .structured-prescription__row > label input { min-height: 42px; padding-inline: 10px; }
+.coach-builder__inspector .intentional-load { grid-column: 1 / -1; min-width: 0; border: 1px solid #c8b9d4; background: #faf8fc; }
+.intentional-load > header { padding: 16px 18px 12px; border-bottom: 1px solid #d9cfe0; color: #55206f; font: 700 13px/1.4 'IBM Plex Mono',monospace; letter-spacing: .04em; }
+.intentional-load__legacy { padding: 14px 18px; border-bottom: 1px solid #d9cfe0; }
+.intentional-load__legacy p { margin: 0 0 8px; color: #625469; }
+.intentional-load__controls { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: end; padding: 16px 18px; }
+.intentional-load__controls > div, .intentional-load__controls > label { min-width: 120px; display: grid; gap: 7px; }
+.intentional-load__controls span, .intentional-load__row--head { color: #6e5879; font: 650 11px/1.4 'IBM Plex Mono',monospace; letter-spacing: .04em; }
+.intentional-load__choices, .intentional-load__stepper { display: flex; min-height: 42px; }
+.intentional-load__choices button, .intentional-load__stepper button { min-height: 42px; border: 1px solid #c8b9d4; background: #fff; color: #55206f; padding: 0 12px; cursor: pointer; }
+.intentional-load__choices button + button, .intentional-load__stepper button + button { border-left: 0; }
+.intentional-load__choices button.active { background: #55206f; border-color: #55206f; color: #fff; }
+.intentional-load__stepper strong { min-width: 44px; display: grid; place-items: center; border-block: 1px solid #c8b9d4; background: #fff; }
+.intentional-load__controls select, .intentional-load__controls input { min-height: 42px; min-width: 0; padding: 0 10px; }
+.intentional-load__table { margin: 0 18px; border: 1px solid #d2c5da; overflow-x: auto; }
+.intentional-load__row { display: grid; grid-template-columns: minmax(70px,.45fr) repeat(2,minmax(135px,1fr)) minmax(145px,1fr); min-width: 530px; align-items: center; border-top: 1px solid #ded3e4; }
+.intentional-load__row--head { border-top: 0; background: #eee8f3; }
+.intentional-load__row > * { min-width: 0; padding: 8px 12px; }
+.intentional-load__row > strong { color: #55206f; }
+.intentional-load__row .input-shell { display: flex; padding: 4px 10px; }
+.intentional-load__row .input-shell input { width: 100%; min-width: 0; min-height: 38px; padding: 0 8px; }
+.intentional-load__row output { color: #55206f; font-weight: 700; }
+.intentional-load__row:has(> :nth-child(3):last-child) { grid-template-columns: minmax(70px,.45fr) repeat(2,minmax(135px,1fr)); min-width: 430px; }
+.intentional-load__hint { padding: 0 18px; color: #6e5879; font-size: 12px; }
+.intentional-load > footer { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; border-top: 1px solid #d9cfe0; }
+.intentional-load > footer span { color: #9a7400; }
+.intentional-load > footer .button { min-height: 42px; }
 
 @media (max-width: 820px) {
   .coach-builder .exercise-adder { grid-template-columns: repeat(2,minmax(0,1fr)); }

@@ -7,6 +7,8 @@ import { addExercise, createProgram, createSession, createWeek, deleteExercise, 
 import { builderDraftValuesMatch, compareBuilderLocalDraft, compareBuilderLocalDrafts, planBuilderLocalDraftRecovery, type BuilderDraftComparison, type BuilderDraftComparisonStatus, type BuilderDraftRecoveryPlan } from './builderLocalDraftComparison'
 import { builderLocalDraftKey, claimBuilderLocalDraftRevision, clearBuilderLocalDraftRevision, readBuilderLocalDraft, scanBuilderLocalDrafts, writeBuilderLocalDraft, type BuilderDraftEntityType, type BuilderDraftIdentity, type BuilderLocalDraftScanIssue } from './builderLocalDraftStorage'
 import { ExerciseTestTargetPanel } from './ExerciseTestTargetPanel'
+import { IntentionalBlockLiftingEditor } from './IntentionalBlockLiftingEditor'
+import { isIntentionalBlockLifting, validateIntentionalLoadPlan } from '../prescriptions/intentionalBlockLoad'
 import { readTimerSettings, resolveExerciseTimerValues, resolveTimerRestSeconds, timerSettingsEqual } from '../prescriptions/timerConfiguration'
 import { TimerConfigurationEditor } from '../shared/TimerConfigurationEditor'
 import './BuilderScreen.css'
@@ -246,6 +248,7 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
   const program = athletePrograms.find(item => item.id === programId)
   const session = sessions.find(item => item.id === sessionId)
   const exercise = exercises.find(item => item.id === exerciseId)
+  const isIntentionalExercise = Boolean(exercise && isIntentionalBlockLifting(exercise.name))
   const inferredExerciseTimer = exercise
     ? resolveExerciseTimerValues(exercise.name, exercise.prescription, exercise.restSeconds, patch.instructions)
     : null
@@ -507,6 +510,12 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
     )
   }, [acknowledgeLocalRevision, draftIdentity, localRevisionForSnapshot, profile, runQueuedSave, updateLoadedData])
   const persistExerciseSnapshot = useCallback((currentExercise: ProgramBuilderData['exercises'][number], snapshot: ExercisePatch, options: { identity?: BuilderDraftIdentity; force?: boolean } = {}) => {
+    const validationError = validateIntentionalLoadPlan(snapshot)
+    if (validationError) {
+      setError(validationError)
+      setSaveStatus('error')
+      return Promise.resolve(false)
+    }
     const serialized = JSON.stringify(snapshot)
     const identity = options.identity ?? draftIdentity('exercise', currentExercise.id)
     const uncertaintyKey = builderLocalDraftKey(identity)
@@ -855,7 +864,7 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
     if (!exercise) return
     if (hydratedExercise.current === exercise.id && JSON.stringify(patchRef.current) !== hydratedExerciseValue.current) return
     const values = readPrescriptionEditorValues(exercise.prescription)
-    const remote = { sets: values.sets, reps: values.reps, seconds: values.seconds, loadKg: values.loadKg, rpe: exercise.targetRpeMax ?? 7, restSeconds: resolveTimerRestSeconds(exercise.prescription, exercise.restSeconds, 120) ?? 0, instructions: exercise.instructions ?? '', steps: values.steps }
+    const remote = { sets: values.sets, reps: values.reps, seconds: values.seconds, loadKg: values.loadKg, rpe: exercise.targetRpeMax ?? 7, restSeconds: resolveTimerRestSeconds(exercise.prescription, exercise.restSeconds, 120) ?? 0, instructions: exercise.instructions ?? '', steps: values.steps, ...(values.intentionalLoad ? { intentionalLoad: values.intentionalLoad } : {}) }
     const currentSession = data?.sessions.find(item => item.id === exercise.sessionId)
     const currentWeek = currentSession ? data?.weeks.find(item => item.id === currentSession.weekId) : null
     const recovered = currentWeek ? recoveredDraftValues.current.get(builderLocalDraftKey(draftIdentity('exercise', exercise.id, currentWeek.programId))) as ExercisePatch | undefined : undefined
@@ -1226,10 +1235,12 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
           {sessionTab === 'exercises' && exercises.map(item => <div className={`exercise-block ${item.id === exerciseId && exerciseEditorOpen ? 'active' : ''}`} key={item.id}><button type="button" disabled={state === 'saving'} className="exercise-block__select" onClick={() => void chooseExercise(item.id)}><GripVertical className="drag-handle" size={16} /><span className="exercise-number">{String(item.order).padStart(2, '0')}</span><div><b>{item.name}</b><small>{prescriptionSummary(item)}</small></div><ChevronDown size={17} /></button><details className="coach-builder__action-menu coach-builder__action-menu--exercise"><summary aria-label={`Azioni ${item.name}`} title={`Azioni ${item.name}`}><CircleEllipsis size={17} /></summary><div role="menu"><button type="button" role="menuitem" disabled={state === 'saving'} onClick={event => { event.currentTarget.closest('details')?.removeAttribute('open'); setDeleteTarget({ kind: 'exercise', id: item.id, name: item.name }) }}><Trash2 size={14} /> Elimina esercizio</button></div></details></div>)}
           {sessionId && sessionTab === 'exercises' && !exerciseAdderOpen && <div className="coach-builder__add-exercise-actions"><button type="button" onClick={() => { setLibraryId(''); setExerciseAdderOpen(true) }}><Plus size={15} /> AGGIUNGI ESERCIZIO</button><button type="button" onClick={() => setExerciseAdderOpen(true)}><Layers3 size={15} /> AGGIUNGI DALLA LIBRERIA</button></div>}
           {sessionId && sessionTab === 'exercises' && exerciseAdderOpen && <form className="exercise-adder" onSubmit={submitExercise}><select value={libraryId} onChange={event => setLibraryId(event.target.value)}><option value="">Esercizio rapido…</option>{data?.library.map(item => <option value={item.id} key={item.id}>{item.name}{item.category ? ` · ${item.category}` : ''}</option>)}</select>{!libraryId && <input value={newExercise} onChange={event => setNewExercise(event.target.value)} placeholder="Nome esercizio" />}<button className="drop-zone" disabled={state === 'saving'}><Plus size={17} /> Aggiungi alla sessione</button><button type="button" className="text-button" onClick={() => setExerciseAdderOpen(false)}>Annulla</button></form>}
-          {sessionId && sessionTab === 'exercises' && exerciseEditorOpen && <Panel className="inspector coach-builder__inspector" title="Parametri esercizio" index="03" action={exercise && <div className="builder-exercise-save"><span role="status">{saveStatus === 'saving' ? 'Modifiche da salvare' : saveStatus === 'error' ? 'Salvataggio non riuscito' : 'Salvato'}</span><button type="button" className="button button--primary" disabled={state === 'saving' || !exerciseHasUnsavedChanges} onClick={() => void saveExerciseChanges()}><Save size={15} /> {exerciseHasUnsavedChanges ? 'Salva modifiche' : 'Salvato'}</button></div>}>
+          {sessionId && sessionTab === 'exercises' && exerciseEditorOpen && <Panel className="inspector coach-builder__inspector" title="Parametri esercizio" index="03" action={exercise && !patch.intentionalLoad && <div className="builder-exercise-save"><span role="status">{saveStatus === 'saving' ? 'Modifiche da salvare' : saveStatus === 'error' ? 'Salvataggio non riuscito' : 'Salvato'}</span><button type="button" className="button button--primary" disabled={state === 'saving' || !exerciseHasUnsavedChanges} onClick={() => void saveExerciseChanges()}><Save size={15} /> {exerciseHasUnsavedChanges ? 'Salva modifiche' : 'Salvato'}</button></div>}>
         {!exercise && <div className="empty-state empty-state--compact"><Settings2 size={20} /><b>Seleziona un esercizio</b><span>Qui modificherai volume, carico, RPE e recupero.</span></div>}
         {exercise && <>
+          {isIntentionalExercise && <IntentionalBlockLiftingEditor profile={profile} athleteId={athleteId} instructions={patch.instructions} value={patch} onChange={updateExerciseEditor} onSave={() => void saveExerciseChanges()} saveStatus={saveStatus} hasUnsavedChanges={exerciseHasUnsavedChanges} busy={state === 'saving'} showSaveAction={Boolean(patch.intentionalLoad)} />}
           <TimerConfigurationEditor
+            hideVolumeControls={Boolean(isIntentionalExercise && patch.intentionalLoad)}
             value={{
               ...(patch.timerSettings ?? inferredExerciseTimer ?? readTimerSettings(exercise.prescription, patch.restSeconds)),
               sets: patch.sets,
@@ -1263,26 +1274,26 @@ export function BuilderScreen({ profile, selectedAthleteId, setSelectedAthleteId
               // sets; keep structured rows aligned when that value is edited.
               steps: resizePrescriptionSteps(value.steps, next.sets, value).map(step => ({
                 ...step,
-                ...(next.reps !== value.reps ? { reps: next.reps } : {}),
+                ...(!value.intentionalLoad && next.reps !== value.reps ? { reps: next.reps } : {}),
                 ...(next.seconds !== value.seconds ? { seconds: next.seconds } : {}),
               })),
             }))}
           />
-          <label><span>Carico</span><div className="input-shell"><input type="number" min="0" step="0.5" value={patch.loadKg} onChange={event => updateExerciseEditor(value => ({ ...value, loadKg: Number(event.target.value) }))} /><em>kg</em></div></label>
+          {!patch.intentionalLoad && <label><span>Carico</span><div className="input-shell"><input type="number" min="0" step="0.5" value={patch.loadKg} onChange={event => updateExerciseEditor(value => ({ ...value, loadKg: Number(event.target.value) }))} /><em>kg</em></div></label>}
           <label><span>RPE target</span><div className="rpe-scale">{[6, 7, 8, 9, 10].map(value => <button className={value === patch.rpe ? 'active' : ''} key={value} onClick={() => updateExerciseEditor(current => ({ ...current, rpe: value }))}>{value}</button>)}</div></label>
           <label className="inspector-notes"><span>Indicazioni</span><textarea value={patch.instructions} onChange={event => updateExerciseEditor(value => ({ ...value, instructions: event.target.value }))} /></label>
-          <section className="builder-exercise-load"><div className="builder-exercise-load__title"><b>Variazione carico esercizio</b><span>Ripetizioni, durata e recupero non cambiano.</span></div><label><span>Variazione %</span><input aria-label="Variazione percentuale carico per questo esercizio" type="number" min="-100" max="500" value={exerciseLoadPercentages[exercise.id] ?? 0} onChange={event => setExerciseLoadPercentages(value => ({ ...value, [exercise.id]: Number(event.target.value) }))} /></label><div className="builder-exercise-load__preview">{(scaledExercisePatch.steps.some(step => step.loadKg !== null && step.loadKg > 0) ? scaledExercisePatch.steps.map((step, index) => step.loadKg !== null && step.loadKg > 0 ? `${step.label || `S${index + 1}`}: ${patch.steps[index]?.loadKg} → ${step.loadKg} kg` : null).filter(Boolean) : patch.loadKg > 0 ? [`${patch.loadKg} → ${scaledExercisePatch.loadKg} kg`] : []).join(' · ') || (hasTestDerivedTarget ? 'Il carico viene calcolato dal test, mantenendo le ripetizioni di ogni serie.' : 'Nessun carico numerico in questa prescrizione.')}</div><button type="button" className="text-button" disabled={state === 'saving' || safeExerciseLoadPercentage === 0 || (!hasTestDerivedTarget && !((patch.loadKg > 0) || patch.steps.some(step => step.loadKg !== null && step.loadKg > 0)))} onClick={applyExerciseLoadAdjustment}>Applica variazione a questo esercizio</button></section>
+          {!patch.intentionalLoad && <section className="builder-exercise-load"><div className="builder-exercise-load__title"><b>Variazione carico esercizio</b><span>Ripetizioni, durata e recupero non cambiano.</span></div><label><span>Variazione %</span><input aria-label="Variazione percentuale carico per questo esercizio" type="number" min="-100" max="500" value={exerciseLoadPercentages[exercise.id] ?? 0} onChange={event => setExerciseLoadPercentages(value => ({ ...value, [exercise.id]: Number(event.target.value) }))} /></label><div className="builder-exercise-load__preview">{(scaledExercisePatch.steps.some(step => step.loadKg !== null && step.loadKg > 0) ? scaledExercisePatch.steps.map((step, index) => step.loadKg !== null && step.loadKg > 0 ? `${step.label || `S${index + 1}`}: ${patch.steps[index]?.loadKg} → ${step.loadKg} kg` : null).filter(Boolean) : patch.loadKg > 0 ? [`${patch.loadKg} → ${scaledExercisePatch.loadKg} kg`] : []).join(' · ') || (hasTestDerivedTarget ? 'Il carico viene calcolato dal test, mantenendo le ripetizioni di ogni serie.' : 'Nessun carico numerico in questa prescrizione.')}</div><button type="button" className="text-button" disabled={state === 'saving' || safeExerciseLoadPercentage === 0 || (!hasTestDerivedTarget && !((patch.loadKg > 0) || patch.steps.some(step => step.loadKg !== null && step.loadKg > 0)))} onClick={applyExerciseLoadAdjustment}>Applica variazione a questo esercizio</button></section>}
 
-          <div className="structured-prescription"><div className="structured-prescription__head"><span>Progressione a righe</span><button type="button" className="text-button" onClick={addStep}><Plus size={13} /> Riga</button></div>{patch.steps.map((step, index) => <div className="structured-prescription__row" key={index}><label><span>Set / nota</span><input aria-label="Etichetta" value={step.label} onChange={event => changeStep(index, { label: event.target.value })} /></label><label><span>Carico kg</span><input aria-label="Carico kg" type="number" step="0.5" value={step.loadKg ?? ''} onChange={event => changeStep(index, { loadKg: event.target.value === '' ? null : Number(event.target.value) })} /></label><label><span>Ripetizioni</span><input aria-label="Ripetizioni" type="number" min="0" value={step.reps} onChange={event => changeStep(index, { reps: Number(event.target.value), seconds: 0 })} /></label><label><span>Durata sec</span><input aria-label="Secondi" type="number" min="0" value={step.seconds} onChange={event => changeStep(index, { seconds: Number(event.target.value), reps: 0 })} /></label><button type="button" aria-label="Elimina riga" onClick={() => updateExerciseEditor(value => { const steps = value.steps.filter((_, row) => row !== index); return { ...value, sets: Math.max(1, steps.length), steps } })}><Minus size={13} /></button></div>)}</div>
+          {!patch.intentionalLoad && <div className="structured-prescription"><div className="structured-prescription__head"><span>Progressione a righe</span><button type="button" className="text-button" onClick={addStep}><Plus size={13} /> Riga</button></div>{patch.steps.map((step, index) => <div className="structured-prescription__row" key={index}><label><span>Set / nota</span><input aria-label="Etichetta" value={step.label} onChange={event => changeStep(index, { label: event.target.value })} /></label><label><span>Carico kg</span><input aria-label="Carico kg" type="number" step="0.5" value={step.loadKg ?? ''} onChange={event => changeStep(index, { loadKg: event.target.value === '' ? null : Number(event.target.value) })} /></label><label><span>Ripetizioni</span><input aria-label="Ripetizioni" type="number" min="0" value={step.reps} onChange={event => changeStep(index, { reps: Number(event.target.value), seconds: 0 })} /></label><label><span>Durata sec</span><input aria-label="Secondi" type="number" min="0" value={step.seconds} onChange={event => changeStep(index, { seconds: Number(event.target.value), reps: 0 })} /></label><button type="button" aria-label="Elimina riga" onClick={() => updateExerciseEditor(value => { const steps = value.steps.filter((_, row) => row !== index); return { ...value, sets: Math.max(1, steps.length), steps } })}><Minus size={13} /></button></div>)}</div>}
 
-          <ExerciseTestTargetPanel
+          {!patch.intentionalLoad && <ExerciseTestTargetPanel
             profile={profile}
             athleteId={athleteId}
             exerciseId={exercise.id}
             setCount={patch.sets}
             loadAdjustmentPercentage={safeExerciseLoadPercentage}
             onRegisterLoadAdjustment={registerTestTargetLoadAdjustment}
-          />
+          />}
         </>}
       </Panel>}
         </>}

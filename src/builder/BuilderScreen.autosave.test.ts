@@ -28,6 +28,7 @@ const repository = vi.hoisted(() => ({
 
 vi.mock('./programBuilderRepository', () => repository)
 vi.mock('./ExerciseTestTargetPanel', () => ({ ExerciseTestTargetPanel: () => null }))
+vi.mock('./testTargetRepository', () => ({ loadAthleteTestReferences: vi.fn().mockResolvedValue([]) }))
 
 import { BuilderScreen, type BuilderNavigationGuard } from './BuilderScreen'
 import { clearBuilderLocalDraftRevision, writeBuilderLocalDraft } from './builderLocalDraftStorage'
@@ -203,9 +204,33 @@ afterEach(async () => {
   root = null
   container = null
   vi.useRealTimers()
+  vi.restoreAllMocks()
 })
 
 describe('BuilderScreen autosave durante i cambi di selezione', () => {
+  it('importa le cinque serie storiche solo dopo scelta esplicita e salva ripetizioni/percentuali', async () => {
+    const original = { sets: 1, reps: 0 }
+    repository.loadProgramBuilder.mockResolvedValue({ ...builderData, exercises: [{
+      ...builderData.exercises[0], name: 'Intentional Block Lifting', prescription: original,
+      instructions: 'Massimale di 27 kg\n10 rep 60%\n8 rep 65%\n6 rep 70%\n4 rep 80%\n3 rep 86%',
+    }] })
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const screen = await renderBuilder()
+    await act(async () => { buttonWithText(screen, 'Intentional Block Lifting').click() })
+    expect(repository.updateExercise).not.toHaveBeenCalled()
+    await act(async () => { buttonWithText(screen, 'Importa 5 serie').click() })
+    await act(async () => { vi.advanceTimersByTime(700); await Promise.resolve() })
+    expect(repository.updateExercise).toHaveBeenCalledWith(profile, 'exercise-1', original, expect.objectContaining({
+      sets: 5,
+      intentionalLoad: { version: 1, mode: 'percentage', source: { type: 'manual_max', maxKg: 27 } },
+      steps: expect.arrayContaining([
+        expect.objectContaining({ reps: 10, percentage: 60 }),
+        expect.objectContaining({ reps: 3, percentage: 86 }),
+      ]),
+    }))
+    expect(original).toEqual({ sets: 1, reps: 0 })
+  })
+
   it('rende accessibile la modifica del nome dalla testata della sessione e lo salva', async () => {
     const screen = await renderBuilder()
 

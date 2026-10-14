@@ -2,6 +2,7 @@ export type JsonRecord = Record<string, unknown>
 import type { ProgramType } from '../programs/programType'
 import { displayDoseForRow, hasPrescriptionField, legacyDoseDescription, legacyDoseRows, optionalNonNegativeNumber, usesKilogramLoads } from '../prescriptions/prescriptionConsistency'
 import { buildTimerProtocolSequence, hasExplicitTimerMode, resolveExerciseTimerValues, timerProtocolSequenceIssue, type TimerSequenceStep, type TimerSeriesPrescription } from '../prescriptions/timerConfiguration'
+import { intentionalLoadUnit, isIntentionalBlockLifting, previewLegacyIntentionalProgression, readIntentionalLoadPlan, resolveIntentionalSetRows } from '../prescriptions/intentionalBlockLoad'
 import type { CompletionOutcome } from './sessionFeedback'
 
 export type ExerciseProgress = {
@@ -115,13 +116,20 @@ function nonNegativeInteger(value: unknown, fallback: number): number {
 }
 
 export function getExerciseTimerConfig(exercise: RunnerExercise): ExerciseTimerConfig | null {
-  const timer = exercise.prescription.timer && typeof exercise.prescription.timer === 'object' && !Array.isArray(exercise.prescription.timer)
-    ? exercise.prescription.timer as JsonRecord
+  const legacyRows = legacyIntentionalRows(exercise)
+  const prescription = legacyRows ? {
+    ...exercise.prescription,
+    sets: legacyRows.rows.length,
+    reps: 0,
+    steps: legacyRows.rows.map((row, index) => ({ label: `Set ${index + 1}`, reps: row.reps, seconds: 0 })),
+  } : exercise.prescription
+  const timer = prescription.timer && typeof prescription.timer === 'object' && !Array.isArray(prescription.timer)
+    ? prescription.timer as JsonRecord
     : {}
-  const settings = resolveExerciseTimerValues(exercise.name, exercise.prescription, resolveTimerRest(exercise, timer), exercise.instructions)
+  const settings = resolveExerciseTimerValues(exercise.name, prescription, resolveTimerRest(exercise, timer), exercise.instructions)
   const legacyWorkSeconds = positiveInteger(timer.work_seconds)
-  const hasCanonicalSeconds = Object.hasOwn(exercise.prescription, 'seconds')
-  const hasCanonicalReps = Object.hasOwn(exercise.prescription, 'reps')
+  const hasCanonicalSeconds = Object.hasOwn(prescription, 'seconds')
+  const hasCanonicalReps = Object.hasOwn(prescription, 'reps')
   const mode = settings.mode
 
   if (mode === 'none') return null
@@ -133,8 +141,8 @@ export function getExerciseTimerConfig(exercise: RunnerExercise): ExerciseTimerC
     : settings.reps
   const workSeconds = hasCanonicalSeconds && !settings.workPhases ? settings.seconds : legacyWorkSeconds ?? settings.seconds
   const setRestSeconds = settings.restSeconds ?? 0
-  const seriesRows = Array.isArray(exercise.prescription.steps)
-    ? exercise.prescription.steps.map(value => {
+  const seriesRows = Array.isArray(prescription.steps)
+    ? prescription.steps.map(value => {
         const row = value && typeof value === 'object' && !Array.isArray(value) ? value as JsonRecord : {}
         return {
           reps: Object.hasOwn(row, 'reps') ? nonNegativeInteger(row.reps, 0) : repetitions,
@@ -537,7 +545,23 @@ export function getDerivedSetTargets(
   )
 }
 
+function legacyIntentionalRows(exercise: RunnerExercise) {
+  if (!isIntentionalBlockLifting(exercise.name)
+    || readIntentionalLoadPlan(exercise.prescription)
+    || (Array.isArray(exercise.prescription.steps) && exercise.prescription.steps.length > 0)
+    || getDerivedSetTargets(exercise).length > 0) return null
+  return previewLegacyIntentionalProgression(exercise.instructions)
+}
+
+export { legacyIntentionalRows as getLegacyIntentionalProgression }
+
 export function getSetCount(exercise: RunnerExercise): number {
+  if (readIntentionalLoadPlan(exercise.prescription)) {
+    const explicit = positiveInteger(exercise.prescription.sets)
+    return explicit ?? (Array.isArray(exercise.prescription.steps) ? exercise.prescription.steps.length : 1)
+  }
+  const legacyRows = legacyIntentionalRows(exercise)
+  if (legacyRows) return legacyRows.rows.length
   const derived =
     getDerivedSetTargets(
       exercise,
@@ -590,6 +614,8 @@ export function getRestSeconds(exercise: RunnerExercise): number | null {
 export function getPrescriptionDose(exercise: RunnerExercise): string | null {
   const description = legacyDoseDescription(exercise.prescription)
   const note = description ? `Nota: ${description}` : null
+  if (readIntentionalLoadPlan(exercise.prescription)) return description && !/carich|massimal|%|\bkg\b/i.test(description) ? note : null
+  if (legacyIntentionalRows(exercise)) return note
   if (Array.isArray(exercise.prescription.steps) && exercise.prescription.steps.length) return note
   const hasModernDose = hasPrescriptionField(exercise.prescription, 'reps') || hasPrescriptionField(exercise.prescription, 'seconds')
   const reps = positiveInteger(exercise.prescription.reps)
@@ -603,6 +629,7 @@ export function getPrescriptionDose(exercise: RunnerExercise): string | null {
 }
 
 export function getPrescriptionLoad(exercise: RunnerExercise): string | null {
+  if (readIntentionalLoadPlan(exercise.prescription) || legacyIntentionalRows(exercise)) return null
   if (Array.isArray(exercise.prescription.steps) && exercise.prescription.steps.length) return null
   const legacyLoad = textValue(exercise.prescription.load_value)
   const unit = textValue(exercise.prescription.unit)
@@ -621,6 +648,11 @@ export function getPrescriptionLoad(exercise: RunnerExercise): string | null {
 }
 
 export function getExerciseLoadLabel(exercise: RunnerExercise): string {
+  const intentionalPlan = readIntentionalLoadPlan(exercise.prescription)
+  if (intentionalPlan) return intentionalPlan.mode === 'manual_kg'
+    ? 'Carichi variabili'
+    : intentionalPlan.source?.type === 'athlete_test' ? 'Percentuali da test' : 'Percentuali su massimale'
+  if (legacyIntentionalRows(exercise)) return 'Percentuali su massimale'
   const load = getPrescriptionLoad(exercise)
   if (load) return load
   if (getDerivedSetTargets(exercise).length) return 'Carichi da test'
@@ -646,6 +678,21 @@ export function formatPrescription(exercise: RunnerExercise): string {
 export function getVariableSeries(
   exercise: RunnerExercise,
 ): string[] {
+  const intentionalPlan = readIntentionalLoadPlan(exercise.prescription)
+  if (intentionalPlan) {
+    const unit = intentionalLoadUnit(intentionalPlan)
+    return resolveIntentionalSetRows(exercise.prescription).map(row => {
+      const load = intentionalPlan.mode === 'percentage'
+        ? `${row.percentage ?? '—'}%${row.calculatedKg !== null ? ` = ${row.calculatedKg} ${unit}` : ''}`
+        : row.manualKg !== null ? `${row.manualKg} kg` : '— kg'
+      return `${load} · ${row.reps ?? '—'} rep`
+    })
+  }
+  const legacyRows = legacyIntentionalRows(exercise)
+  if (legacyRows) return legacyRows.rows.map(row => {
+    const kg = Math.round(legacyRows.maxKg * row.percentage / 100 * 2) / 2
+    return `${row.percentage}% = ${kg} kg · ${row.reps} rep`
+  })
   const steps = exercise.prescription.steps
   const derived = getDerivedSetTargets(exercise)
 

@@ -7,6 +7,29 @@ function runnerExercise(prescription: Record<string, unknown>, restSeconds: numb
 }
 
 describe('program builder', () => {
+  it('salva la nuova modalità per singolo esercizio senza riscrivere istruzioni e campi storici', () => {
+    const current = { sets: 1, dose: 'testo storico', custom_legacy_field: { keep: true }, timer: { mode: 'recovery_only', set_rest_seconds: 120 } }
+    const saved = mergePrescriptionForUpdate(current, {
+      sets: 2, reps: 0, seconds: 0, loadKg: 0,
+      intentionalLoad: { version: 1, mode: 'percentage', source: { type: 'manual_max', maxKg: 27 } },
+      steps: [
+        { label: 'Set 1', reps: 10, seconds: 0, loadKg: null, percentage: 60 },
+        { label: 'Set 2', reps: 3, seconds: 0, loadKg: null, percentage: 86 },
+      ],
+    })
+    expect(saved).toMatchObject({
+      sets: 2,
+      load_type: 'percentage',
+      dose: 'testo storico',
+      custom_legacy_field: { keep: true },
+      timer: current.timer,
+      steps: [{ reps: 10, percentage: 60 }, { reps: 3, percentage: 86 }],
+    })
+    expect(readPrescriptionEditorValues(saved).intentionalLoad).toMatchObject({ mode: 'percentage' })
+    expect(getVariableSeries(runnerExercise(saved, 120))).toEqual(['60% = 16 kg · 10 rep', '86% = 23 kg · 3 rep'])
+    expect(current.sets).toBe(1)
+  })
+
   it('calcola il prossimo ordine senza sovrascrivere elementi esistenti', () => expect(nextSequence([1, 3, 2])).toBe(4))
   it('salva le modifiche all’esercizio prima di selezionarne un altro', async () => {
     const sequence: string[] = []
