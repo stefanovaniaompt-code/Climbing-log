@@ -205,6 +205,7 @@ afterEach(async () => {
   container = null
   vi.useRealTimers()
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
 })
 
 describe('BuilderScreen autosave durante i cambi di selezione', () => {
@@ -214,7 +215,7 @@ describe('BuilderScreen autosave durante i cambi di selezione', () => {
       ...builderData.exercises[0], name: 'Intentional Block Lifting', prescription: original,
       instructions: 'Massimale di 27 kg\n10 rep 60%\n8 rep 65%\n6 rep 70%\n4 rep 80%\n3 rep 86%',
     }] })
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    vi.stubGlobal('confirm', vi.fn(() => true))
     const screen = await renderBuilder()
     await act(async () => { buttonWithText(screen, 'Intentional Block Lifting').click() })
     expect(repository.updateExercise).not.toHaveBeenCalled()
